@@ -1015,9 +1015,9 @@
           %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rh ;;(rounding-mode +:(need info)))))
           %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rh ;;(rounding-mode +:(need info)))))
         ==
-      ==
+      ==  :: bloq real
     ::
-    ==
+    ==  :: kind
   ::
   ++  trans-scalar
     |=  [=bloq =kind fun=ops]
@@ -1031,20 +1031,20 @@
         %int2  !!
       ::
         %real
-      ?+  bloq  !!
-        %7
+      ?+    bloq  !!
+          %7
         ?+  fun  !!
           %abs  |=(b=@ ?:((gth:rq b .~~~0) b (mul:rq b .~~~-1)))
         ==
-        %6
+          %6
         ?+  fun  !!
           %abs  |=(b=@ ?:((gth:rd b .~0) b (mul:rd b .~-1)))
         ==
-        %5
+          %5
         ?+  fun  !!
           %abs  |=(b=@ ?:((gth:rs b .0) b (mul:rs b .-1)))
         ==
-        %4
+          %4
         ?+  fun  !!
           %abs  |=(b=@ ?:((gth:rh b .~~0) b (mul:rh b .~~-1)))
         ==

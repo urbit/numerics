@@ -14,10 +14,11 @@
         data=@ux        ::  data, row-major order
     ==
   ::
+  +$  rounding-mode  ?(%n %u %d %z)
   +$  info
-    %$  [%fixp @]       ::  fixed-precision scale
+    $%  [%fixp @]       ::  fixed-precision scale
         $:  %real       ::  IEEE 754 rounding mode
-            r=?(%n %u %d %z)
+            r=rounding-mode
         ==
     ==
   +$  meta              ::  $meta:  metadata for a $ray
@@ -604,7 +605,7 @@
     |=  a=ray
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
-      ?:  =(((fun-scalar meta.a meta.a %gth) b c) 0)
+      ?:  =(((fun-scalar meta.a %gth) b c) 0)
         b  c 
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
@@ -969,50 +970,50 @@
       ==
       ::
         %real
-      ?+  bloq  !!
-        %7
+      ?+    bloq  !!
+          %7
         ?+  fun  !!
-          %add  ?>(=(%real -.info) ~(add rq r))
-          %sub  ?>(=(%real -.info) ~(sub rq r))
-          %mul  ?>(=(%real -.info) ~(mul rq r))
-          %div  ?>(=(%real -.info) ~(div rq r))
-          %gth  ?>(=(%real -.info) ~(gth rq r))
-          %gte  ?>(=(%real -.info) ~(gte rq r))
-          %lth  ?>(=(%real -.info) ~(lth rq r))
-          %lte  ?>(=(%real -.info) ~(lte rq r))
+          %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rq ;;(rounding-mode +:(need info)))))
+          %sub  ?~(info !! ?>(=(%real -:(need info)) ~(sub rq ;;(rounding-mode +:(need info)))))
+          %mul  ?~(info !! ?>(=(%real -:(need info)) ~(mul rq ;;(rounding-mode +:(need info)))))
+          %div  ?~(info !! ?>(=(%real -:(need info)) ~(div rq ;;(rounding-mode +:(need info)))))
+          %gth  ?~(info !! ?>(=(%real -:(need info)) ~(gth rq ;;(rounding-mode +:(need info)))))
+          %gte  ?~(info !! ?>(=(%real -:(need info)) ~(gte rq ;;(rounding-mode +:(need info)))))
+          %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rq ;;(rounding-mode +:(need info)))))
+          %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rq ;;(rounding-mode +:(need info)))))
         ==
-        %6
+          %6
         ?+  fun  !!
-          %add  ?>(=(%real -.info) ~(add rd r))
-          %sub  ?>(=(%real -.info) ~(sub rd r))
-          %mul  ?>(=(%real -.info) ~(mul rd r))
-          %div  ?>(=(%real -.info) ~(div rd r))
-          %gth  ?>(=(%real -.info) ~(gth rd r))
-          %gte  ?>(=(%real -.info) ~(gte rd r))
-          %lth  ?>(=(%real -.info) ~(lth rd r))
-          %lte  ?>(=(%real -.info) ~(lte rd r))
+          %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rd ;;(rounding-mode +:(need info)))))
+          %sub  ?~(info !! ?>(=(%real -:(need info)) ~(sub rd ;;(rounding-mode +:(need info)))))
+          %mul  ?~(info !! ?>(=(%real -:(need info)) ~(mul rd ;;(rounding-mode +:(need info)))))
+          %div  ?~(info !! ?>(=(%real -:(need info)) ~(div rd ;;(rounding-mode +:(need info)))))
+          %gth  ?~(info !! ?>(=(%real -:(need info)) ~(gth rd ;;(rounding-mode +:(need info)))))
+          %gte  ?~(info !! ?>(=(%real -:(need info)) ~(gte rd ;;(rounding-mode +:(need info)))))
+          %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rd ;;(rounding-mode +:(need info)))))
+          %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rd ;;(rounding-mode +:(need info)))))
         ==
-        %5
+          %5
         ?+  fun  !!
-          %add  ?>(=(%real -.info) ~(add rs r))
-          %sub  ?>(=(%real -.info) ~(sub rs r))
-          %mul  ?>(=(%real -.info) ~(mul rs r))
-          %div  ?>(=(%real -.info) ~(div rs r))
-          %gth  ?>(=(%real -.info) ~(gth rs r))
-          %gte  ?>(=(%real -.info) ~(gte rs r))
-          %lth  ?>(=(%real -.info) ~(lth rs r))
-          %lte  ?>(=(%real -.info) ~(lte rs r))
+          %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rs ;;(rounding-mode +:(need info)))))
+          %sub  ?~(info !! ?>(=(%real -:(need info)) ~(sub rs ;;(rounding-mode +:(need info)))))
+          %mul  ?~(info !! ?>(=(%real -:(need info)) ~(mul rs ;;(rounding-mode +:(need info)))))
+          %div  ?~(info !! ?>(=(%real -:(need info)) ~(div rs ;;(rounding-mode +:(need info)))))
+          %gth  ?~(info !! ?>(=(%real -:(need info)) ~(gth rs ;;(rounding-mode +:(need info)))))
+          %gte  ?~(info !! ?>(=(%real -:(need info)) ~(gte rs ;;(rounding-mode +:(need info)))))
+          %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rs ;;(rounding-mode +:(need info)))))
+          %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rs ;;(rounding-mode +:(need info)))))
         ==
-        %4
+          %4
         ?+  fun  !!
-          %add  ?>(=(%real -.info) ~(add rh r))
-          %sub  ?>(=(%real -.info) ~(sub rh r))
-          %mul  ?>(=(%real -.info) ~(mul rh r))
-          %div  ?>(=(%real -.info) ~(div rh r))
-          %gth  ?>(=(%real -.info) ~(gth rh r))
-          %gte  ?>(=(%real -.info) ~(gte rh r))
-          %lth  ?>(=(%real -.info) ~(lth rh r))
-          %lte  ?>(=(%real -.info) ~(lte rh r))
+          %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rh ;;(rounding-mode +:(need info)))))
+          %sub  ?~(info !! ?>(=(%real -:(need info)) ~(sub rh ;;(rounding-mode +:(need info)))))
+          %mul  ?~(info !! ?>(=(%real -:(need info)) ~(mul rh ;;(rounding-mode +:(need info)))))
+          %div  ?~(info !! ?>(=(%real -:(need info)) ~(div rh ;;(rounding-mode +:(need info)))))
+          %gth  ?~(info !! ?>(=(%real -:(need info)) ~(gth rh ;;(rounding-mode +:(need info)))))
+          %gte  ?~(info !! ?>(=(%real -:(need info)) ~(gte rh ;;(rounding-mode +:(need info)))))
+          %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rh ;;(rounding-mode +:(need info)))))
+          %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rh ;;(rounding-mode +:(need info)))))
         ==
       ==
     ::

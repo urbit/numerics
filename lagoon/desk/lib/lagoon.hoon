@@ -604,7 +604,7 @@
     |=  a=ray
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
-      ?:  =(((fun-scalar bloq.meta.a kind.meta.a %gth) b c) 0)
+      ?:  =(((fun-scalar meta.a meta.a %gth) b c) 0)
         b  c 
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
@@ -617,7 +617,7 @@
     |=  a=ray
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
-      ?:  =(((fun-scalar bloq.meta.a kind.meta.a %lth) b c) 0)
+      ?:  =(((fun-scalar meta.a %lth) b c) 0)
         b  c 
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
@@ -630,13 +630,13 @@
     |=  a=ray
     ^-  ray
     %+  scalar-to-ray  meta.a
-    (reel (ravel a) |=([b=@ c=@] ((fun-scalar bloq.meta.a kind.meta.a %add) b c)))
+    (reel (ravel a) |=([b=@ c=@] ((fun-scalar meta.a %add) b c)))
   ::
   ++  prod
     |=  a=ray
     ^-  ray
     %+  scalar-to-ray  meta.a
-    (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar bloq.meta.a kind.meta.a %mul) b c)))
+    (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar meta.a %mul) b c)))
   ::
   ++  reshape
     |=  [a=ray shape=(list @)]
@@ -782,9 +782,9 @@
           %=    $
               k  +(k)
               cume
-            %+  (fun-scalar bloq.meta.a kind.meta.a %add)
+            %+  (fun-scalar meta.a %add)
               cume
-            %+  (fun-scalar bloq.meta.a kind.meta.a %mul)
+            %+  (fun-scalar meta.a %mul)
               (get-item a ~[i k])
             (get-item b ~[k j])
           ==
@@ -830,27 +830,27 @@
     ~/  %add
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %add))
+    (bin-op a b (fun-scalar meta.a %add))
   ::
   ++  sub
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %sub))
+    (bin-op a b (fun-scalar meta.a %sub))
   ::
   ++  mul
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %mul))
+    (bin-op a b (fun-scalar meta.a %mul))
   ::
   ++  div
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %div))
+    (bin-op a b (fun-scalar meta.a %div))
   ::
   ++  mod
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %mod))
+    (bin-op a b (fun-scalar meta.a %mod))
   ::
   ++  pow-n
     |=  [a=ray n=@ud]
@@ -864,37 +864,37 @@
   ++  pow
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %pow))
+    (bin-op a b (fun-scalar meta.a %pow))
   ::
   ++  exp
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %exp))
+    (bin-op a b (fun-scalar meta.a %exp))
   ::
   ++  log
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %log))
+    (bin-op a b (fun-scalar meta.a %log))
   ::
   ++  gth
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %gth))
+    (bin-op a b (fun-scalar meta.a %gth))
   ::
   ++  gte
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %gte))
+    (bin-op a b (fun-scalar meta.a %gte))
   ::
   ++  lth
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %lth))
+    (bin-op a b (fun-scalar meta.a %lth))
   ::
   ++  lte
     |=  [a=ray b=ray]
     ^-  ray
-    (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %lte))
+    (bin-op a b (fun-scalar meta.a %lte))
   ::
   ++  mpow-n
     |=  [a=ray n=@ud]
@@ -940,8 +940,9 @@
             ==
   ::
   ++  fun-scalar
-    |=  [=bloq =kind fun=ops]
+    |=  [=meta fun=ops]
     ^-  $-([@ @] @)
+    =,  meta
     ?+    kind  ~|(kind !!)
         %uint  
       ?+  fun  !!
@@ -971,47 +972,47 @@
       ?+  bloq  !!
         %7
         ?+  fun  !!
-          %add  ~(add rq r)
-          %sub  ~(sub rq r)
-          %mul  ~(mul rq r)
-          %div  ~(div rq r)
-          %gth  ~(gth rq r)
-          %gte  ~(gte rq r)
-          %lth  ~(lth rq r)
-          %lte  ~(lte rq r)
+          %add  ?>(=(%real -.info) ~(add rq r))
+          %sub  ?>(=(%real -.info) ~(sub rq r))
+          %mul  ?>(=(%real -.info) ~(mul rq r))
+          %div  ?>(=(%real -.info) ~(div rq r))
+          %gth  ?>(=(%real -.info) ~(gth rq r))
+          %gte  ?>(=(%real -.info) ~(gte rq r))
+          %lth  ?>(=(%real -.info) ~(lth rq r))
+          %lte  ?>(=(%real -.info) ~(lte rq r))
         ==
         %6
         ?+  fun  !!
-          %add  ~(add rd r)
-          %sub  ~(sub rd r)
-          %mul  ~(mul rd r)
-          %div  ~(div rd r)
-          %gth  ~(gth rd r)
-          %gte  ~(gte rd r)
-          %lth  ~(lth rd r)
-          %lte  ~(lte rd r)
+          %add  ?>(=(%real -.info) ~(add rd r))
+          %sub  ?>(=(%real -.info) ~(sub rd r))
+          %mul  ?>(=(%real -.info) ~(mul rd r))
+          %div  ?>(=(%real -.info) ~(div rd r))
+          %gth  ?>(=(%real -.info) ~(gth rd r))
+          %gte  ?>(=(%real -.info) ~(gte rd r))
+          %lth  ?>(=(%real -.info) ~(lth rd r))
+          %lte  ?>(=(%real -.info) ~(lte rd r))
         ==
         %5
         ?+  fun  !!
-          %add  ~(add rs r)
-          %sub  ~(sub rs r)
-          %mul  ~(mul rs r)
-          %div  ~(div rs r)
-          %gth  ~(gth rs r)
-          %gte  ~(gte rs r)
-          %lth  ~(lth rs r)
-          %lte  ~(lte rs r)
+          %add  ?>(=(%real -.info) ~(add rs r))
+          %sub  ?>(=(%real -.info) ~(sub rs r))
+          %mul  ?>(=(%real -.info) ~(mul rs r))
+          %div  ?>(=(%real -.info) ~(div rs r))
+          %gth  ?>(=(%real -.info) ~(gth rs r))
+          %gte  ?>(=(%real -.info) ~(gte rs r))
+          %lth  ?>(=(%real -.info) ~(lth rs r))
+          %lte  ?>(=(%real -.info) ~(lte rs r))
         ==
         %4
         ?+  fun  !!
-          %add  ~(add rh r)
-          %sub  ~(sub rh r)
-          %mul  ~(mul rh r)
-          %div  ~(div rh r)
-          %gth  ~(gth rh r)
-          %gte  ~(gte rh r)
-          %lth  ~(lth rh r)
-          %lte  ~(lte rh r)
+          %add  ?>(=(%real -.info) ~(add rh r))
+          %sub  ?>(=(%real -.info) ~(sub rh r))
+          %mul  ?>(=(%real -.info) ~(mul rh r))
+          %div  ?>(=(%real -.info) ~(div rh r))
+          %gth  ?>(=(%real -.info) ~(gth rh r))
+          %gte  ?>(=(%real -.info) ~(gte rh r))
+          %lth  ?>(=(%real -.info) ~(lth rh r))
+          %lte  ?>(=(%real -.info) ~(lte rh r))
         ==
       ==
     ::

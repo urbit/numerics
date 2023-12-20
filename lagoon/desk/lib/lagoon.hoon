@@ -1,11 +1,11 @@
 /+  *twoc
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
+~%  %lagoon  ..part  ~
 |%
 ++  la
   ^|
-  !:
-  |_  r=$?(%n %u %d %z)   :: round nearest, round up, round down, round to zero
+  |%
   ::
   ::  Metadata
   ::
@@ -14,11 +14,17 @@
         data=@ux        ::  data, row-major order
     ==
   ::
+  +$  info
+    %$  [%fixp @]       ::  fixed-precision scale
+        $:  %real       ::  IEEE 754 rounding mode
+            r=?(%n %u %d %z)
+        ==
+    ==
   +$  meta              ::  $meta:  metadata for a $ray
     $:  shape=(list @)  ::  list of dimension lengths
         =bloq           ::  logarithm of bitwidth
         =kind           ::  name of data type
-        prec=(unit @)   ::  fixed-precision scale
+        info=(unit info)
     ==
   ::
   +$  kind              ::  $kind:  type of array scalars
@@ -137,7 +143,7 @@
     ::  construct new ray
     %-  spac
     =,  meta.a
-    :-  [out-shape bloq kind prec]
+    :-  [out-shape bloq kind info]
     new-dat
   ::
   ++  product  ::  cartesian product
@@ -183,14 +189,14 @@
     ^-  ray
     =,  meta.a
     ?:  =(1 (lent shape))
-      (spac [~[1] bloq kind prec] (get-item a dex))
+      (spac [~[1] bloq kind info] (get-item a dex))
     ?>  =(+((lent dex)) (lent shape))
     =/  res
       %-  zeros
       :*  ~[1 (snag 0 (flop shape))]
           bloq
           kind
-          prec
+          info
       ==
     =/  idx  0
     |-  ^-  ray
@@ -396,7 +402,7 @@
     =<  +
     %^    spin
         (gulf 0 (dec n))
-      ^-  ray  (zeros [~[n n] bloq kind prec])
+      ^-  ray  (zeros [~[n n] bloq kind info])
     |=  [i=@ r=ray]
     :: [i (set-item r ~[i i] 1)]
     :-  i
@@ -703,7 +709,7 @@
     =/  i  0
     =/  j  0
     =/  shape=(list @)  ~[(snag 1 shape) (snag 0 shape)]
-    =/  prod=ray  (zeros [shape bloq kind prec])
+    =/  prod=ray  (zeros [shape bloq kind info])
     |-
       ?:  =(i (snag 0 shape))
         prod
@@ -727,7 +733,7 @@
     ?>  =(2 (lent shape))
     ?>  =(-.shape +<.shape)
     %-  en-ray
-    :-  `meta`[~[-.shape 1] bloq kind prec]
+    :-  `meta`[~[-.shape 1] bloq kind info]
     %+  turn
       (flop (gulf 0 (dec -.shape)))
     |=(i=@ (get-item a ~[i i]))
@@ -749,7 +755,7 @@
     =/  j  0
     =/  k  0
     =/  shape=(list @)  ~[(snag 0 shape.meta.a) (snag 1 shape.meta.b)]
-    =/  prod=ray  =,(meta.a (zeros [^shape bloq kind prec]))
+    =/  prod=ray  =,(meta.a (zeros [^shape bloq kind info]))
     ::  
     ::  multiplication conditions
     ?>
@@ -821,6 +827,7 @@
     (mod a b)
   ::
   ++  add
+    ~/  %add
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar bloq.meta.a kind.meta.a %add))

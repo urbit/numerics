@@ -944,7 +944,7 @@
     |=  [=meta fun=ops]
     ^-  $-([@ @] @)
     =,  meta
-    ?+    kind  ~|(kind !!)
+    ?+    `^kind`kind  ~|(kind !!)
         %uint  
       ?+  fun  !!
         %add  ~(sum fe bloq)
@@ -970,7 +970,7 @@
       ==
       ::
         %real
-      ?+    bloq  !!
+      ?+    `^bloq`bloq  !!
           %7
         ?+  fun  !!
           %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rq ;;(rounding-mode +:(need info)))))

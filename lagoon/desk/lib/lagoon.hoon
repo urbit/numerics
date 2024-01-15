@@ -3,8 +3,18 @@
 ::::                    ++la                          ::  (2v) vector/matrix ops
 ~%  %lagoon  ..part  ~
 |%
+::  +lake: set +la params
+::
+::    rnd: rounding mode
+::
++$  rounding-mode  ?(%n %u %d %z)
+++  lake
+  |=  [inrnd=rounding-mode]
+  %*(. la rnd inrnd)
+::
 ++  la
   ^|
+  =+  [rnd=*rounding-mode]
   |%
   ::
   ::  Metadata
@@ -14,27 +24,21 @@
         data=@ux        ::  data, row-major order
     ==
   ::
-  +$  rounding-mode  ?(%n %u %d %z)
-  +$  info
-    $%  [%fixp @]       ::  fixed-precision scale
-        $:  %real       ::  IEEE 754 rounding mode
-            r=rounding-mode
-        ==
-    ==
+  +$  prec  [a=@ b=@]   ::  fixed-point precision, a+b+1=bloq
   +$  meta              ::  $meta:  metadata for a $ray
     $:  shape=(list @)  ::  list of dimension lengths
         =bloq           ::  logarithm of bitwidth
         =kind           ::  name of data type
-        info=(unit info)
+        fxp=(unit prec) ::  fixed-point scale
     ==
   ::
   +$  kind              ::  $kind:  type of array scalars
-    $?  %real           ::  IEEE 754 float %real
-        %uint           ::  unsigned integer %usgn %uint
-        %int2           ::  2s-complement integer %sint
-        %cplx           ::  BLAS-compatible packed floats %cplx
-        %unum           ::  unum/posit %unum
-        %fixp           ::  fixed-precision %fixp
+    $?  %real           ::  IEEE 754 float
+        %uint           ::  unsigned integer
+        %int2           ::  2s-complement integer
+        %cplx           ::  BLAS-compatible packed floats
+        %unum           ::  unum/posit
+        %fixp           ::  fixed-precision
     ==
   ::
   +$  baum              ::  $baum:  ndray with metadata
@@ -89,6 +93,9 @@
         %5  %rs
         %4  %rh
       ==
+      ::
+        %fixp
+      @uxfixed  :: special aura because Hoon doesn't have fixed-point
     ==
   ::
   ++  squeeze  |*(a=* `(list _a)`~[a])
@@ -144,7 +151,7 @@
     ::  construct new ray
     %-  spac
     =,  meta.a
-    :-  [out-shape bloq kind info]
+    :-  [out-shape bloq kind]
     new-dat
   ::
   ++  product  ::  cartesian product
@@ -190,14 +197,13 @@
     ^-  ray
     =,  meta.a
     ?:  =(1 (lent shape))
-      (spac [~[1] bloq kind info] (get-item a dex))
+      (spac [~[1] bloq kind] (get-item a dex))
     ?>  =(+((lent dex)) (lent shape))
     =/  res
       %-  zeros
       :*  ~[1 (snag 0 (flop shape))]
           bloq
           kind
-          info
       ==
     =/  idx  0
     |-  ^-  ray
@@ -403,7 +409,7 @@
     =<  +
     %^    spin
         (gulf 0 (dec n))
-      ^-  ray  (zeros [~[n n] bloq kind info])
+      ^-  ray  (zeros [~[n n] bloq kind])
     |=  [i=@ r=ray]
     :: [i (set-item r ~[i i] 1)]
     :-  i
@@ -420,6 +426,8 @@
         %5  .1
         %4  .~~1
       ==
+        ::  XXX correct because we're only shifting 1
+        %fixp  (lsh bloq.meta (need fixp.meta) 1)
     ==
   ::    Zeroes
   ++  zeros
@@ -442,6 +450,7 @@
           %5  .1
           %4  .~~1
         ==
+          %fixp  (lsh bloq.meta (need fixp.meta) 1)
       ==
     (fill meta one)
   ::  Produce a 1-dimensional index array.
@@ -462,7 +471,7 @@
     ^-  ray
     =/  n  (roll shape.meta ^mul)
     %+  reshape
-      (en-ray [~[n] bloq.meta %uint ~] (gulf 0 (dec n)))
+      (en-ray [~[n] bloq.meta %uint] (gulf 0 (dec n)))
     shape.meta
   ::  Produce a 1-dimensional range along one dimension
   ::  as [a b) with interval d.
@@ -512,6 +521,7 @@
         [meta (flop bad)]
       $(bad [(add:rh (snag 0 bad) d) bad])
     ==
+    ::  TODO %fixp
   ::  Produce a 1-dimensional range along one dimension
   ::  as [a b] with number of steps n.
   ::  Only produces %real.
@@ -563,6 +573,7 @@
       ?:  =(n +(+(i)))  (flop [b bad])
       $(i +(i), bad [(add:rh (snag 0 bad) d) bad])
     ==
+    ::  TODO %fixp
   ::  Coerce 1D array along specified dimension with given overall
   ::  dimensionality.
   ::
@@ -577,27 +588,30 @@
   ::  Produce an n-dimensional array containing a single value.
   ::
   ++  scale
-    |=  [=meta =term data=@]
+    |=  [=meta data=@]
     ^-  ray
-    ?>  =(%real kind.meta)
     =.  shape.meta  `(list @)`(zing (reap (lent shape.meta) ~[1]))
-    ::  convert data to fl
-    =/  mid=fn
-      ?+    term  !!
-        %rq  (sea:ma:rq data)
-        %rd  (sea:ma:rd data)
-        %rs  (sea:ma:rs data)
-        %rh  (sea:ma:rh data)
-      ==
-    ::  convert fl to @r
-    =/  fin
-      ?+    bloq.meta  !!
-        %7  (bit:ma:rq mid)
-        %6  (bit:ma:rd mid)
-        %5  (bit:ma:rs mid)
-        %4  (bit:ma:rh mid)
-      ==
-    (spac [meta `@ux`fin])
+    ?+    bloq.meta  !!
+        %real
+      ::  convert date to fl to @r XXX TODO REVISIT whether we want to specify input type
+      =/  fin
+        ?+    bloq.meta  !!
+          %7  (bit:ma:rq (sea:ma:rq data))
+          %6  (bit:ma:rd (sea:ma:rd data))
+          %5  (bit:ma:rs (sea:ma:rs data))
+          %4  (bit:ma:rh (sea:ma:rh data))
+        ==
+      (spac [meta `@ux`fin])
+      ::
+        %uint
+      (spac [meta `@ux`data])
+      ::
+        %int2
+      (spac [meta `@ux`data])
+      ::
+        %fixp
+      (spac [meta `@ux`data])
+    ==
   ::
   ::  Operators
   ::
@@ -710,7 +724,7 @@
     =/  i  0
     =/  j  0
     =/  shape=(list @)  ~[(snag 1 shape) (snag 0 shape)]
-    =/  prod=ray  (zeros [shape bloq kind info])
+    =/  prod=ray  (zeros [shape bloq kind])
     |-
       ?:  =(i (snag 0 shape))
         prod
@@ -734,7 +748,7 @@
     ?>  =(2 (lent shape))
     ?>  =(-.shape +<.shape)
     %-  en-ray
-    :-  `meta`[~[-.shape 1] bloq kind info]
+    :-  `meta`[~[-.shape 1] bloq kind]
     %+  turn
       (flop (gulf 0 (dec -.shape)))
     |=(i=@ (get-item a ~[i i]))
@@ -756,7 +770,7 @@
     =/  j  0
     =/  k  0
     =/  shape=(list @)  ~[(snag 0 shape.meta.a) (snag 1 shape.meta.b)]
-    =/  prod=ray  =,(meta.a (zeros [^shape bloq kind info]))
+    =/  prod=ray  =,(meta.a (zeros [^shape bloq kind]))
     ::  
     ::  multiplication conditions
     ?>
@@ -908,11 +922,11 @@
   ::  proximity check [abs rel]
   ::
   ++  is-close
-    |=  [a=ray b=ray =term tol=[@ @]]
+    |=  [a=ray b=ray tol=[@ @]]
     ^-  ray
     ?>  =(shape.meta.a shape.meta.b)
-    =/  atol  (fill meta.a data:(scale meta.a term -.tol))
-    =/  rtol  (fill meta.a data:(scale meta.a term +.tol))
+    =/  atol  (fill meta.a data:(scale meta.a -.tol))
+    =/  rtol  (fill meta.a data:(scale meta.a +.tol))
     (lte (abs (sub a b)) (add atol (mul rtol (abs b))))
   ::
   ++  any
@@ -973,49 +987,65 @@
       ?+    `^bloq`bloq  !!
           %7
         ?+  fun  !!
-          %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rq ;;(rounding-mode +:(need info)))))
-          %sub  ?~(info !! ?>(=(%real -:(need info)) ~(sub rq ;;(rounding-mode +:(need info)))))
-          %mul  ?~(info !! ?>(=(%real -:(need info)) ~(mul rq ;;(rounding-mode +:(need info)))))
-          %div  ?~(info !! ?>(=(%real -:(need info)) ~(div rq ;;(rounding-mode +:(need info)))))
-          %gth  ?~(info !! ?>(=(%real -:(need info)) ~(gth rq ;;(rounding-mode +:(need info)))))
-          %gte  ?~(info !! ?>(=(%real -:(need info)) ~(gte rq ;;(rounding-mode +:(need info)))))
-          %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rq ;;(rounding-mode +:(need info)))))
-          %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rq ;;(rounding-mode +:(need info)))))
+          %add  ?>(=(%real rnd) ~(add rq rnd))
+          %sub  ?>(=(%real rnd) ~(sub rq rnd))
+          %mul  ?>(=(%real rnd) ~(mul rq rnd))
+          %div  ?>(=(%real rnd) ~(div rq rnd))
+          %gth  ?>(=(%real rnd) ~(gth rq rnd))
+          %gte  ?>(=(%real rnd) ~(gte rq rnd))
+          %lth  ?>(=(%real rnd) ~(lth rq rnd))
+          %lte  ?>(=(%real rnd) ~(lte rq rnd))
         ==
           %6
         ?+  fun  !!
-          %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rd ;;(rounding-mode +:(need info)))))
-          %sub  ?~(info !! ?>(=(%real -:(need info)) ~(sub rd ;;(rounding-mode +:(need info)))))
-          %mul  ?~(info !! ?>(=(%real -:(need info)) ~(mul rd ;;(rounding-mode +:(need info)))))
-          %div  ?~(info !! ?>(=(%real -:(need info)) ~(div rd ;;(rounding-mode +:(need info)))))
-          %gth  ?~(info !! ?>(=(%real -:(need info)) ~(gth rd ;;(rounding-mode +:(need info)))))
-          %gte  ?~(info !! ?>(=(%real -:(need info)) ~(gte rd ;;(rounding-mode +:(need info)))))
-          %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rd ;;(rounding-mode +:(need info)))))
-          %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rd ;;(rounding-mode +:(need info)))))
+          %add  ?>(=(%real rnd) ~(add rd rnd))
+          %sub  ?>(=(%real rnd) ~(sub rd rnd))
+          %mul  ?>(=(%real rnd) ~(mul rd rnd))
+          %div  ?>(=(%real rnd) ~(div rd rnd))
+          %gth  ?>(=(%real rnd) ~(gth rd rnd))
+          %gte  ?>(=(%real rnd) ~(gte rd rnd))
+          %lth  ?>(=(%real rnd) ~(lth rd rnd))
+          %lte  ?>(=(%real rnd) ~(lte rd rnd))
         ==
           %5
         ?+  fun  !!
-          %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rs ;;(rounding-mode +:(need info)))))
-          %sub  ?~(info !! ?>(=(%real -:(need info)) ~(sub rs ;;(rounding-mode +:(need info)))))
-          %mul  ?~(info !! ?>(=(%real -:(need info)) ~(mul rs ;;(rounding-mode +:(need info)))))
-          %div  ?~(info !! ?>(=(%real -:(need info)) ~(div rs ;;(rounding-mode +:(need info)))))
-          %gth  ?~(info !! ?>(=(%real -:(need info)) ~(gth rs ;;(rounding-mode +:(need info)))))
-          %gte  ?~(info !! ?>(=(%real -:(need info)) ~(gte rs ;;(rounding-mode +:(need info)))))
-          %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rs ;;(rounding-mode +:(need info)))))
-          %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rs ;;(rounding-mode +:(need info)))))
+          %add  ?>(=(%real rnd) ~(add rs rnd))
+          %sub  ?>(=(%real rnd) ~(sub rs rnd))
+          %mul  ?>(=(%real rnd) ~(mul rs rnd))
+          %div  ?>(=(%real rnd) ~(div rs rnd))
+          %gth  ?>(=(%real rnd) ~(gth rs rnd))
+          %gte  ?>(=(%real rnd) ~(gte rs rnd))
+          %lth  ?>(=(%real rnd) ~(lth rs rnd))
+          %lte  ?>(=(%real rnd) ~(lte rs rnd))
         ==
           %4
         ?+  fun  !!
-          %add  ?~(info !! ?>(=(%real -:(need info)) ~(add rh ;;(rounding-mode +:(need info)))))
-          %sub  ?~(info !! ?>(=(%real -:(need info)) ~(sub rh ;;(rounding-mode +:(need info)))))
-          %mul  ?~(info !! ?>(=(%real -:(need info)) ~(mul rh ;;(rounding-mode +:(need info)))))
-          %div  ?~(info !! ?>(=(%real -:(need info)) ~(div rh ;;(rounding-mode +:(need info)))))
-          %gth  ?~(info !! ?>(=(%real -:(need info)) ~(gth rh ;;(rounding-mode +:(need info)))))
-          %gte  ?~(info !! ?>(=(%real -:(need info)) ~(gte rh ;;(rounding-mode +:(need info)))))
-          %lth  ?~(info !! ?>(=(%real -:(need info)) ~(lth rh ;;(rounding-mode +:(need info)))))
-          %lte  ?~(info !! ?>(=(%real -:(need info)) ~(lte rh ;;(rounding-mode +:(need info)))))
+          %add  ?>(=(%real rnd) ~(add rh rnd))
+          %sub  ?>(=(%real rnd) ~(sub rh rnd))
+          %mul  ?>(=(%real rnd) ~(mul rh rnd))
+          %div  ?>(=(%real rnd) ~(div rh rnd))
+          %gth  ?>(=(%real rnd) ~(gth rh rnd))
+          %gte  ?>(=(%real rnd) ~(gte rh rnd))
+          %lth  ?>(=(%real rnd) ~(lth rh rnd))
+          %lte  ?>(=(%real rnd) ~(lte rh rnd))
         ==
       ==  :: bloq real
+      :: TODO
+        %fixp
+      ?+  fun  !!
+        %add  ~(sum fe bloq)
+        %sub  ~(dif fe bloq)
+        %mul  |=([b=_1 c=_1] (~(sit fe bloq) (^mul b c)))
+        %div  |=([b=_1 c=_1] (~(sit fe bloq) (^div b c)))
+        %mod  |=([b=@ c=@] (~(sit fe bloq) (^mod b c)))
+        %pow  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
+        ::%exp  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
+        ::%log  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
+        %gth  |=([b=@ c=@] (^gth b c))
+        %gte  |=([b=@ c=@] (^gte b c))
+        %lth  |=([b=@ c=@] (^lth b c))
+        %lte  |=([b=@ c=@] (^lte b c))
+      ==
     ::
     ==  :: kind
   ::

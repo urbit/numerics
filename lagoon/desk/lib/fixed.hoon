@@ -14,27 +14,67 @@
 ::
 +$  prec  [a=@ b=@]   ::  fixed-point precision, a+b+1=bloq
 ::
+::    +add: [@ [@ @] @ [@ @]] -> @
+::
+::  Add two fixed-point numbers.
+::    Examples
+::      > (add 0b100.0001.0000 [8 8] 0b101.0001.0000 [8 8])
+::      0b1000.0010.0000
+::
+::  Source
 ++  add
   |=  [x=@ xprec=prec y=@ yprec=prec]
   ?>  =(xprec yprec)
   =/  sum  (^add x y)
   =/  sump=prec  [+(a.xprec) b.xprec]
   (lo sum sump :(^add a.xprec b.xprec 1))
+::    +sub: [@ [@ @] @ [@ @]] -> @
+::
+::  Subtract two fixed-point numbers.
+::    Examples
+::      > (sub 0b100.0001.0000 [8 8] 0b101.0001.0000 [8 8])
+::      0b1111.1111.0000.0000
+::      > (sub 0b101.0001.0000 [8 8] 0b100.0001.0000 [8 8])
+::      0b1.0000.0000
+::
+::  Source
 ++  sub
   |=  [x=@ xprec=prec y=@ yprec=prec]
   ?>  =(xprec yprec)
   =/  n  :(^add a.xprec b.xprec 1)
-  (add x xprec (twoc y n) yprec)
+  (end [4 1] (add x xprec (twoc y n) yprec))
+::    +mul: [@ [@ @] @ [@ @]] -> [@ [@ @]]
+::
+::  Multiply two fixed-point numbers.  Changes the resulting precision.
+::    Examples
+::      > (mul 0b100.0001.0000 [8 8] 0b101.0001.0000 [8 8])
+::      [0b1000.0100.0001.0000.0000 17 16]
+::
+::  Source
 ++  mul
   |=  [x=@ xprec=prec y=@ yprec=prec]
   =/  prod  (^mul x y)
   =/  prodp=prec  [:(^add a.xprec a.yprec 1) (^add b.xprec b.yprec)]
   [prod prodp]
-++  div  :: TODO This is not correct yet.
+::    +div: [@ [@ @] @ [@ @]] -> [@ [@ @]]
+::
+::  Divide two fixed-point numbers.  Keeps the initial precision.
+::    Examples
+::      > (div 0b100.0001.0000 [8 8] 0b101.0001.0000 [8 8])
+::      [0b1100.1101 8 8]
+::
+::  Reference:  https://webpages.charlotte.edu/~jmconrad/ECGR6185-2007-01/notes/UNCC-IESLecture23%20-%20Fixed%20Point%20Math.pdf
+::
+::  Source
+++  div
   |=  [x=@ xprec=prec y=@ yprec=prec]
-  =/  quot  (^div x y)
-  =/  quotp=prec  [:(^add a.xprec b.yprec 1) (^add a.yprec b.xprec)]
-  [quot quotp]
+  ?>  ~|(%argument-precision-must-match =(xprec yprec))
+  =/  quot  (^div (lsh [0 b.xprec] x) y)
+  [quot xprec]
+::    +hi: [@ [@ @] @] -> @
+::
+::  Extract the high bits of x.  (Wordlength HI)
+::  Source
 ++  hi
   |=  [x=@ =prec n=@]
   ?>  (lte n :(^add a.prec b.prec 1))
@@ -46,6 +86,10 @@
   :: negative number
   =/  mask  (lsh [0 n] (rep [0 1] (reap (^sub :(^add a b 1) n) 0b1)))
   (con (rsh [0 (^sub n +(a))] x) mask)
+::    +lo: [@ [@ @] @] -> @
+::
+::  Extract the low bits of x.  (Wordlength LO)
+::  Source
 ++  lo
   |=  [x=@ =prec n=@]
   ?>  (lte n :(^add a.prec b.prec 1))
@@ -53,12 +97,22 @@
   =/  a  (^sub n (^add b 1))
   =/  mask  (rep [0 1] (reap n 0b1))
   (dis x mask)
-::  Produce twos-complement negation of x.
+::    +twoc: [@ @] -> @
+::
+::  Produce the two's complement of x.
+::
+::  Source
 ++  twoc
   |=  [x=@ n=@]
   %+  dis
     (rep [0 1] (reap n 0b1))
   (^add (mix x (rep [0 1] (reap n 0b1))) 0b1)
+::    +scale: [@ [a=@ b=@]] -> @
+::
+::  Scale x to have a bits of integer precision and b bits of fractional
+::  precision.
+::
+::  Source
 ++  scale
   |=  [x=@ xprec=prec yprec=prec]
   =/  nx  :(^add a.xprec b.xprec 1)

@@ -1,5 +1,6 @@
 /-  lagoon
 /+  *twoc
+=+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
 ~%  %lagoon  ..part  ~
@@ -15,7 +16,7 @@
 ::
 ++  la
   ^|
-  =,  lagoon
+  :: =,  lagoon
   =+  [rnd=*rounding-mode]
   ~/  %la-core
   |%
@@ -737,6 +738,7 @@
     (cumsum (mul a b))
   ::
   ++  mmul
+    ~/  %mmul
     |=  [a=ray b=ray]
     =/  i  0
     =/  j  0

@@ -822,6 +822,7 @@
     (bin-op a b (fun-scalar meta.a %add))
   ::
   ++  sub
+    ~/  %sub-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %sub))

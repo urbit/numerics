@@ -786,24 +786,28 @@
     (el-wise-op a (trans-scalar bloq.meta.a kind.meta.a %abs))
 ::
   ++  add-scalar
+    ~/  %add-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (add a b)
   ::
   ++  sub-scalar
+    ~/  %sub-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (sub a b)
   ::
   ++  mul-scalar
+    ~/  %mul-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (mul a b)
   ::
   ++  div-scalar
+    ~/  %div-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)

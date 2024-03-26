@@ -828,11 +828,13 @@
     (bin-op a b (fun-scalar meta.a %sub))
   ::
   ++  mul
+    ~/  %mul-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %mul))
   ::
   ++  div
+    ~/  %div-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %div))

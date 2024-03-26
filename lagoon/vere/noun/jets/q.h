@@ -249,6 +249,8 @@
 
     u3_noun u3qf_la_add_real(u3_noun, u3_noun, u3_noun, u3_noun);
     u3_noun u3qf_la_sub_real(u3_noun, u3_noun, u3_noun, u3_noun);
+    u3_noun u3qf_la_mul_real(u3_noun, u3_noun, u3_noun, u3_noun);
+    u3_noun u3qf_la_div_real(u3_noun, u3_noun, u3_noun, u3_noun);
     u3_noun u3qf_la_mmul_real(u3_noun, u3_noun, u3_noun, u3_noun, u3_noun);
 
 #   define u3qfu_van_fan  28

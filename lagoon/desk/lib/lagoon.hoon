@@ -727,11 +727,13 @@
     |=(i=@ (get-item a ~[i i]))
   ::
   ++  trace
+    ~/  %trace
     |=  a=ray
     ^-  ray
     (cumsum (diag a))
   ::
   ++  dot
+    ~/  %dot
     |=  [a=ray b=ray]
     ^-  ray
     ?>  =(shape.meta.a shape.meta.b)

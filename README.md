@@ -7,7 +7,3 @@ We envision three libraries and associated jet code living in this repository:
 - Maroon (MAchine LeaRning in hOON) will offer machine learning algorithms as a sidecar to Urbit.
 
 We are also developing [SoftBLAS](https://github.com/urbit/SoftBLAS) to support software-defined jetting.
-
-TODO
-
-- [ ] convert muls/divs to use sscal instead of saxpy

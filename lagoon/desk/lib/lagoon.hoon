@@ -712,6 +712,7 @@
   ::  Returns diagonal of an array.
   ::
   ++  diag
+    :: ~/  %diag
     |=  a=ray
     ^-  ray
     =,  meta.a
@@ -727,20 +728,20 @@
     |=(i=@ (get-item a ~[i i]))
   ::
   ++  trace
-    ~/  %trace
+    :: ~/  %trace
     |=  a=ray
     ^-  ray
     (cumsum (diag a))
   ::
   ++  dot
-    ~/  %dot
+    :: ~/  %dot
     |=  [a=ray b=ray]
     ^-  ray
     ?>  =(shape.meta.a shape.meta.b)
     (cumsum (mul a b))
   ::
   ++  mmul
-    ~/  %mmul
+    :: ~/  %mmul
     |=  [a=ray b=ray]
     =/  i  0
     =/  j  0
@@ -788,28 +789,28 @@
     (el-wise-op a (trans-scalar bloq.meta.a kind.meta.a %abs))
 ::
   ++  add-scalar
-    ~/  %add-scal
+    :: ~/  %add-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (add a b)
   ::
   ++  sub-scalar
-    ~/  %sub-scal
+    :: ~/  %sub-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (sub a b)
   ::
   ++  mul-scalar
-    ~/  %mul-scal
+    :: ~/  %mul-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (mul a b)
   ::
   ++  div-scalar
-    ~/  %div-scal
+    :: ~/  %div-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
@@ -828,19 +829,19 @@
     (bin-op a b (fun-scalar meta.a %add))
   ::
   ++  sub
-    ~/  %sub-rays
+    :: ~/  %sub-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %sub))
   ::
   ++  mul
-    ~/  %mul-rays
+    :: ~/  %mul-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %mul))
   ::
   ++  div
-    ~/  %div-rays
+    :: ~/  %div-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %div))

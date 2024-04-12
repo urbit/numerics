@@ -133,8 +133,6 @@
 
     // siz_x is length in bytes
     c3_d siz_x = len_x * pow(2, bloq-3);
-    // fprintf(stderr, "len_x: %d 0x%x units\r\n", len_x, len_x);
-    // fprintf(stderr, "siz_x: %d 0x%x bytes\r\n", siz_x, siz_x);
 
     // x_bytes is the data array (w/o leading 0x1)
     c3_y* x_bytes = (c3_y*)u3a_malloc(siz_x*sizeof(c3_y));
@@ -143,10 +141,7 @@
     // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
     u3r_bytes(0, siz_x+1, y_bytes, y_data);
-
-    // r_data is the result noun of [data]
-    u3_noun r_data;
-
+    
     //  Switch on the block size.
     switch (bloq) {
       case 4:
@@ -166,23 +161,14 @@
         break;
     }
 
-    r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-    // fprintf(stderr, "y = [\r\n");
-    // // fflush(stdout);
-    // fflush(stderr);
-    // for (c3_w i = 0; i <= siz_x; i++) {
-    //   fprintf(stderr, ">>>>%d: ", i);
-    //   fprintf(stderr, "%0x \r\n", y_bytes[siz_x-i]);
-    // }
-    // fprintf(stderr, "]\r\n");
+    // r_data is the result noun of [data]
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
     u3a_free(x_bytes);
     u3a_free(y_bytes);
 
-    fprintf(stderr, "here-end\r\n");
-    return u3nc(u3nq(shape, bloq, kind, fxp), r_data);
+    return r_data;
   }
 
 /* sub - axpy = -1*y+x
@@ -1070,16 +1056,9 @@
       } else {
         switch (x_kind) {
           case c3__real:
-            fprintf(stderr, "\r\n>>  add_real (rnd:  0x%lx)\r\n", rnd);
-            fprintf(stderr, ">>  length: %lx\r\n", _get_length(x_shape));
             _set_rounding(rnd);
-            // u3_noun r_data = u3qf_la_add_real(x_data, y_data, x_shape, x_bloq);
-            fprintf(stderr, ">>  x_shape: [%lx %lx %lx]\r\n", u3h(x_shape), u3h(u3t(x_shape)), u3t(u3t(x_shape)));
-            fprintf(stderr, ">>  x_bloq: 0x%lx\r\n", x_bloq);
-            fprintf(stderr, ">>  x_kind: 0x%lx\r\n", x_kind);
-            // return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), y_data);
-            return u3qf_la_add_real(x_data, y_data, x_shape, x_bloq, x_kind, x_fxp);
-            break;
+            u3_noun r_data = u3qf_la_add_real(x_data, y_data, x_shape, x_bloq);
+            return u3nc(u3nq(u3k(shape), u3k(bloq), u3k(kind), u3k(fxp)), r_data);
 
           default:
             return u3_none;

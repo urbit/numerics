@@ -734,7 +734,7 @@
     (cumsum (diag a))
   ::
   ++  dot
-    :: ~/  %dot
+    ~/  %dot
     |=  [a=ray b=ray]
     ^-  ray
     ?>  =(shape.meta.a shape.meta.b)
@@ -789,34 +789,35 @@
     (el-wise-op a (trans-scalar bloq.meta.a kind.meta.a %abs))
 ::
   ++  add-scalar
-    :: ~/  %add-scal
+    ~/  %add-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (add a b)
   ::
   ++  sub-scalar
-    :: ~/  %sub-scal
+    ~/  %sub-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (sub a b)
   ::
   ++  mul-scalar
-    :: ~/  %mul-scal
+    ~/  %mul-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (mul a b)
   ::
   ++  div-scalar
-    :: ~/  %div-scal
+    ~/  %div-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
     (div a b)
   ::
   ++  mod-scalar
+    ~/  %mod-scal
     |=  [a=ray n=@]
     ^-  ray
     =/  b=ray  (fill meta.a n)
@@ -829,24 +830,25 @@
     (bin-op a b (fun-scalar meta.a %add))
   ::
   ++  sub
-    :: ~/  %sub-rays
+    ~/  %sub-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %sub))
   ::
   ++  mul
-    :: ~/  %mul-rays
+    ~/  %mul-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %mul))
   ::
   ++  div
-    :: ~/  %div-rays
+    ~/  %div-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %div))
   ::
   ++  mod
+    ~/  %mod-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %mod))
@@ -975,6 +977,7 @@
           %sub  ~(sub rq rnd)
           %mul  ~(mul rq rnd)
           %div  ~(div rq rnd)
+          %mod  |=([a=@rq b=@rq] (~(sub rq rnd) a (~(mul rq rnd) b (~(san rq rnd) (need (~(toi rq rnd) (~(div rq rnd) a b)))))))
           %gth  ~(gth rq rnd)
           %gte  ~(gte rq rnd)
           %lth  ~(lth rq rnd)
@@ -986,6 +989,7 @@
           %sub  ~(sub rd rnd)
           %mul  ~(mul rd rnd)
           %div  ~(div rd rnd)
+          %mod  |=([a=@rd b=@rd] (~(sub rd rnd) a (~(mul rd rnd) b (~(san rd rnd) (need (~(toi rd rnd) (~(div rd rnd) a b)))))))
           %gth  ~(gth rd rnd)
           %gte  ~(gte rd rnd)
           %lth  ~(lth rd rnd)
@@ -997,6 +1001,7 @@
           %sub  ~(sub rs rnd)
           %mul  ~(mul rs rnd)
           %div  ~(div rs rnd)
+          %mod  |=([a=@rs b=@rs] (~(sub rs rnd) a (~(mul rs rnd) b (~(san rs rnd) (need (~(toi rs rnd) (~(div rs rnd) a b)))))))
           %gth  ~(gth rs rnd)
           %gte  ~(gte rs rnd)
           %lth  ~(lth rs rnd)
@@ -1008,6 +1013,7 @@
           %sub  ~(sub rh rnd)
           %mul  ~(mul rh rnd)
           %div  ~(div rh rnd)
+          %mod  |=([a=@rh b=@rh] (~(sub rh rnd) a (~(mul rh rnd) b (~(san rh rnd) (need (~(toi rh rnd) (~(div rh rnd) a b)))))))
           %gth  ~(gth rh rnd)
           %gte  ~(gte rh rnd)
           %lth  ~(lth rh rnd)

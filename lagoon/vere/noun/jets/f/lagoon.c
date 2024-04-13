@@ -99,27 +99,13 @@
     return dims;
   }
 
-/* 
-*/
-  static inline size_t _get_array_length(c3_d* array)
-  {
-    size_t n = sizeof(array)/sizeof(array[0]);
-    for (size_t i = 0; i < n; i++) {
-      fprintf(stderr, "%x ", array[i]);
-    }
-    fprintf(stderr, " => %x \n", n);
-    return n;
-  }
-
 /* add - axpy = 1*x+y
 */
   u3_noun
   u3qf_la_add_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
-                   u3_noun bloq,
-                   u3_noun kind,
-                   u3_noun fxp
+                   u3_noun bloq
                    )
   {
     //  Fence on valid bloq size.
@@ -177,75 +163,58 @@
   u3qf_la_sub_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
-                   u3_noun bloq)
+                   u3_noun bloq
+                   )
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
     c3_d len_x = _get_length(shape);
-    c3_d siz_x = len_x * pow(2, bloq - 3);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/o leading 0x1)
     c3_y* x_bytes = (c3_y*)u3a_malloc(siz_x*sizeof(c3_y));
-    u3r_bytes(0, siz_x, x_bytes, y_data);  // XXX
+    u3r_bytes(0, siz_x, x_bytes, x_data);
+
+    // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
-    u3r_bytes(0, siz_x+1, y_bytes, x_data);  // XXX
-
-    u3_noun r_data;
-
+    u3r_bytes(0, siz_x+1, y_bytes, y_data);
+    
     //  Switch on the block size.
     switch (bloq) {
       case 4:
         haxpy(len_x, (float16_t){SB_REAL16_NEGONE}, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 5:
         saxpy(len_x, (float32_t){SB_REAL32_NEGONE}, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 6:
         daxpy(len_x, (float64_t){SB_REAL64_NEGONE}, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 7:
         qaxpy(len_x, (float128_t){SB_REAL128L_NEGONE,SB_REAL128U_NEGONE}, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
-
-      default:
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return u3_none;
+        break;
     }
+
+    // r_data is the result noun of [data]
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+
+    return r_data;
   }
+
 
 /* mul - x.*y
    elementwise multiplication
@@ -256,15 +225,25 @@
                    u3_noun shape,
                    u3_noun bloq)
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
     c3_d len_x = _get_length(shape);
-    c3_d siz_x = len_x * pow(2, bloq - 3);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/o leading 0x1)
     c3_y* x_bytes = (c3_y*)u3a_malloc(siz_x*sizeof(c3_y));
     u3r_bytes(0, siz_x, x_bytes, x_data);
+
+    // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
     u3r_bytes(0, siz_x+1, y_bytes, y_data);
-
-    u3_noun r_data;
 
     //  Switch on the block size.
     switch (bloq) {
@@ -272,64 +251,35 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float16_t*)y_bytes)[i] = f16_mul(((float16_t*)x_bytes)[i], ((float16_t*)y_bytes)[i]);
         }
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 5:
         for (c3_d i = 0; i < len_x; i++) {
           ((float32_t*)y_bytes)[i] = f32_mul(((float32_t*)x_bytes)[i], ((float32_t*)y_bytes)[i]);
         }
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 6:
         for (c3_d i = 0; i < len_x; i++) {
           ((float64_t*)y_bytes)[i] = f64_mul(((float64_t*)x_bytes)[i], ((float64_t*)y_bytes)[i]);
         }
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 7:
         for (c3_d i = 0; i < len_x; i++) {
           f128M_mul(&(((float128_t*)y_bytes)[i]), &(((float128_t*)x_bytes)[i]), &(((float128_t*)y_bytes)[i]));
         }
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
-
-      default:
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return u3_none;
+        break;
     }
+
+    // r_data is the result noun of [data]
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+
+    return r_data;
   }
 
 /* div - x/y
@@ -341,15 +291,25 @@
                    u3_noun shape,
                    u3_noun bloq)
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
     c3_d len_x = _get_length(shape);
-    c3_d siz_x = len_x * pow(2, bloq - 3);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/o leading 0x1)
     c3_y* x_bytes = (c3_y*)u3a_malloc(siz_x*sizeof(c3_y));
     u3r_bytes(0, siz_x, x_bytes, x_data);
+
+    // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
     u3r_bytes(0, siz_x+1, y_bytes, y_data);
-
-    u3_noun r_data;
 
     //  Switch on the block size.
     switch (bloq) {
@@ -357,89 +317,177 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float16_t*)y_bytes)[i] = f16_div(((float16_t*)x_bytes)[i], ((float16_t*)y_bytes)[i]);
         }
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 5:
         for (c3_d i = 0; i < len_x; i++) {
           ((float32_t*)y_bytes)[i] = f32_div(((float32_t*)x_bytes)[i], ((float32_t*)y_bytes)[i]);
         }
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 6:
         for (c3_d i = 0; i < len_x; i++) {
           ((float64_t*)y_bytes)[i] = f64_div(((float64_t*)x_bytes)[i], ((float64_t*)y_bytes)[i]);
         }
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 7:
         for (c3_d i = 0; i < len_x; i++) {
           f128M_div(&(((float128_t*)y_bytes)[i]), &(((float128_t*)x_bytes)[i]), &(((float128_t*)y_bytes)[i]));
         }
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
-
-      default:
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return u3_none;
+        break;
     }
+
+    // r_data is the result noun of [data]
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+
+    return r_data;
   }
 
-/* adds - axpy = 1*x+n
+/* mod - x % y = x - r*floor(x/r)
+   remainder after division
+*/
+  u3_noun
+  u3qf_la_mod_real(u3_noun x_data,
+                   u3_noun y_data,
+                   u3_noun shape,
+                   u3_noun bloq,
+                   u3_noun rnd)
+  {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
+    //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
+    c3_d len_x = _get_length(shape);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/o leading 0x1)
+    c3_y* x_bytes = (c3_y*)u3a_malloc(siz_x*sizeof(c3_y));
+    u3r_bytes(0, siz_x, x_bytes, x_data);
+
+    // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
+    c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
+    u3r_bytes(0, siz_x+1, y_bytes, y_data);
+
+    //  Switch on the block size.
+    switch (bloq) {
+      case 4:
+        for (c3_d i = 0; i < len_x; i++) {
+          float16_t x_val16 = ((float16_t*)x_bytes)[i];
+          float16_t y_val16 = ((float16_t*)y_bytes)[i];
+          // Perform division x/n
+          float16_t div_result16 = f16_div(x_val16, y_val16);
+          // Compute floor of the division result
+          int64_t floor_result16 = f16_to_i64(div_result16, rnd, false);
+          float16_t floor_float16 = i64_to_f16(floor_result16);
+          // Multiply n by floor(x/n)
+          float16_t mult_result16 = f16_mul(y_val16, floor_float16);
+          // Compute remainder: x - n * floor(x/n)
+          ((float16_t*)y_bytes)[i] = f16_sub(x_val16, mult_result16);
+        }
+        break;
+
+      case 5:
+        for (c3_d i = 0; i < len_x; i++) {
+          float32_t x_val32 = ((float32_t*)x_bytes)[i];
+          float32_t y_val32 = ((float32_t*)y_bytes)[i];
+          // Perform division x/n
+          float32_t div_result32 = f32_div(x_val32, y_val32);
+          // Compute floor of the division result
+          int64_t floor_result32 = f32_to_i64(div_result32, rnd, false);
+          float32_t floor_float32 = i64_to_f32(floor_result32);
+          // Multiply n by floor(x/n)
+          float32_t mult_result32 = f32_mul(y_val32, floor_float32);
+          // Compute remainder: x - n * floor(x/n)
+          ((float32_t*)y_bytes)[i] = f32_sub(x_val32, mult_result32);
+        }
+        break;
+
+      case 6:
+        for (c3_d i = 0; i < len_x; i++) {
+          float64_t x_val64 = ((float64_t*)x_bytes)[i];
+          float64_t y_val64 = ((float64_t*)y_bytes)[i];
+          // Perform division x/n
+          float64_t div_result64 = f64_div(x_val64, y_val64);
+          // Compute floor of the division result
+          int64_t floor_result64 = f64_to_i64(div_result64, rnd, false);
+          float64_t floor_float64 = i64_to_f64(floor_result64);
+          // Multiply n by floor(x/n)
+          float64_t mult_result64 = f64_mul(y_val64, floor_float64);
+          // Compute remainder: x - n * floor(x/n)
+          ((float64_t*)y_bytes)[i] = f64_sub(x_val64, mult_result64);
+        }
+        break;
+
+      case 7:
+        for (c3_d i = 0; i < len_x; i++) {
+          float128_t x_val128 = ((float128_t*)x_bytes)[i];
+          float128_t y_val128 = ((float128_t*)y_bytes)[i];
+          // Perform division x/n
+          float128_t div_result128;
+          f128M_div((float128_t*)&x_val128, (float128_t*)&y_val128, (float128_t*)&div_result128);
+          // Compute floor of the division result
+          int64_t floor_result128 = f128_to_i64(div_result128, rnd, false);
+          float128_t floor_float128 = i64_to_f128(floor_result128);
+          // Multiply n by floor(x/n)
+          float128_t mult_result128;
+          f128M_mul(((float128_t*)&y_val128), ((float128_t*)&floor_float128), ((float128_t*)&mult_result128));
+          // Compute remainder: x - n * floor(x/n)
+          f128M_sub(((float128_t*)&x_val128), ((float128_t*)&mult_result128), &(((float128_t*)y_bytes)[i]));
+        }
+        break;
+    }
+
+    // r_data is the result noun of [data]
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+
+    return r_data;
+  }
+
+/* adds - axpy = 1*x+[n]
 */
   u3_noun
   u3qf_la_adds_real(u3_noun x_data,
+                    u3_noun n,
                     u3_noun shape,
-                    u3_noun bloq,
-                    u3_noun n)
+                    u3_noun bloq)
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
     c3_d len_x = _get_length(shape);
-    fprintf(stderr, "len_x: %d 0x%x units\r\n", len_x, len_x);
-    c3_d siz_x = len_x * pow(2, bloq - 3);
-    fprintf(stderr, "siz_x: %d 0x%x bytes\r\n", siz_x, siz_x);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/o leading 0x1)
     c3_y* x_bytes = (c3_y*)u3a_malloc(siz_x*sizeof(c3_y));
     u3r_bytes(0, siz_x, x_bytes, x_data);
+
+    // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
 
     float16_t n16;
     float32_t n32;
     float64_t n64;
     float128_t n128;
-
-    u3_noun r_data;
 
     //  Switch on the block size.  We assume that n fits in the target block size; Hoon typecheck should prevent.
     switch (bloq) {
@@ -449,17 +497,8 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float16_t*)y_bytes)[i] = n16;
         }
-        y_bytes[siz_x] = 1;  // pin head
         haxpy(len_x, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 5:
         u3r_bytes(0, 4, (c3_y*)&n32, n);
@@ -467,17 +506,8 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float32_t*)y_bytes)[i] = n32;
         }
-        y_bytes[siz_x] = 1;  // pin head
         saxpy(len_x, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 6:
         u3r_bytes(0, 8, (c3_y*)&n64, n);
@@ -485,17 +515,8 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float64_t*)y_bytes)[i] = n64;
         }
-        y_bytes[siz_x] = 1;  // pin head
         daxpy(len_x, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 7:
         u3r_bytes(0, 16, (c3_y*)&n128, n);
@@ -503,47 +524,52 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float128_t*)y_bytes)[i] = (float128_t){n128.v[0], n128.v[1]};
         }
-        y_bytes[siz_x] = 1;  // pin head
         qaxpy(len_x, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
-
-      default:
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return u3_none;
+        break;
     }
+
+    // r_data is the result noun of [data]
+    y_bytes[siz_x] = 1;  // pin head
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+
+    return r_data;
   }
 
-/* subs - axpy = -1*n+x
+/* subs - axpy = -1*[n]+x
 */
   u3_noun
   u3qf_la_subs_real(u3_noun x_data,
+                    u3_noun n,
                     u3_noun shape,
-                    u3_noun bloq,
-                    u3_noun n)
+                    u3_noun bloq)
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
     c3_d len_x = _get_length(shape);
-    c3_d siz_x = len_x * pow(2, bloq - 3);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* x_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
-    u3r_bytes(0, siz_x+1, x_bytes, x_data);
+    u3r_bytes(0, siz_x, x_bytes, x_data);
+
+    // y_bytes is the data array (w/o leading 0x1)
     c3_y* y_bytes = (c3_y*)u3a_malloc(siz_x*sizeof(c3_y));
 
     float16_t n16;
     float32_t n32;
     float64_t n64;
     float128_t n128;
-
-    u3_noun r_data;
 
     //  Switch on the block size.  We assume that n fits in the target block size; Hoon typecheck should prevent.
     switch (bloq) {
@@ -554,15 +580,7 @@
           ((float16_t*)y_bytes)[i] = n16;
         }
         haxpy(len_x, (float16_t){SB_REAL16_NEGONE}, (float16_t*)y_bytes, 1, (float16_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 5:
         u3r_bytes(0, 4, (c3_y*)&n32, n);
@@ -571,15 +589,7 @@
           ((float32_t*)y_bytes)[i] = n32;
         }
         saxpy(len_x, (float32_t){SB_REAL32_NEGONE}, (float32_t*)y_bytes, 1, (float32_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 6:
         u3r_bytes(0, 8, (c3_y*)&n64, n);
@@ -588,15 +598,7 @@
           ((float64_t*)y_bytes)[i] = n64;
         }
         daxpy(len_x, (float64_t){SB_REAL64_NEGONE}, (float64_t*)y_bytes, 1, (float64_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 7:
         u3r_bytes(0, 16, (c3_y*)&n128, n);
@@ -605,22 +607,18 @@
           ((float128_t*)y_bytes)[i] = (float128_t){n128.v[0], n128.v[1]};
         }
         qaxpy(len_x, (float128_t){SB_REAL128L_NEGONE,SB_REAL128U_NEGONE}, (float128_t*)y_bytes, 1, (float128_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
-
-      default:
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return u3_none;
+        break;
     }
+
+    // r_data is the result noun of [data]
+    x_bytes[siz_x] = 1;  // pin head
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+
+    return r_data;
   }
 
 /* muls - ?scal n * x
@@ -628,13 +626,23 @@
 */
   u3_noun
   u3qf_la_muls_real(u3_noun x_data,
+                    u3_noun n,
                     u3_noun shape,
-                    u3_noun bloq,
-                    u3_noun n)
+                    u3_noun bloq)
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
     c3_d len_x = _get_length(shape);
-    c3_d siz_x = len_x * pow(2, bloq - 3);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* x_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
     u3r_bytes(0, siz_x, x_bytes, x_data);
     x_bytes[siz_x] = 1;  // pin head
@@ -644,63 +652,36 @@
     float64_t n64;
     float128_t n128;
 
-    u3_noun r_data;
-
     //  Switch on the block size.
     switch (bloq) {
       case 4:
         u3r_bytes(0, 2, (c3_y*)&n16, n);
         hscal(len_x, n16, (float16_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-
-        return r_data;
+        break;
 
       case 5:
         u3r_bytes(0, 4, (c3_y*)&n32, n);
         sscal(len_x, n32, (float32_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-
-        return r_data;
+        break;
 
       case 6:
         u3r_bytes(0, 8, (c3_y*)&n64, n);
         dscal(len_x, n64, (float64_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-
-        return r_data;
+        break;
 
       case 7:
         u3r_bytes(0, 16, (c3_y*)&(n128.v[0]), n);
         qscal(len_x, n128, (float128_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-
-        return r_data;
-
-      default:
-        u3a_free(x_bytes);
-
-        return u3_none;
+        break;
     }
+
+    // r_data is the result noun of [data]
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+
+    return r_data;
   }
 
 /* divs - ?scal 1/n * x
@@ -708,13 +689,23 @@
 */
   u3_noun
   u3qf_la_divs_real(u3_noun x_data,
+                    u3_noun n,
                     u3_noun shape,
-                    u3_noun bloq,
-                    u3_noun n)
+                    u3_noun bloq)
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
     c3_d len_x = _get_length(shape);
-    c3_d siz_x = len_x * pow(2, bloq - 3);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* x_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
     u3r_bytes(0, siz_x, x_bytes, x_data);
     x_bytes[siz_x] = 1;  // pin head
@@ -724,67 +715,40 @@
     float64_t n64;
     float128_t n128;
 
-    u3_noun r_data;
-
     //  Switch on the block size.
     switch (bloq) {
       case 4:
         u3r_bytes(0, 2, (c3_y*)&(n16.v), n);
         n16 = f16_div((float16_t){SB_REAL16_ONE}, n16);
         hscal(len_x, n16, (float16_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-
-        return r_data;
+        break;
 
       case 5:
         u3r_bytes(0, 4, (c3_y*)&(n32.v), n);
         n32 = f32_div((float32_t){SB_REAL32_ONE}, n32);
         sscal(len_x, n32, (float32_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-
-        return r_data;
+        break;
 
       case 6:
         u3r_bytes(0, 8, (c3_y*)&(n64.v), n);
         n64 = f64_div((float64_t){SB_REAL64_ONE}, n64);
         dscal(len_x, n64, (float64_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-
-        return r_data;
+        break;
 
       case 7:
         u3r_bytes(0, 16, (c3_y*)&(n128.v[0]), n);
         f128M_div(&((float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}), &n128, &n128);
         qscal(len_x, n128, (float128_t*)x_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-
-        return r_data;
-
-      default:
-        u3a_free(x_bytes);
-
-        return u3_none;
+        break;
     }
+
+    // r_data is the result noun of [data]
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), x_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+
+    return r_data;
   }
 
 /* dot - ?dot = x · y
@@ -795,72 +759,53 @@
                    u3_noun shape,
                    u3_noun bloq)
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
     c3_d len_x = _get_length(shape);
-    c3_d siz_x = len_x * pow(2, bloq - 3);
+
+    // siz_x is length in bytes
+    c3_d siz_x = len_x * pow(2, bloq-3);
+
+    // x_bytes is the data array (w/o leading 0x1)
     c3_y* x_bytes = (c3_y*)u3a_malloc(siz_x*sizeof(c3_y));
     u3r_bytes(0, siz_x, x_bytes, x_data);
+
+    // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
     u3r_bytes(0, siz_x+1, y_bytes, y_data);
-
-    u3_noun r_data;
 
     //  Switch on the block size.
     switch (bloq) {
       case 4:
         hdot(len_x, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 5:
         sdot(len_x, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 6:
         ddot(len_x, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
+        break;
 
       case 7:
         qdot(len_x, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return r_data;
-
-      default:
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-
-        return u3_none;
+        break;
     }
+
+    // r_data is the result noun of [data]
+    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
+
+    //  Clean up and return.
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+
+    return r_data;
   }
 
 /* diag - diag(x)
@@ -1029,27 +974,23 @@
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               y_shape, y_bloq, y_kind, y_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           c3n == u3r_mean(y_meta,
-                            2, &y_shape,
-                            6, &y_bloq,
-                           14, &y_kind,
-                           15, &y_fxp,
-                            0) ||
-           c3n == u3ud(x_bloq) ||
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      y_shape = u3h(y_meta);          //  2
+      y_bloq = u3h(u3t(y_meta));      //  6
+      y_kind = u3h(u3t(u3t(y_meta))); // 14
+      y_fxp = u3t(u3t(u3t(y_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      if ( c3n == u3ud(x_bloq) ||
            c3n == u3ud(y_bloq) ||
            c3n == u3ud(x_kind) ||
            c3n == u3ud(y_kind) ||
            c3n == u3r_sing(x_shape, y_shape) ||
            c3n == u3r_sing(x_bloq, y_bloq) ||
-           c3n == u3r_sing(x_kind, y_kind) ||
+           c3n == u3r_sing(x_kind, y_kind)
            //  fxp does not need to match here so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
          )
       {
         return u3m_bail(c3__exit);
@@ -1058,7 +999,7 @@
           case c3__real:
             _set_rounding(rnd);
             u3_noun r_data = u3qf_la_add_real(x_data, y_data, x_shape, x_bloq);
-            return u3nc(u3nq(u3k(shape), u3k(bloq), u3k(kind), u3k(fxp)), r_data);
+            return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
             return u3_none;
@@ -1070,7 +1011,7 @@
   u3_noun
   u3wf_la_sub(u3_noun cor)
   {
-    // Each argument is a ray, [=meta data=@ux]
+      // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
             y_meta, y_data;
 
@@ -1088,23 +1029,23 @@
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               y_shape, y_bloq, y_kind, y_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           c3n == u3r_mean(y_meta,
-                            2, &y_shape,
-                            6, &y_bloq,
-                           14, &y_kind,
-                           15, &y_fxp,
-                            0) ||
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      y_shape = u3h(y_meta);          //  2
+      y_bloq = u3h(u3t(y_meta));      //  6
+      y_kind = u3h(u3t(u3t(y_meta))); // 14
+      y_fxp = u3t(u3t(u3t(y_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      if ( c3n == u3ud(x_bloq) ||
+           c3n == u3ud(y_bloq) ||
+           c3n == u3ud(x_kind) ||
+           c3n == u3ud(y_kind) ||
            c3n == u3r_sing(x_shape, y_shape) ||
            c3n == u3r_sing(x_bloq, y_bloq) ||
-           c3n == u3r_sing(x_kind, y_kind) ||
-           //  fxp does not need to match so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
+           c3n == u3r_sing(x_kind, y_kind)
+           //  fxp does not need to match here so no check
          )
       {
         return u3m_bail(c3__exit);
@@ -1113,8 +1054,7 @@
           case c3__real:
             _set_rounding(rnd);
             u3_noun r_data = u3qf_la_sub_real(x_data, y_data, x_shape, x_bloq);
-            return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), r_data);
-            break;
+            return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
             return u3_none;
@@ -1126,7 +1066,7 @@
   u3_noun
   u3wf_la_mul(u3_noun cor)
   {
-    // Each argument is a ray, [=meta data=@ux]
+      // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
             y_meta, y_data;
 
@@ -1144,23 +1084,23 @@
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               y_shape, y_bloq, y_kind, y_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           c3n == u3r_mean(y_meta,
-                            2, &y_shape,
-                            6, &y_bloq,
-                           14, &y_kind,
-                           15, &y_fxp,
-                            0) ||
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      y_shape = u3h(y_meta);          //  2
+      y_bloq = u3h(u3t(y_meta));      //  6
+      y_kind = u3h(u3t(u3t(y_meta))); // 14
+      y_fxp = u3t(u3t(u3t(y_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      if ( c3n == u3ud(x_bloq) ||
+           c3n == u3ud(y_bloq) ||
+           c3n == u3ud(x_kind) ||
+           c3n == u3ud(y_kind) ||
            c3n == u3r_sing(x_shape, y_shape) ||
            c3n == u3r_sing(x_bloq, y_bloq) ||
-           c3n == u3r_sing(x_kind, y_kind) ||
-           //  fxp does not need to match so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
+           c3n == u3r_sing(x_kind, y_kind)
+           //  fxp does not need to match here so no check
          )
       {
         return u3m_bail(c3__exit);
@@ -1169,8 +1109,7 @@
           case c3__real:
             _set_rounding(rnd);
             u3_noun r_data = u3qf_la_mul_real(x_data, y_data, x_shape, x_bloq);
-            return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), r_data);
-            break;
+            return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
             return u3_none;
@@ -1182,7 +1121,7 @@
   u3_noun
   u3wf_la_div(u3_noun cor)
   {
-    // Each argument is a ray, [=meta data=@ux]
+      // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
             y_meta, y_data;
 
@@ -1200,23 +1139,23 @@
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               y_shape, y_bloq, y_kind, y_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           c3n == u3r_mean(y_meta,
-                            2, &y_shape,
-                            6, &y_bloq,
-                           14, &y_kind,
-                           15, &y_fxp,
-                            0) ||
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      y_shape = u3h(y_meta);          //  2
+      y_bloq = u3h(u3t(y_meta));      //  6
+      y_kind = u3h(u3t(u3t(y_meta))); // 14
+      y_fxp = u3t(u3t(u3t(y_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      if ( c3n == u3ud(x_bloq) ||
+           c3n == u3ud(y_bloq) ||
+           c3n == u3ud(x_kind) ||
+           c3n == u3ud(y_kind) ||
            c3n == u3r_sing(x_shape, y_shape) ||
            c3n == u3r_sing(x_bloq, y_bloq) ||
-           c3n == u3r_sing(x_kind, y_kind) ||
-           //  fxp does not need to match so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
+           c3n == u3r_sing(x_kind, y_kind)
+           //  fxp does not need to match here so no check
          )
       {
         return u3m_bail(c3__exit);
@@ -1225,11 +1164,62 @@
           case c3__real:
             _set_rounding(rnd);
             u3_noun r_data = u3qf_la_div_real(x_data, y_data, x_shape, x_bloq);
-            // fprintf(stderr, "x_shape[0]: %x\r\n", u3h(x_shape));
-            // fprintf(stderr, "x_shape[1]: %x\r\n", u3h(u3t(x_shape)));
-            // fprintf(stderr, "x_shape[2]: %x\r\n", u3t(u3t(x_shape)));
-            return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), r_data);
-            break;
+            return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
+
+          default:
+            return u3_none;
+        }
+      }
+    }
+  }
+
+  u3_noun
+  u3wf_la_mod(u3_noun cor)
+  {
+      // Each argument is a ray, [=meta data=@ux]
+    u3_noun x_meta, x_data,
+            y_meta, y_data;
+
+    if ( c3n == u3r_mean(cor,
+                         u3x_sam_4, &x_meta,
+                         u3x_sam_5, &x_data,
+                         u3x_sam_6, &y_meta,
+                         u3x_sam_7, &y_data,
+                         0) ||
+         c3n == u3ud(x_data) ||
+         c3n == u3ud(y_data) )
+    {
+      return u3m_bail(c3__exit);
+    } else {
+      u3_noun x_shape, x_bloq, x_kind, x_fxp,
+              y_shape, y_bloq, y_kind, y_fxp,
+              rnd;
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      y_shape = u3h(y_meta);          //  2
+      y_bloq = u3h(u3t(y_meta));      //  6
+      y_kind = u3h(u3t(u3t(y_meta))); // 14
+      y_fxp = u3t(u3t(u3t(y_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      if ( c3n == u3ud(x_bloq) ||
+           c3n == u3ud(y_bloq) ||
+           c3n == u3ud(x_kind) ||
+           c3n == u3ud(y_kind) ||
+           c3n == u3r_sing(x_shape, y_shape) ||
+           c3n == u3r_sing(x_bloq, y_bloq) ||
+           c3n == u3r_sing(x_kind, y_kind)
+           //  fxp does not need to match here so no check
+         )
+      {
+        return u3m_bail(c3__exit);
+      } else {
+        switch (x_kind) {
+          case c3__real: ; // XX satisfy label
+            // Global rounding mode is ignored by SoftFloat conversions so we pass it in.
+            u3_noun r_data = u3qf_la_mod_real(x_data, y_data, x_shape, x_bloq, rnd);
+            return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
             return u3_none;
@@ -1256,31 +1246,19 @@
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           //  shape does not matter so no check
-           //  bloq does not matter so no check
-           //  kind does not matter so no check
-           //  fxp does not need to match so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
-         )
-      {
-        return u3m_bail(c3__exit);
-      } else {
-        switch (x_kind) {
-          case c3__real:
-            _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_adds_real(x_data, x_shape, x_bloq, n);
-            return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), r_data);
-            break;
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      switch (x_kind) {
+        case c3__real:
+          _set_rounding(rnd);
+          u3_noun r_data = u3qf_la_adds_real(x_data, n, x_shape, x_bloq);
+          return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
-          default:
-            return u3_none;
-        }
+        default:
+          return u3_none;
       }
     }
   }
@@ -1303,31 +1281,19 @@
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           //  shape does not matter so no check
-           //  bloq does not matter so no check
-           //  kind does not matter so no check
-           //  fxp does not need to match so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
-         )
-      {
-        return u3m_bail(c3__exit);
-      } else {
-        switch (x_kind) {
-          case c3__real:
-            _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_subs_real(x_data, x_shape, x_bloq, n);
-            return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), r_data);
-            break;
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      switch (x_kind) {
+        case c3__real:
+          _set_rounding(rnd);
+          u3_noun r_data = u3qf_la_subs_real(x_data, n, x_shape, x_bloq);
+          return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
-          default:
-            return u3_none;
-        }
+        default:
+          return u3_none;
       }
     }
   }
@@ -1350,31 +1316,19 @@
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           //  shape does not matter so no check
-           //  bloq does not matter so no check
-           //  kind does not matter so no check
-           //  fxp does not need to match so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
-         )
-      {
-        return u3m_bail(c3__exit);
-      } else {
-        switch (x_kind) {
-          case c3__real:
-            _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_muls_real(x_data, x_shape, x_bloq, n);
-            return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), r_data);
-            break;
+            x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      switch (x_kind) {
+        case c3__real:
+          _set_rounding(rnd);
+          u3_noun r_data = u3qf_la_muls_real(x_data, n, x_shape, x_bloq);
+          return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
-          default:
-            return u3_none;
-        }
+        default:
+          return u3_none;
       }
     }
   }
@@ -1397,31 +1351,19 @@
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           //  shape does not matter so no check
-           //  bloq does not matter so no check
-           //  kind does not matter so no check
-           //  fxp does not need to match so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
-         )
-      {
-        return u3m_bail(c3__exit);
-      } else {
-        switch (x_kind) {
-          case c3__real:
-            _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_divs_real(x_data, x_shape, x_bloq, n);
-            return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), r_data);
-            break;
+            x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      switch (x_kind) {
+        case c3__real:
+          _set_rounding(rnd);
+          u3_noun r_data = u3qf_la_divs_real(x_data, n, x_shape, x_bloq);
+          return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
-          default:
-            return u3_none;
-        }
+        default:
+          return u3_none;
       }
     }
   }
@@ -1447,23 +1389,23 @@
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               y_shape, y_bloq, y_kind, y_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           c3n == u3r_mean(y_meta,
-                            2, &y_shape,
-                            6, &y_bloq,
-                           14, &y_kind,
-                           15, &y_fxp,
-                            0) ||
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      y_shape = u3h(y_meta);          //  2
+      y_bloq = u3h(u3t(y_meta));      //  6
+      y_kind = u3h(u3t(u3t(y_meta))); // 14
+      y_fxp = u3t(u3t(u3t(y_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      if ( c3n == u3ud(x_bloq) ||
+           c3n == u3ud(y_bloq) ||
+           c3n == u3ud(x_kind) ||
+           c3n == u3ud(y_kind) ||
            c3n == u3r_sing(x_shape, y_shape) ||
            c3n == u3r_sing(x_bloq, y_bloq) ||
            c3n == u3r_sing(x_kind, y_kind) ||
-           c3n == u3r_sing(x_fxp, y_fxp) ||
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
+           c3n == u3r_sing(x_fxp, y_fxp)
          )
       {
         return u3m_bail(c3__exit);
@@ -1472,8 +1414,7 @@
           case c3__real:
             _set_rounding(rnd);
             u3_noun r_data = u3qf_la_dot_real(x_data, y_data, x_shape, x_bloq);
-            return u3nc(u3nq(x_shape, x_bloq, x_kind, x_fxp), r_data);
-            break;
+            return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
             return u3_none;

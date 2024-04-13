@@ -1,5 +1,11 @@
 #   Numerical Libraries for Urbit
 
+**Current Status**
+
+- We are preparing a release of Lagoon `%real` with SoftBLAS-powered jets for release with Urbit 410K.
+
+---
+
 We envision three libraries and associated jet code living in this repository:
 
 - Lagoon (Linear AlGebra in hOON) will offer BLAS-like operations (like NumPy's pure matrix operations).
@@ -42,3 +48,7 @@ Fixed-Point Library `/lib/fixed`
 > `[@ub ^]`(div:fixed 0b1.0100.0001.0000 [8 8] 0b101.0001.0000 [8 8])
 [0b11 17 16]
 ```
+
+TODOs:
+
+- [ ] replace `u3r_mean` calls with `u3h`/`u3t` calls in `w` functions

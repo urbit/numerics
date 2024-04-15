@@ -16,7 +16,6 @@
 ::
 ++  la
   ^|
-  :: =,  lagoon
   =+  [rnd=*rounding-mode]
   ~/  %la-core
   |%
@@ -340,6 +339,7 @@
     ==
   ::
   ++  fill
+    ::  don't jet
     |=  [=meta x=@]
     ^-  ray
     =/  len  (roll shape.meta ^mul)
@@ -347,12 +347,14 @@
     (con +:(zeros meta) (fil bloq.meta len x))
   ::
   ++  spac
+    ::  don't jet
     |=  =ray
     ^-  ^ray
     :-  meta.ray
     (con data:(zeros meta.ray) data.ray)
   ::
   ++  unspac
+    ::  don't jet
     |=  =ray
     ^-  ^ray
     :-  meta.ray
@@ -369,6 +371,7 @@
   ::
   ::
   ++  eye      ::  produces identity matrix of shape nxn.
+    ::  don't jet
     |=  =meta
     ^-  ray
     ~_  leaf+"lagoon-fail"
@@ -401,12 +404,14 @@
     ==
   ::    Zeroes
   ++  zeros
-      |=  =meta  ^-  ray
-      ~_  leaf+"lagoon-fail"
-      :-  meta
-      (lsh [bloq.meta (roll shape.meta ^mul)] 1)
+    ::  don't jet
+    |=  =meta  ^-  ray
+    ~_  leaf+"lagoon-fail"
+    :-  meta
+    (lsh [bloq.meta (roll shape.meta ^mul)] 1)
   ::    Ones
   ++  ones
+    ::  don't jet
     |=  =meta  ^-  ray
     ~_  leaf+"lagoon-fail"
     =/  one
@@ -558,6 +563,7 @@
   ::  Produce an n-dimensional array containing a single value.
   ::
   ++  scale
+    ::  don't jet
     |=  [=meta data=@]
     ^-  ray
     =.  shape.meta  `(list @)`(zing (reap (lent shape.meta) ~[1]))
@@ -624,6 +630,7 @@
     (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar meta.a %mul) b c)))
   ::
   ++  reshape
+    ::  don't jet
     |=  [a=ray shape=(list @)]
     ^-  ray
     =/  in-cnt  (reel shape.meta.a ^mul)
@@ -688,6 +695,7 @@
   ::
   ::
   ++  transpose
+    ~/  %transpose
     |=  a=ray  ^-  ray
     =,  meta.a
     ?>  =(2 (lent shape))
@@ -712,7 +720,7 @@
   ::  Returns diagonal of an array.
   ::
   ++  diag
-    :: ~/  %diag
+    ~/  %diag
     |=  a=ray
     ^-  ray
     =,  meta.a
@@ -728,7 +736,7 @@
     |=(i=@ (get-item a ~[i i]))
   ::
   ++  trace
-    :: ~/  %trace
+    ~/  %trace
     |=  a=ray
     ^-  ray
     (cumsum (diag a))
@@ -741,7 +749,7 @@
     (cumsum (mul a b))
   ::
   ++  mmul
-    :: ~/  %mmul
+    ~/  %mmul
     |=  [a=ray b=ray]
     =/  i  0
     =/  j  0
@@ -863,16 +871,22 @@
     $(b (mul a b), n (dec n))
   ::
   ++  pow
+    ::  don't jet until ~lagrev-nocfep sez you can
+    ::  XX determinism is really hard here
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %pow))
   ::
   ++  exp
+    ::  don't jet until ~lagrev-nocfep sez you can
+    ::  XX determinism is really hard here
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %exp))
   ::
   ++  log
+    ::  don't jet until ~lagrev-nocfep sez you can
+    ::  XX determinism is really hard here
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %log))

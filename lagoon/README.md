@@ -51,4 +51,22 @@ Fixed-Point Library `/lib/fixed`
 
 TODOs:
 
-- [ ] replace `u3r_mean` calls with `u3h`/`u3t` calls in `w` functions
+- stack
+- cumsum
+- argmin
+- ravel
+- argmax
+- min
+- max
+- linspace
+- range
+- submatrix
+- abs
+- gth, gte, lth, lte
+- mpow-n
+
+to make:
+
+- [ ] logspace
+- [ ] eq, ne
+

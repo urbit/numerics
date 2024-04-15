@@ -899,27 +899,38 @@
     c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
     u3r_bytes(0, siz_x+1, y_bytes, y_data);
 
+    u3_noun r_data;
+
     //  Switch on the block size.
     switch (bloq) {
-      case 4:
-        hdot(len_x, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
+      case 4: ;
+        float16_t r16[2];
+        r16[0] = hdot(len_x, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
+        r16[1].v = 0x1;
+        r_data = u3i_bytes((2+1)*sizeof(c3_y), (c3_y*)r16);
         break;
 
-      case 5:
-        sdot(len_x, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1);
+      case 5: ;
+        float32_t r32[2];
+        r32[0] = sdot(len_x, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1);
+        r32[1].v = 0x1;
+        r_data = u3i_bytes((4+1)*sizeof(c3_y), (c3_y*)r32);
         break;
 
-      case 6:
-        ddot(len_x, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1);
+      case 6: ;
+        float64_t r64[2];
+        r64[0] = ddot(len_x, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1);
+        r64[1].v = 0x1;
+        r_data = u3i_bytes((8+1)*sizeof(c3_y), (c3_y*)r64);
         break;
 
-      case 7:
-        qdot(len_x, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1);
+      case 7: ;
+        float128_t r128[2];
+        r128[0] = qdot(len_x, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1);
+        r128[1] = (float128_t){0x1, 0x0};
+        r_data = u3i_bytes((16+1)*sizeof(c3_y), (c3_y*)r128);
         break;
     }
-
-    // r_data is the result noun of [data]
-    u3_noun r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
     u3a_free(x_bytes);
@@ -935,6 +946,10 @@
                u3_noun shape,
                u3_noun bloq)
   {
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
     //  Assert length of dims is 2.
     assert(u3qb_lent(shape) == 2);
     //  Unpack shape into an array of dimensions.
@@ -944,18 +959,19 @@
     //  Unpack the data as a byte array.  We assume total length < 2**64.
     c3_d len_x = _get_length(shape);
     c3_d siz_x = len_x * pow(2, bloq - 3);
-    c3_d stride = dims[0] * pow(2, bloq - 3);
+    c3_d wyd = pow(2, bloq - 3);
     c3_y* x_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
     u3r_bytes(0, siz_x+1, x_bytes, x_data);
-    c3_d siz_y = stride * dims[1];
+    c3_d siz_y = wyd * dims[1];
     c3_y* y_bytes = (c3_y*)u3a_malloc((siz_y+1)*sizeof(c3_y));
 
     u3_noun r_data;
 
+    // Grab the index at i*n_x+j in bytes; put it at j.
     for (c3_d i = 0; i < dims[1]; i++) {
-      for (c3_d j = 0; j < stride; j++) {
-        fprintf(stderr, "i*s+j = %d*%d+%d = %d // x_bytes[i]: %lx\r\n", i, stride, j, i*stride+j, x_bytes[i*stride+j + i]);
-        y_bytes[i*stride+j] = x_bytes[i*stride+j + i];
+      // Scan across whole field width.
+      for (c3_y k = 0; k < wyd; k++) {
+        y_bytes[i*wyd+k] = x_bytes[(i*dims[0]+i)*wyd+k];
       }
     }
     y_bytes[siz_y] = 1;  // pin head
@@ -970,6 +986,49 @@
     return r_data;
   }
 
+/* transpose - x'
+*/
+  u3_noun
+  u3qf_la_transpose(u3_noun x_data,
+                    u3_noun shape,
+                    u3_noun bloq)
+  {
+    //  Assert length of dims is 2.
+    assert(u3qb_lent(shape) == 2);
+    //  Unpack shape into an array of dimensions.
+    c3_d *dims = _get_dims(shape);
+
+    //  Unpack the data as a byte array.  We assume total length < 2**64.
+    c3_d len_x = _get_length(shape);
+    c3_d siz_x = len_x * pow(2, bloq - 3);
+    c3_d wyd = pow(2, bloq - 3);
+    c3_y* x_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
+    u3r_bytes(0, siz_x+1, x_bytes, x_data);
+    c3_y* y_bytes = (c3_y*)u3a_malloc((siz_x+1)*sizeof(c3_y));
+
+    u3_noun r_data;
+
+    // Grab the index at i*n_x+j in bytes; put it at j.
+    for (c3_d i = 0; i < dims[1]; i++) {
+      for (c3_d j = 0; j < dims[0]; j++) {
+        // Scan across whole field width.
+        for (c3_y k = 0; k < wyd; k++) {
+          y_bytes[(j*dims[1]+i)*wyd+k] = x_bytes[(i*dims[0]+j)*wyd+k];
+        }
+      }
+    }
+    y_bytes[siz_x] = 1;  // pin head
+
+    //  Unpack the result back into a noun.
+    r_data = u3i_bytes((siz_x+1)*sizeof(c3_y), y_bytes);
+
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+    u3a_free(dims);
+
+    return r_data;
+  }
+
 /* trace - tr(x)
 */
   u3_noun
@@ -977,9 +1036,10 @@
                      u3_noun shape,
                      u3_noun bloq)
   {
-    u3_noun diag_data = u3qf_la_diag(x_data, shape, bloq);
+    u3_noun d_data = u3qf_la_diag(x_data, shape, bloq);
     c3_d len_x0 = _get_dims(shape)[0];
-    return u3qf_la_dot_real(diag_data, diag_data, u3nt(len_x0, 0x1, u3_nul), bloq);
+    u3_noun r_data = u3qf_la_dot_real(d_data, d_data, u3nt(len_x0, 0x1, u3_nul), bloq);
+    return r_data;
   }
 
 /* mmul
@@ -1569,7 +1629,8 @@
           case c3__real:
             _set_rounding(rnd);
             u3_noun r_data = u3qf_la_dot_real(x_data, y_data, x_shape, x_bloq);
-            return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
+            c3_d len_x0 = _get_dims(x_shape)[0];
+            return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
             return u3_none;
@@ -1592,26 +1653,51 @@
     {
       return u3m_bail(c3__exit);
     } else {
-      u3_noun x_shape, x_bloq, x_kind, x_fxp,
-              rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0)
-          //  c3n == u3r_sing(x_shape, y_shape) ||
-          //  c3n == u3r_sing(x_bloq, y_bloq) ||
-          //  c3n == u3r_sing(x_kind, y_kind) ||
-          //  c3n == u3r_sing(x_fxp, y_fxp) ||
-          //  c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
+      u3_noun x_shape, x_bloq, x_kind, x_fxp;
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      if ( c3n == u3ud(x_bloq) ||
+           c3n == u3ud(x_kind)
          )
       {
         return u3m_bail(c3__exit);
       } else {
         u3_noun r_data = u3qf_la_diag(x_data, x_shape, x_bloq);
         c3_d len_x0 = _get_dims(x_shape)[0];
-        return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), x_bloq, x_kind, x_fxp), r_data);
+        return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
+      }
+    }
+  }
+
+  u3_noun
+  u3wf_la_transpose(u3_noun cor)
+  {
+    // Each argument is a ray, [=meta data=@ux]
+    u3_noun x_meta, x_data;
+
+    if ( c3n == u3r_mean(cor,
+                         u3x_sam_2, &x_meta,
+                         u3x_sam_3, &x_data,
+                         0) ||
+         c3n == u3ud(x_data) )
+    {
+      return u3m_bail(c3__exit);
+    } else {
+      u3_noun x_shape, x_bloq, x_kind, x_fxp;
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      if ( c3n == u3ud(x_bloq) ||
+           c3n == u3ud(x_kind)
+         )
+      {
+        return u3m_bail(c3__exit);
+      } else {
+        u3_noun r_data = u3qf_la_transpose(x_data, x_shape, x_bloq);
+        return u3nc(u3nq(u3nt(u3k(u3h(x_shape)), u3k(u3h(u3t(x_shape))), u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
       }
     }
   }
@@ -1630,29 +1716,21 @@
     {
       return u3m_bail(c3__exit);
     } else {
-      u3_noun x_shape, x_bloq, x_kind, x_fxp,
-              rnd;
+      u3_noun x_shape, x_bloq, x_kind, x_fxp;
       if ( c3n == u3r_mean(x_meta,
                             2, &x_shape,
                             6, &x_bloq,
                            14, &x_kind,
                            15, &x_fxp,
                             0)
-          //  c3n == u3r_sing(x_shape, y_shape) ||
-          //  c3n == u3r_sing(x_bloq, y_bloq) ||
-          //  c3n == u3r_sing(x_kind, y_kind) ||
-          //  c3n == u3r_sing(x_fxp, y_fxp) ||
-          //  c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
          )
       {
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
-            _set_rounding(rnd);
+          case c3__real: ;
             u3_noun r_data = u3qf_la_trace_real(x_data, x_shape, x_bloq);
-            return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), x_bloq, x_kind, x_fxp), r_data);
-            break;
+            return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
             return u3_none;

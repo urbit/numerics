@@ -72,6 +72,7 @@
     ::  +submatrix: grab a submatrix using numpy slice notation, except indices are inclusive.
     ::  If you aren't slicing the last few dimensions, you can omit them.
     ::
+    ~/  %submatrix
     |=  [sli=(list slice) a=ray]
     ::
     ::  example: sli=~[`[`1 `3] `[`1 ~] ~] is equivalent to a[1:4,1:]
@@ -270,6 +271,7 @@
     (^mod (^div len wid) num)
   ::
   ++  ravel
+    ~/  %ravel
     |=  a=ray
     ^-  (list @)
     (flop (snip (rip bloq.meta.a data.a)))
@@ -453,6 +455,7 @@
   ::  Only produces %real.
   ::
   ++  range
+    ~/  %range
     |=  [=meta [a=@ b=@] d=@]
     ^-  ray
     =.  kind.meta  %real
@@ -502,6 +505,7 @@
   ::  Only produces %real.
   ::
   ++  linspace
+    ~/  %linspace
     |=  [=meta [a=@ b=@] n=@ud]
     ^-  ray
     =.  shape.meta  ~[n]
@@ -592,6 +596,7 @@
   ::  Operators
   ::
   ++  max
+    ~/  %max
     |=  a=ray
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
@@ -600,11 +605,13 @@
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
   ++  argmax :: Only returns first match
+    ~/  %argmax
     |=  a=ray
     ^-  @ud
     +:(find ~[(max a)] (ravel a))
   ::
   ++  min
+    ~/  %min
     |=  a=ray
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
@@ -613,11 +620,13 @@
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
   ++  argmin :: Only returns first match
+    ~/  %argmin
     |=  a=ray
     ^-  @ud
     +:(find ~[(min a)] (ravel a))
   ::
   ++  cumsum
+    ~/  %cumsum
     |=  a=ray
     ^-  ray
     %+  scalar-to-ray  meta.a
@@ -640,6 +649,7 @@
     a
   ::  stack along dimension (0 row, 1 col, 2 lay, etc.)
   ++  stack
+    ~/  %stack
     |=  [a=ray b=ray dim=@ud]
     ^-  ray
     ::  check same dims overall
@@ -792,6 +802,7 @@
       ==
 ::
   ++  abs
+    ~/  %abs
     |=  a=ray
     ^-  ray
     (el-wise-op a (trans-scalar bloq.meta.a kind.meta.a %abs))
@@ -892,21 +903,25 @@
     (bin-op a b (fun-scalar meta.a %log))
   ::
   ++  gth
+    ~/  %gth
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %gth))
   ::
   ++  gte
+    ~/  %gte
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %gte))
   ::
   ++  lth
+    ~/  %lth
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %lth))
   ::
   ++  lte
+    ~/  %lte
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %lte))
@@ -969,18 +984,18 @@
         %pow  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
         ::%exp  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
         ::%log  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        %gth  |=([b=@ c=@] (^gth b c))
-        %gte  |=([b=@ c=@] (^gte b c))
-        %lth  |=([b=@ c=@] (^lth b c))
-        %lte  |=([b=@ c=@] (^lte b c))
+        %gth  |=([b=@ c=@] !(^gth b c))
+        %gte  |=([b=@ c=@] !(^gte b c))
+        %lth  |=([b=@ c=@] !(^lth b c))
+        %lte  |=([b=@ c=@] !(^lte b c))
       ==
       ::
         %int2  
       ?+  fun  !!
         %add  ~(add twoc bloq)
         %mul  ~(mul twoc bloq)
-        %gth  ~(gth twoc bloq)
-        %lth  ~(lth twoc bloq)
+        %gth  |=([b=@ c=@] !(~(gth twoc bloq) b c))
+        %lth  |=([b=@ c=@] !(~(lth twoc bloq) b c))
       ==
       ::
         %real
@@ -992,10 +1007,10 @@
           %mul  ~(mul rq rnd)
           %div  ~(div rq rnd)
           %mod  |=([a=@rq b=@rq] (~(sub rq rnd) a (~(mul rq rnd) b (~(san rq rnd) (need (~(toi rq rnd) (~(div rq rnd) a b)))))))
-          %gth  ~(gth rq rnd)
-          %gte  ~(gte rq rnd)
-          %lth  ~(lth rq rnd)
-          %lte  ~(lte rq rnd)
+          %gth  |=([a=@rq b=@rq] ?:((~(gth rq rnd) a b) .~~~1 .~~~0))
+          %gte  |=([a=@rq b=@rq] ?:((~(gte rq rnd) a b) .~~~1 .~~~0))
+          %lth  |=([a=@rq b=@rq] ?:((~(lth rq rnd) a b) .~~~1 .~~~0))
+          %lte  |=([a=@rq b=@rq] ?:((~(lte rq rnd) a b) .~~~1 .~~~0))
         ==
           %6
         ?+  fun  !!
@@ -1004,10 +1019,10 @@
           %mul  ~(mul rd rnd)
           %div  ~(div rd rnd)
           %mod  |=([a=@rd b=@rd] (~(sub rd rnd) a (~(mul rd rnd) b (~(san rd rnd) (need (~(toi rd rnd) (~(div rd rnd) a b)))))))
-          %gth  ~(gth rd rnd)
-          %gte  ~(gte rd rnd)
-          %lth  ~(lth rd rnd)
-          %lte  ~(lte rd rnd)
+          %gth  |=([a=@rd b=@rd] ?:((~(gth rd rnd) a b) .~1 .~0))
+          %gte  |=([a=@rd b=@rd] ?:((~(gte rd rnd) a b) .~1 .~0))
+          %lth  |=([a=@rd b=@rd] ?:((~(lth rd rnd) a b) .~1 .~0))
+          %lte  |=([a=@rd b=@rd] ?:((~(lte rd rnd) a b) .~1 .~0))
         ==
           %5
         ?+  fun  !!
@@ -1016,10 +1031,10 @@
           %mul  ~(mul rs rnd)
           %div  ~(div rs rnd)
           %mod  |=([a=@rs b=@rs] (~(sub rs rnd) a (~(mul rs rnd) b (~(san rs rnd) (need (~(toi rs rnd) (~(div rs rnd) a b)))))))
-          %gth  ~(gth rs rnd)
-          %gte  ~(gte rs rnd)
-          %lth  ~(lth rs rnd)
-          %lte  ~(lte rs rnd)
+          %gth  |=([a=@rs b=@rs] ?:((~(gth rs rnd) a b) .~~~1 .~~~0))
+          %gte  |=([a=@rs b=@rs] ?:((~(gte rs rnd) a b) .1 .0))
+          %lth  |=([a=@rs b=@rs] ?:((~(lth rs rnd) a b) .1 .0))
+          %lte  |=([a=@rs b=@rs] ?:((~(lte rs rnd) a b) .1 .0))
         ==
           %4
         ?+  fun  !!
@@ -1028,10 +1043,10 @@
           %mul  ~(mul rh rnd)
           %div  ~(div rh rnd)
           %mod  |=([a=@rh b=@rh] (~(sub rh rnd) a (~(mul rh rnd) b (~(san rh rnd) (need (~(toi rh rnd) (~(div rh rnd) a b)))))))
-          %gth  ~(gth rh rnd)
-          %gte  ~(gte rh rnd)
-          %lth  ~(lth rh rnd)
-          %lte  ~(lte rh rnd)
+          %gth  |=([a=@rh b=@rh] ?:((~(gth rh rnd) a b) .~~1 .~~0))
+          %gte  |=([a=@rh b=@rh] ?:((~(gte rh rnd) a b) .~~1 .~~0))
+          %lth  |=([a=@rh b=@rh] ?:((~(lth rh rnd) a b) .~~1 .~~0))
+          %lte  |=([a=@rh b=@rh] ?:((~(lte rh rnd) a b) .~~1 .~~0))
         ==
       ==  :: bloq real
       :: TODO
@@ -1045,10 +1060,10 @@
         %pow  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
         ::%exp  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
         ::%log  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        %gth  |=([b=@ c=@] (^gth b c))
-        %gte  |=([b=@ c=@] (^gte b c))
-        %lth  |=([b=@ c=@] (^lth b c))
-        %lte  |=([b=@ c=@] (^lte b c))
+        %gth  |=([b=@ c=@] !(^gth b c))
+        %gte  |=([b=@ c=@] !(^gte b c))
+        %lth  |=([b=@ c=@] !(^lth b c))
+        %lte  |=([b=@ c=@] !(^lte b c))
       ==
     ::
     ==  :: kind
@@ -1068,19 +1083,19 @@
       ?+    bloq  !!
           %7
         ?+  fun  !!
-          %abs  |=(b=@ ?:((gth:rq b .~~~0) b (mul:rq b .~~~-1)))
+          %abs  |=(b=@ ?:((gte:rq b .~~~0) b (mul:rq b .~~~-1)))
         ==
           %6
         ?+  fun  !!
-          %abs  |=(b=@ ?:((gth:rd b .~0) b (mul:rd b .~-1)))
+          %abs  |=(b=@ ?:((gte:rd b .~0) b (mul:rd b .~-1)))
         ==
           %5
         ?+  fun  !!
-          %abs  |=(b=@ ?:((gth:rs b .0) b (mul:rs b .-1)))
+          %abs  |=(b=@ ?:((gte:rs b .0) b (mul:rs b .-1)))
         ==
           %4
         ?+  fun  !!
-          %abs  |=(b=@ ?:((gth:rh b .~~0) b (mul:rh b .~~-1)))
+          %abs  |=(b=@ ?:((gte:rh b .~~0) b (mul:rh b .~~-1)))
         ==
       ==
     ::
@@ -1092,7 +1107,7 @@
     ^-  ray
     %-  spac
     :-  meta.a
-    =/  ali  (ravel a)
+    =/  ali  (flop (ravel a))  :: compensate for LSB
     %+  rep  bloq.meta.a
     %+  turn
       ali

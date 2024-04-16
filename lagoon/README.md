@@ -51,22 +51,29 @@ Fixed-Point Library `/lib/fixed`
 
 TODOs:
 
-- stack
-- cumsum
-- argmin
-- ravel
-- argmax
-- min
-- max
-- linspace
-- range
-- submatrix
-- abs
-- gth, gte, lth, lte
-- mpow-n
+- %stack
+- %cumsum
+- %argmin
+- %ravel
+- %argmax
+- %min
+- %max
+- %range
+- %submatrix
 
 to make:
 
 - [ ] logspace
 - [ ] eq, ne
 
+---
+
+THREE POSSIBILITIES:
+
+1. Logical loobean (0 true, terrible for sparse matrices)
+
+2. Logical boolean (1 true, normal but out of step w/ Hoon)
+
+3. Numeric boolean (0x3f80.0000 for 1, etc.)
+
+Here we follow the third option in `u3qf_la_gth_real()` etc.

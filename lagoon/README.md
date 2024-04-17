@@ -52,10 +52,7 @@ Fixed-Point Library `/lib/fixed`
 TODOs:
 
 - %stack
-- %cumsum
-- %argmin
 - %ravel
-- %argmax
 - %range
 - %submatrix
 

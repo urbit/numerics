@@ -52,7 +52,6 @@ Fixed-Point Library `/lib/fixed`
 TODOs:
 
 - %stack
-- %ravel
 - %range
 - %submatrix
 

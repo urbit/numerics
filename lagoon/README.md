@@ -56,8 +56,6 @@ TODOs:
 - %argmin
 - %ravel
 - %argmax
-- %min
-- %max
 - %range
 - %submatrix
 

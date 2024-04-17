@@ -1,5 +1,4 @@
 /-  lagoon
-/+  *twoc
 =+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
@@ -48,12 +47,6 @@
   ++  get-term
     |=  =meta
     ?+    kind.meta  ~|(kind.meta !!)
-        %uint
-      %ud
-      ::
-        %int2
-      %sd
-      ::
         %real
       ?+    bloq.meta  ~|(bloq.meta !!)
         %7  %rq
@@ -61,9 +54,6 @@
         %5  %rs
         %4  %rh
       ==
-      ::
-        %fixp
-      %uxfixed  :: special aura because Hoon doesn't have fixed-point
     ==
   ::
   ++  squeeze  |*(a=* `(list _a)`~[a])
@@ -392,8 +382,6 @@
       ~[i i]
     ^-  @
     ?+    kind.meta  ~|(kind.meta !!)
-        %uint  `@`1
-        %int2  `@`1
         %real
       ?+  bloq.meta  ~|(bloq.meta !!)
         %7  .~~~1
@@ -401,8 +389,6 @@
         %5  .1
         %4  .~~1
       ==
-        ::  XXX correct because we're only shifting 1
-        %fixp  (lsh [bloq.meta +(b:(need fxp.meta))] 1)
     ==
   ::    Zeroes
   ++  zeros
@@ -418,8 +404,6 @@
     ~_  leaf+"lagoon-fail"
     =/  one
       ?+    kind.meta  ~|(kind.meta !!)
-          %uint  `@`1
-          %int2    `@`1
           %real
         ?+  bloq.meta  !!
           %7  .~~~1
@@ -427,7 +411,6 @@
           %5  .1
           %4  .~~1
         ==
-          %fixp  (lsh [bloq.meta +(b:(need fxp.meta))] 1)
       ==
     (fill meta one)
   ::  Produce a 1-dimensional index array.
@@ -499,7 +482,6 @@
         [meta (flop bad)]
       $(bad [(add:rh (snag 0 bad) d) bad])
     ==
-    ::  TODO %fixp
   ::  Produce a 1-dimensional range along one dimension
   ::  as [a b] with number of steps n.
   ::  Only produces %real.
@@ -552,7 +534,6 @@
       ?:  =(n +(+(i)))  (flop [b bad])
       $(i +(i), bad [(add:rh (snag 0 bad) d) bad])
     ==
-    ::  TODO %fixp
   ::  Coerce 1D array along specified dimension with given overall
   ::  dimensionality.
   ::
@@ -582,15 +563,6 @@
           %4  (bit:ma:rh (sea:ma:rh data))
         ==
       (spac [meta `@ux`fin])
-      ::
-        %uint
-      (spac [meta `@ux`data])
-      ::
-        %int2
-      (spac [meta `@ux`data])
-      ::
-        %fixp
-      (spac [meta `@ux`data])
     ==
   ::
   ::  Operators
@@ -626,7 +598,7 @@
     +:(find ~[(min a)] (ravel a))
   ::
   ++  cumsum
-    ~/  %cumsum
+    :: ~/  %cumsum
     |=  a=ray
     ^-  ray
     %+  scalar-to-ray  meta.a
@@ -973,31 +945,8 @@
     |=  [=meta fun=ops]
     ^-  $-([@ @] @)
     =,  meta
+    ~&  >>  [meta fun rnd]
     ?+    `^kind`kind  ~|(kind !!)
-        %uint  
-      ?+  fun  !!
-        %add  ~(sum fe bloq)
-        %sub  ~(dif fe bloq)
-        %mul  |=([b=_1 c=_1] (~(sit fe bloq) (^mul b c)))
-        %div  |=([b=_1 c=_1] (~(sit fe bloq) (^div b c)))
-        %mod  |=([b=@ c=@] (~(sit fe bloq) (^mod b c)))
-        %pow  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        ::%exp  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        ::%log  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        %gth  |=([b=@ c=@] !(^gth b c))
-        %gte  |=([b=@ c=@] !(^gte b c))
-        %lth  |=([b=@ c=@] !(^lth b c))
-        %lte  |=([b=@ c=@] !(^lte b c))
-      ==
-      ::
-        %int2  
-      ?+  fun  !!
-        %add  ~(add twoc bloq)
-        %mul  ~(mul twoc bloq)
-        %gth  |=([b=@ c=@] !(~(gth twoc bloq) b c))
-        %lth  |=([b=@ c=@] !(~(lth twoc bloq) b c))
-      ==
-      ::
         %real
       ?+    `^bloq`bloq  !!
           %7
@@ -1049,36 +998,12 @@
           %lte  |=([a=@rh b=@rh] ?:((~(lte rh rnd) a b) .~~1 .~~0))
         ==
       ==  :: bloq real
-      :: TODO
-        %fixp
-      ?+  fun  !!
-        %add  ~(sum fe bloq)
-        %sub  ~(dif fe bloq)
-        %mul  |=([b=_1 c=_1] (~(sit fe bloq) (^mul b c)))
-        %div  |=([b=_1 c=_1] (~(sit fe bloq) (^div b c)))
-        %mod  |=([b=@ c=@] (~(sit fe bloq) (^mod b c)))
-        %pow  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        ::%exp  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        ::%log  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        %gth  |=([b=@ c=@] !(^gth b c))
-        %gte  |=([b=@ c=@] !(^gte b c))
-        %lth  |=([b=@ c=@] !(^lth b c))
-        %lte  |=([b=@ c=@] !(^lte b c))
-      ==
-    ::
     ==  :: kind
   ::
   ++  trans-scalar
     |=  [=bloq =kind fun=ops]
     ^-  $-(@ @)
     ?+    kind  ~|(kind !!)
-        %uint  
-      ?+  fun  !!
-        %abs  |=(b=@ b)
-      ==
-      ::
-        %int2  !!
-      ::
         %real
       ?+    bloq  !!
           %7
@@ -1098,8 +1023,6 @@
           %abs  |=(b=@ ?:((gte:rh b .~~0) b (mul:rh b .~~-1)))
         ==
       ==
-    ::
-        ::  TODO signed integers -- add new 2's complement kind?
     ==
   ::
   ++  el-wise-op

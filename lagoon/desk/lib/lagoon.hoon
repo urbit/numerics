@@ -598,7 +598,7 @@
     +:(find ~[(min a)] (ravel a))
   ::
   ++  cumsum
-    :: ~/  %cumsum
+    ~/  %cumsum
     |=  a=ray
     ^-  ray
     %+  scalar-to-ray  meta.a

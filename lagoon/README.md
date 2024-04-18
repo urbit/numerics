@@ -157,6 +157,8 @@ TODOs:
 - %stack
 - %submatrix
 
+- add back in %cumsum hint
+
 to make:
 
 - [ ] logspace

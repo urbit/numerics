@@ -116,9 +116,6 @@ The 410 K release candidate for Lagoon provides `%real`-valued array operations 
 - `++div`
 - `++mod`
 - `++pow-n`
-- `++pow`
-- `++exp`
-- `++log`
 - `++gth` (note boolean)
 - `++gte` (note boolean)
 - `++lth` (note boolean)
@@ -138,31 +135,34 @@ The Hoon release is available in `urbit/numerics`, branch `sigilante/reals-only`
 - `/lib/lagoon` for operations.
 - `/tests/lib/lagoon` for various array operation behavior tests.
 
-The Vere release is available in `urbit/vere`, branch `sigilante/lagoon-jets`.  The Vere release contains jets for 28 arms.  At the time of writing, two bugs are being corrected:  a rounding mode mismatch in `++cumsum` and a memory leak in `++mmul`.
+The Vere release is available in `urbit/vere`, branch `sigilante/lagoon-jets`.  The Vere release contains jets for 28 arms.  These have been tested for correctness against the reference Hoon results.
 
 Points for discussion:
 
 1. Currently we ship Lagoon as `/lib/lagoon` and jet into the `f`/`hex` core in `tree.c`.  Since that generally deals with Zuse-level arms, is it advisable to introduce another level `g`/`hep` for `/lib` jets?
-2. `/sur/lagoon` still lists other types in `+$kind`.  If we were to excise unused type tags these here, will we have difficulties upgrading code in a future release?
+2. `/sur/lagoon` still lists other types in `+$kind`, but these are commented out for the time being.
 
 Nonobvious points to note:
 
 1. The comparison gates for Lagoon flip back to boolean rather than loobean results.  Furthermore, they result in numerical ones (e.g. `0x3f80.0000` for `@rs`) rather than simple `0x1`s.  This is because we want sparse matrices to remain sparse when we eventually support them, and because we want multiplication times the result of a logical operation to set or clear fields appropriately without needing to change the `kind`.  (No solution appears to be completely satisfactory.)
 2. `++submatrix` and `++stack` are not jetted yet.  These are both dicey jets to get right due to multiple offsets.  Fortunately, once we have them correct they should work for all `kind`s since they only depend on `bloq` size not `kind`.
 3. The rounding mode for `%real` may be set for the core using the `++lake` gate.  This returns a copy of the Lagoon `++la` core with rounding mode changed to one of `?(%n %u %d %z)`.
-4. `++pow`, `++exp`, and `++log` are not jetted currently.  While this is obviously desirable, I am not yet confident that we can do this deterministically without some very careful work, and I don't want to block on them now.
+  ```hoon
+  > (cumsum:(lake:la %u) (en-ray:(lake:la %u) [~[7 1] 5 %real ~] ~[.1 .5 .-5 .2 .3 .-20 .-1]))
+  [meta=[shape=~[1 1] bloq=5 kind=%real fxp=~] data=0x1.c170.0000]
+  ```
 
-TODOs:
-
-- %stack
-- %submatrix
-
-- add back in %cumsum hint
+---
 
 to make:
 
 - [ ] logspace
+- [ ] tensordot
+- [ ] bitwise ops
 - [ ] eq, ne
+- [ ] isnan, isinf (±)
+- [ ] pad
+- [ ] pow, exp, log, whatever not in Saloon
 
 ---
 

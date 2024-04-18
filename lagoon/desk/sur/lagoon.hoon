@@ -18,10 +18,10 @@
 +$  kind              ::  $kind:  type of array scalars
   $?  %real           ::  IEEE 754 float
       %uint           ::  unsigned integer
-      %int2           ::  2s-complement integer
-      %cplx           ::  BLAS-compatible packed floats
-      %unum           ::  unum/posit
-      %fixp           ::  fixed-precision
+      :: %int2           ::  2s-complement integer
+      :: %cplx           ::  BLAS-compatible packed floats
+      :: %unum           ::  unum/posit
+      :: %fixp           ::  fixed-precision
   ==
 ::
 +$  baum              ::  $baum:  ndray with metadata

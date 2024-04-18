@@ -853,27 +853,6 @@
     ?~  =(1 n)  b
     $(b (mul a b), n (dec n))
   ::
-  ++  pow
-    ::  don't jet until ~lagrev-nocfep sez you can
-    ::  XX determinism is really hard here
-    |=  [a=ray b=ray]
-    ^-  ray
-    (bin-op a b (fun-scalar meta.a %pow))
-  ::
-  ++  exp
-    ::  don't jet until ~lagrev-nocfep sez you can
-    ::  XX determinism is really hard here
-    |=  [a=ray b=ray]
-    ^-  ray
-    (bin-op a b (fun-scalar meta.a %exp))
-  ::
-  ++  log
-    ::  don't jet until ~lagrev-nocfep sez you can
-    ::  XX determinism is really hard here
-    |=  [a=ray b=ray]
-    ^-  ray
-    (bin-op a b (fun-scalar meta.a %log))
-  ::
   ++  gth
     ~/  %gth
     |=  [a=ray b=ray]
@@ -931,9 +910,6 @@
                 %mul
                 %div
                 %mod
-                %pow
-                %exp
-                %log
                 %gth
                 %gte
                 %lth

@@ -935,7 +935,6 @@
           %gte  |=([a=@rq b=@rq] ?:((~(gte rq rnd) a b) .~~~1 .~~~0))
           %lth  |=([a=@rq b=@rq] ?:((~(lth rq rnd) a b) .~~~1 .~~~0))
           %lte  |=([a=@rq b=@rq] ?:((~(lte rq rnd) a b) .~~~1 .~~~0))
-          :: %eq   |=([a=@rq b=@rq] .=([a b] .~~~1 .~~~0)
         ==
           %6
         ?+  fun  !!

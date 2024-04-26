@@ -4,7 +4,7 @@
 |%
 +$  ray               ::  $ray:  n-dimensional array
   $:  =meta           ::  descriptor
-      data=@ux        ::  data, row-major order, 1-pin MSB
+      data=@ux        ::  data, row-major order
   ==
 ::
 +$  prec  [a=@ b=@]   ::  fixed-point precision, a+b+1=bloq

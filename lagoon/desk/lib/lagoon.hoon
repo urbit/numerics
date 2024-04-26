@@ -1026,6 +1026,22 @@
       (gulf 0 (dec (lent ali)))
     |=  i=@
     (op (snag i ali) (snag i bob))
+  ::
+  ++  ter-op
+    |=  [a=ray b=ray c=ray op=$-([@ @ @] @)]
+    ^-  ray
+    ?>  =(meta.a meta.b)
+    ?>  =(meta.c meta.b)
+    %-  spac:la
+    :-  meta.a
+    =/  ali  (ravel:la a)
+    =/  bob  (ravel:la b)
+    =/  car  (ravel:la c)
+    %^  rev  bloq.meta.a  (lent ali)
+    %+  rep  bloq.meta.a
+    %+  turn
+      (gulf 0 (dec (lent ali)))
+    |=  i=@
+    (op (snag i ali) (snag i bob) (snag i car))
+  --
 --
---
- 

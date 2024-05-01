@@ -89,6 +89,221 @@ To implement:
 - Saloon: compatibility w/ Lagoon `+$ray`s
 - Maroon:
 
+---
+
+class
+Contiguous
+
+    func
+    forward
+    func
+    backward
+
+class
+ContiguousBackward
+
+    func
+    forward
+    func
+    backward
+
+class
+Cast
+
+    func
+    forward
+    func
+    backward
+
+class
+Neg
+
+    func
+    forward
+    func
+    backward
+
+class
+Reciprocal
+
+    func
+    forward
+    func
+    backward
+
+class
+Sin
+
+    func
+    forward
+    func
+    backward
+
+class
+Relu
+
+    func
+    forward
+    func
+    backward
+
+class
+Log
+
+    func
+    forward
+    func
+    backward
+
+class
+Exp
+
+    func
+    forward
+    func
+    backward
+
+class
+Sqrt
+
+    func
+    forward
+    func
+    backward
+
+class
+Sigmoid
+
+    func
+    forward
+    func
+    backward
+
+class
+Less
+
+    func
+    forward
+    func
+    backward
+
+class
+Eq
+
+    func
+    forward
+    func
+    backward
+
+class
+Xor
+
+    func
+    forward
+
+class
+Add
+
+    func
+    forward
+    func
+    backward
+
+class
+Sub
+
+    func
+    forward
+    func
+    backward
+
+class
+Mul
+
+    func
+    forward
+    func
+    backward
+
+class
+Div
+
+    func
+    forward
+    func
+    backward
+
+class
+Where
+
+    func
+    forward
+    func
+    backward
+
+class
+Sum
+
+    func
+    forward
+    func
+    backward
+
+class
+Max
+
+    func
+    forward
+    func
+    backward
+
+class
+Expand
+
+    func
+    forward
+    func
+    backward
+
+class
+Reshape
+
+    func
+    forward
+    func
+    backward
+
+class
+Permute
+
+    func
+    forward
+    func
+    backward
+
+class
+Pad
+
+    func
+    forward
+    func
+    backward
+
+class
+Shrink
+
+    func
+    forward
+    func
+    backward
+
+class
+Flip
+
+    func
+    forward
+    func
+    backward
 
 
 ```

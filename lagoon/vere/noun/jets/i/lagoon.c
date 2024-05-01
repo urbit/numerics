@@ -101,7 +101,7 @@
 /* add - axpy = 1*x+y
 */
   u3_noun
-  u3qf_la_add_real(u3_noun x_data,
+  u3qi_la_add_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq
@@ -128,7 +128,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
     
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         haxpy(len_x, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
         break;
@@ -159,7 +159,7 @@
 /* sub - axpy = -1*y+x
 */
   u3_noun
-  u3qf_la_sub_real(u3_noun x_data,
+  u3qi_la_sub_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq
@@ -186,7 +186,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
     
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         haxpy(len_x, (float16_t){SB_REAL16_NEGONE}, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
         break;
@@ -219,7 +219,7 @@
    elementwise multiplication
 */
   u3_noun
-  u3qf_la_mul_real(u3_noun x_data,
+  u3qi_la_mul_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -245,7 +245,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           ((float16_t*)y_bytes)[i] = f16_mul(((float16_t*)x_bytes)[i], ((float16_t*)y_bytes)[i]);
@@ -285,7 +285,7 @@
    elementwise division
 */
   u3_noun
-  u3qf_la_div_real(u3_noun x_data,
+  u3qi_la_div_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -311,7 +311,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           ((float16_t*)y_bytes)[i] = f16_div(((float16_t*)x_bytes)[i], ((float16_t*)y_bytes)[i]);
@@ -351,7 +351,7 @@
    remainder after division
 */
   u3_noun
-  u3qf_la_mod_real(u3_noun x_data,
+  u3qi_la_mod_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -377,7 +377,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           float16_t x_val16 = ((float16_t*)x_bytes)[i];
@@ -385,7 +385,7 @@
           // Perform division x/n
           float16_t div_result16 = f16_div(x_val16, y_val16);
           // Compute floor of the division result
-          int64_t floor_result16 = f16_to_i64(div_result16, softfloat_round_minMag, false);
+          c3_ds floor_result16 = f16_to_i64(div_result16, softfloat_round_minMag, false);
           float16_t floor_float16 = i64_to_f16(floor_result16);
           // Multiply n by floor(x/n)
           float16_t mult_result16 = f16_mul(y_val16, floor_float16);
@@ -401,7 +401,7 @@
           // Perform division x/n
           float32_t div_result32 = f32_div(x_val32, y_val32);
           // Compute floor of the division result
-          int64_t floor_result32 = f32_to_i64(div_result32, softfloat_round_minMag, false);
+          c3_ds floor_result32 = f32_to_i64(div_result32, softfloat_round_minMag, false);
           float32_t floor_float32 = i64_to_f32(floor_result32);
           // Multiply n by floor(x/n)
           float32_t mult_result32 = f32_mul(y_val32, floor_float32);
@@ -417,7 +417,7 @@
           // Perform division x/n
           float64_t div_result64 = f64_div(x_val64, y_val64);
           // Compute floor of the division result
-          int64_t floor_result64 = f64_to_i64(div_result64, softfloat_round_minMag, false);
+          c3_ds floor_result64 = f64_to_i64(div_result64, softfloat_round_minMag, false);
           float64_t floor_float64 = i64_to_f64(floor_result64);
           // Multiply n by floor(x/n)
           float64_t mult_result64 = f64_mul(y_val64, floor_float64);
@@ -434,8 +434,9 @@
           float128_t div_result128;
           f128M_div((float128_t*)&x_val128, (float128_t*)&y_val128, (float128_t*)&div_result128);
           // Compute floor of the division result
-          int64_t floor_result128 = f128_to_i64(div_result128, softfloat_round_minMag, false);
-          float128_t floor_float128 = i64_to_f128(floor_result128);
+          c3_ds floor_result128 = f128M_to_i64(&div_result128, softfloat_round_minMag, false);
+          float128_t floor_float128;
+          i64_to_f128M(floor_result128, &floor_float128);
           // Multiply n by floor(x/n)
           float128_t mult_result128;
           f128M_mul(((float128_t*)&y_val128), ((float128_t*)&floor_float128), ((float128_t*)&mult_result128));
@@ -458,7 +459,7 @@
 /* cumsum - x[0] + x[1] + ... x[n]
 */
   u3_noun
-  u3qf_la_cumsum_real(u3_noun x_data,
+  u3qi_la_cumsum_real(u3_noun x_data,
                       u3_noun shape,
                       u3_noun bloq)
   {
@@ -481,9 +482,10 @@
     u3_noun r_data;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4: ;
         float16_t sum16[2];
+        sum16[0] = (float16_t){SB_REAL16_ZERO};
         for (c3_d i = 0; i < len_x; i++) {
           sum16[0] = f16_add(sum16[0], ((float16_t*)x_bytes)[i]);
         }
@@ -493,6 +495,7 @@
 
       case 5: ;
         float32_t sum32[2];
+        sum32[0] = (float32_t){SB_REAL32_ZERO};
         for (c3_d i = 0; i < len_x; i++) {
           sum32[0] = f32_add(sum32[0], ((float32_t*)x_bytes)[i]);
         }
@@ -502,6 +505,7 @@
 
       case 6: ;
         float64_t sum64[2];
+        sum64[0] = (float64_t){SB_REAL64_ZERO};
         for (c3_d i = 0; i < len_x; i++) {
           sum64[0] = f64_add(sum64[0], ((float64_t*)x_bytes)[i]);
         }
@@ -511,6 +515,7 @@
 
       case 7: ;
         float128_t sum128[2];
+        sum128[0] = (float128_t){SB_REAL128L_ZERO, SB_REAL128U_ZERO};
         for (c3_d i = 0; i < len_x; i++) {
           f128M_add(&(sum128[0]), &(((float128_t*)x_bytes)[i]), &(sum128[0]));
         }
@@ -528,7 +533,7 @@
 /* argmin - argmin(x)
 */
   u3_noun
-  u3qf_la_argmin_real(u3_noun x_data,
+  u3qi_la_argmin_real(u3_noun x_data,
                       u3_noun shape,
                       u3_noun bloq)
   {
@@ -551,7 +556,7 @@
     c3_w min_idx = 0;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4: ;
         float16_t min_val16 = ((float16_t*)x_bytes)[0];
         for (c3_d i = 0; i < len_x; i++) {
@@ -585,7 +590,7 @@
       case 7: ;
         float128_t min_val128 = ((float128_t*)x_bytes)[0];
         for (c3_d i = 0; i < len_x; i++) {
-           if(f128_lt(((float128_t*)x_bytes)[i], min_val128)) {
+           if(f128M_lt(&(((float128_t*)x_bytes)[i]), &min_val128)) {
              min_val128 = *f128M_min(&min_val128, &((float128_t*)x_bytes)[i]);
              min_idx = (len_x - i - 1);
            }
@@ -601,7 +606,7 @@
 /* argmax - argmax(x)
 */
   u3_noun
-  u3qf_la_argmax_real(u3_noun x_data,
+  u3qi_la_argmax_real(u3_noun x_data,
                       u3_noun shape,
                       u3_noun bloq)
   {
@@ -624,7 +629,7 @@
     c3_w max_idx = 0;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4: ;
         float16_t max_val16 = ((float16_t*)x_bytes)[0];
         for (c3_d i = 0; i < len_x; i++) {
@@ -658,7 +663,7 @@
       case 7: ;
         float128_t max_val128 = ((float128_t*)x_bytes)[0];
         for (c3_d i = 0; i < len_x; i++) {
-           if(f128_gt(((float128_t*)x_bytes)[i], max_val128)) {
+           if(f128M_gt(&(((float128_t*)x_bytes)[i]), &max_val128)) {
              max_val128 = *f128M_max(&max_val128, &((float128_t*)x_bytes)[i]);
              max_idx = (len_x - i - 1);
            }
@@ -675,7 +680,7 @@
    entire nd-array busted out as a linear list
 */
   u3_noun
-  u3qf_la_ravel_real(u3_noun x_data,
+  u3qi_la_ravel_real(u3_noun x_data,
                      u3_noun shape,
                      u3_noun bloq)
   {
@@ -696,10 +701,10 @@
     u3r_bytes(0, syz_x, x_bytes, x_data);
 
     // r_data is the result noun of [data]
-    u3_noun r_data;
+    u3_noun r_data = u3_nul;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           float16_t x_val16 = ((float16_t*)x_bytes)[i];
@@ -738,7 +743,7 @@
 /* min - min(x,y)
 */
   u3_noun
-  u3qf_la_min_real(u3_noun x_data,
+  u3qi_la_min_real(u3_noun x_data,
                    u3_noun shape,
                    u3_noun bloq)
   {
@@ -761,7 +766,7 @@
     u3_noun r_data;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4: ;
         float16_t min_val16 = ((float16_t*)x_bytes)[0];
         for (c3_d i = 0; i < len_x; i++) {
@@ -816,7 +821,7 @@
 /* max - max(x,y)
 */
   u3_noun
-  u3qf_la_max_real(u3_noun x_data,
+  u3qi_la_max_real(u3_noun x_data,
                    u3_noun shape,
                    u3_noun bloq)
   {
@@ -839,7 +844,7 @@
     u3_noun r_data;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4: ;
         float16_t max_val16 = ((float16_t*)x_bytes)[0];
         for (c3_d i = 0; i < len_x; i++) {
@@ -894,7 +899,7 @@
 /* abs - |x|
 */
   u3_noun
-  u3qf_la_abs_real(u3_noun x_data,
+  u3qi_la_abs_real(u3_noun x_data,
                    u3_noun shape,
                    u3_noun bloq)
   {
@@ -915,7 +920,7 @@
     u3r_bytes(0, syz_x+1, x_bytes, x_data);
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           ((float16_t*)x_bytes)[i] = f16_abs(((float16_t*)x_bytes)[i]);
@@ -953,7 +958,7 @@
 /* gth - x > y
 */
   u3_noun
-  u3qf_la_gth_real(u3_noun x_data,
+  u3qi_la_gth_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -979,7 +984,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           float16_t x_val16 = ((float16_t*)x_bytes)[i];
@@ -1026,7 +1031,7 @@
 /* gte - x > y
 */
   u3_noun
-  u3qf_la_gte_real(u3_noun x_data,
+  u3qi_la_gte_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1052,7 +1057,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           float16_t x_val16 = ((float16_t*)x_bytes)[i];
@@ -1099,7 +1104,7 @@
 /* lth - x > y
 */
   u3_noun
-  u3qf_la_lth_real(u3_noun x_data,
+  u3qi_la_lth_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1125,7 +1130,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           float16_t x_val16 = ((float16_t*)x_bytes)[i];
@@ -1172,7 +1177,7 @@
 /* lte - x > y
 */
   u3_noun
-  u3qf_la_lte_real(u3_noun x_data,
+  u3qi_la_lte_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1198,7 +1203,7 @@
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         for (c3_d i = 0; i < len_x; i++) {
           float16_t x_val16 = ((float16_t*)x_bytes)[i];
@@ -1245,7 +1250,7 @@
 /* adds - axpy = 1*x+[n]
 */
   u3_noun
-  u3qf_la_adds_real(u3_noun x_data,
+  u3qi_la_adds_real(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1275,7 +1280,7 @@
     float128_t n128;
 
     //  Switch on the block size.  We assume that n fits in the target block size; Hoon typecheck should prevent.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         u3r_bytes(0, 2, (c3_y*)&(n16.v), n);
         // set y to [n]
@@ -1314,7 +1319,7 @@
     }
 
     // r_data is the result noun of [data]
-    y_bytes[syz_x] = 1;  // pin head
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -1327,7 +1332,7 @@
 /* subs - axpy = -1*[n]+x
 */
   u3_noun
-  u3qf_la_subs_real(u3_noun x_data,
+  u3qi_la_subs_real(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1357,7 +1362,7 @@
     float128_t n128;
 
     //  Switch on the block size.  We assume that n fits in the target block size; Hoon typecheck should prevent.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         u3r_bytes(0, 2, (c3_y*)&(n16.v), n);
         // set y to [n]
@@ -1396,7 +1401,7 @@
     }
 
     // r_data is the result noun of [data]
-    x_bytes[syz_x] = 1;  // pin head
+    x_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), x_bytes);
 
     //  Clean up and return.
@@ -1410,7 +1415,7 @@
    elementwise multiplication
 */
   u3_noun
-  u3qf_la_muls_real(u3_noun x_data,
+  u3qi_la_muls_real(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1430,7 +1435,7 @@
     // x_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* x_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
     u3r_bytes(0, syz_x, x_bytes, x_data);
-    x_bytes[syz_x] = 1;  // pin head
+    x_bytes[syz_x] = 0x1;  // pin head
 
     float16_t n16;
     float32_t n32;
@@ -1438,7 +1443,7 @@
     float128_t n128;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         u3r_bytes(0, 2, (c3_y*)&(n16.v), n);
         hscal(len_x, n16, (float16_t*)x_bytes, 1);
@@ -1473,7 +1478,7 @@
    elementwise division
 */
   u3_noun
-  u3qf_la_divs_real(u3_noun x_data,
+  u3qi_la_divs_real(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1493,7 +1498,7 @@
     // x_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* x_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
     u3r_bytes(0, syz_x, x_bytes, x_data);
-    x_bytes[syz_x] = 1;  // pin head
+    x_bytes[syz_x] = 0x1;  // pin head
 
     float16_t in16;
     float32_t in32;
@@ -1501,7 +1506,7 @@
     float128_t in128;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         //  XX note that in16 is doing double duty here
         u3r_bytes(0, 2, (c3_y*)&(in16.v), n);
@@ -1544,7 +1549,7 @@
    remainder after scalar division
 */
   u3_noun
-  u3qf_la_mods_real(u3_noun x_data,
+  u3qi_la_mods_real(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1572,7 +1577,7 @@
     float128_t n128, in128;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
         u3r_bytes(0, 2, (c3_y*)&(n16.v), n);
         in16 = f16_div((float16_t){SB_REAL16_ONE}, n16);
@@ -1582,7 +1587,7 @@
           // Perform division x/n
           float16_t div_result16 = f16_mul(in16, x_val16);
           // Compute floor of the division result
-          int64_t floor_result16 = f16_to_i64(div_result16, softfloat_round_minMag, false);
+          c3_ds floor_result16 = f16_to_i64(div_result16, softfloat_round_minMag, false);
           float16_t floor_float16 = i64_to_f16(floor_result16);
           // Multiply n by floor(x/n)
           float16_t mult_result16 = f16_mul(n16, floor_float16);
@@ -1600,7 +1605,7 @@
           // Perform division x/n
           float32_t div_result32 = f32_mul((float32_t)in32, (float32_t)x_val32);
           // Compute floor of the division result
-          int64_t floor_result32 = f32_to_i64(div_result32, softfloat_round_minMag, false);
+          c3_ds floor_result32 = f32_to_i64(div_result32, softfloat_round_minMag, false);
           float32_t floor_float32 = i64_to_f32(floor_result32);
           // Multiply n by floor(x/n)
           float32_t mult_result32 = f32_mul(n32, floor_float32);
@@ -1618,7 +1623,7 @@
           // Perform division x/n
           float64_t div_result64 = f64_mul(in64, x_val64);
           // Compute floor of the division result
-          int64_t floor_result64 = f64_to_i64(div_result64, softfloat_round_minMag, false);
+          c3_ds floor_result64 = f64_to_i64(div_result64, softfloat_round_minMag, false);
           float64_t floor_float64 = i64_to_f64(floor_result64);
           // Multiply n by floor(x/n)
           float64_t mult_result64 = f64_mul(n64, floor_float64);
@@ -1637,8 +1642,9 @@
           float128_t div_result128;
           f128M_mul((float128_t*)&in128, (float128_t*)&x_val128, (float128_t*)&div_result128);
           // Compute floor of the division result
-          int64_t floor_result128 = f128_to_i64(div_result128, softfloat_round_minMag, false);
-          float128_t floor_float128 = i64_to_f128(floor_result128);
+          c3_ds floor_result128 = f128M_to_i64(&div_result128, softfloat_round_minMag, false);
+          float128_t floor_float128;
+          i64_to_f128M(floor_result128, &floor_float128);
           // Multiply n by floor(x/n)
           float128_t mult_result128;
           f128M_mul(((float128_t*)&n128), ((float128_t*)&floor_float128), ((float128_t*)&mult_result128));
@@ -1660,7 +1666,7 @@
 /* dot - ?dot = x · y
 */
   u3_noun
-  u3qf_la_dot_real(u3_noun x_data,
+  u3qi_la_dot_real(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1688,7 +1694,7 @@
     u3_noun r_data;
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4: ;
         float16_t r16[2];
         r16[0] = hdot(len_x, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
@@ -1728,7 +1734,7 @@
 /* diag - diag(x)
 */
   u3_noun
-  u3qf_la_diag(u3_noun x_data,
+  u3qi_la_diag(u3_noun x_data,
                u3_noun shape,
                u3_noun bloq)
   {
@@ -1764,7 +1770,7 @@
         y_bytes[i*wyd+k] = x_bytes[(i*dims[0]+i)*wyd+k];
       }
     }
-    y_bytes[syz_y] = 1;  // pin head
+    y_bytes[syz_y] = 0x1;  // pin head
 
     //  Unpack the result back into a noun.
     r_data = u3i_bytes((syz_y+1)*sizeof(c3_y), y_bytes);
@@ -1779,7 +1785,7 @@
 /* transpose - x'
 */
   u3_noun
-  u3qf_la_transpose(u3_noun x_data,
+  u3qi_la_transpose(u3_noun x_data,
                     u3_noun shape,
                     u3_noun bloq)
   {
@@ -1809,7 +1815,7 @@
         }
       }
     }
-    y_bytes[syz_x] = 1;  // pin head
+    y_bytes[syz_x] = 0x1;  // pin head
 
     //  Unpack the result back into a noun.
     r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
@@ -1824,7 +1830,7 @@
 /* linspace - [a a+(b-a)/n ... b]
 */
   u3_noun
-  u3qf_la_linspace_real(u3_noun a,
+  u3qi_la_linspace_real(u3_noun a,
                         u3_noun b,
                         u3_noun n,
                         u3_noun bloq)
@@ -1836,7 +1842,7 @@
 
     u3_noun r_data;
 
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4: ;
         float16_t a16, b16;
         u3r_bytes(0, 2, (c3_y*)&(a16.v), a);
@@ -1849,7 +1855,7 @@
         }
         ((float16_t*)x_bytes16)[n] = a16;
         ((float16_t*)x_bytes16)[0] = b16;
-        x_bytes16[(n+1)*2] = 1;  // pin head
+        x_bytes16[(n+1)*2] = 0x1;  // pin head
         r_data = u3i_bytes(((n+1)*2+1)*sizeof(c3_y), x_bytes16);
         u3a_free(x_bytes16);
         break;
@@ -1866,7 +1872,7 @@
         }
         ((float32_t*)x_bytes32)[n] = a32;
         ((float32_t*)x_bytes32)[0] = b32;
-        x_bytes32[(n+1)*4] = 1;  // pin head
+        x_bytes32[(n+1)*4] = 0x1;  // pin head
         r_data = u3i_bytes(((n+1)*4+1)*sizeof(c3_y), x_bytes32);
         u3a_free(x_bytes32);
         break;
@@ -1883,7 +1889,7 @@
         }
         ((float64_t*)x_bytes64)[n] = a64;
         ((float64_t*)x_bytes64)[0] = b64;
-        x_bytes64[(n+1)*8] = 1;  // pin head
+        x_bytes64[(n+1)*8] = 0x1;  // pin head
         r_data = u3i_bytes(((n+1)*8+1)*sizeof(c3_y), x_bytes64);
         u3a_free(x_bytes64);
         break;
@@ -1907,7 +1913,7 @@
         }
         ((float128_t*)x_bytes128)[n] = a128;
         ((float128_t*)x_bytes128)[0] = b128;
-        x_bytes128[(n+1)*16] = 1;  // pin head
+        x_bytes128[(n+1)*16] = 0x1;  // pin head
         r_data = u3i_bytes(((n+1)*16+1)*sizeof(c3_y), x_bytes128);
         u3a_free(x_bytes128);
         break;
@@ -1919,7 +1925,7 @@
 /* range - [a a+d ... b]
 */
   u3_noun
-  u3qf_la_range_real(u3_noun a,
+  u3qi_la_range_real(u3_noun a,
                      u3_noun b,
                      u3_noun d,
                      u3_noun bloq)
@@ -1931,7 +1937,7 @@
 
     u3_noun r_data;
 
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4: ;
         float16_t a16, b16, interval16;
         u3r_bytes(0, 2, (c3_y*)&(a16.v), a);
@@ -1944,7 +1950,7 @@
         }
         ((float16_t*)x_bytes16)[n16] = a16;
         // ((float16_t*)x_bytes16)[0] = b16;
-        x_bytes16[(n16+1)*2] = 1;  // pin head
+        x_bytes16[(n16+1)*2] = 0x1;  // pin head
         r_data = u3i_bytes(((n16+1)*2+1)*sizeof(c3_y), x_bytes16);
         u3a_free(x_bytes16);
         break;
@@ -1961,7 +1967,7 @@
         }
         ((float32_t*)x_bytes32)[n32] = a32;
         // ((float32_t*)x_bytes32)[0] = b32;
-        x_bytes32[(n32+1)*4] = 1;  // pin head
+        x_bytes32[(n32+1)*4] = 0x1;  // pin head
         r_data = u3i_bytes(((n32+1)*4+1)*sizeof(c3_y), x_bytes32);
         u3a_free(x_bytes32);
         break;
@@ -1978,7 +1984,7 @@
         }
         ((float64_t*)x_bytes64)[n64] = a64;
         // ((float64_t*)x_bytes64)[0] = b64;
-        x_bytes64[(n64+1)*8] = 1;  // pin head
+        x_bytes64[(n64+1)*8] = 0x1;  // pin head
         r_data = u3i_bytes(((n64+1)*8+1)*sizeof(c3_y), x_bytes64);
         u3a_free(x_bytes64);
         break;
@@ -1988,7 +1994,10 @@
         u3r_bytes(0, 16, (c3_y*)&(a128.v[0]), a);
         u3r_bytes(0, 16, (c3_y*)&(b128.v[0]), b);
         u3r_bytes(0, 16, (c3_y*)&(interval128.v), d);
-        c3_d n128 = f128_to_i64(f128_div(f128_sub(b128, a128), interval128), softfloat_round_minMag, false);
+        float128_t tmp;
+        f128M_sub(&b128, &a128, &tmp);
+        f128M_div(&tmp, &interval128, &interval128);
+        c3_d n128 = f128M_to_i64(&tmp, softfloat_round_minMag, false);
         c3_y* x_bytes128 = (c3_y*)u3a_malloc(((n128+1)*16+1)*sizeof(c3_y));
         float128_t i128;
         for (c3_d i = 1; i < n128; i++) {
@@ -1998,7 +2007,7 @@
         }
         ((float128_t*)x_bytes128)[n128] = a128;
         // ((float128_t*)x_bytes128)[0] = b128;
-        x_bytes128[(n128+1)*16] = 1;  // pin head
+        x_bytes128[(n128+1)*16] = 0x1;  // pin head
         r_data = u3i_bytes(((n128+1)*16+1)*sizeof(c3_y), x_bytes128);
         u3a_free(x_bytes128);
         break;
@@ -2010,30 +2019,30 @@
 /* trace - tr(x)
 */
   u3_noun
-  u3qf_la_trace_real(u3_noun x_data,
+  u3qi_la_trace_real(u3_noun x_data,
                      u3_noun shape,
                      u3_noun bloq)
   {
-    u3_noun d_data = u3qf_la_diag(x_data, shape, bloq);
+    u3_noun d_data = u3qi_la_diag(x_data, shape, bloq);
     c3_d len_x0 = _get_dims(shape)[0];
-    u3_noun r_data = u3qf_la_dot_real(d_data, d_data, u3nt(len_x0, 0x1, u3_nul), bloq);
+    u3_noun r_data = u3qi_la_dot_real(d_data, d_data, u3nt(len_x0, 0x1, u3_nul), u3k(bloq));
     return r_data;
   }
 
 /* mmul
 */
   u3_noun
-  u3qf_la_mmul_real(u3_noun x_data,
+  u3qi_la_mmul_real(u3_noun x_data,
                     u3_noun y_data,
                     u3_noun x_shape,
                     u3_noun y_shape,
                     u3_noun bloq)
   {
     //  Unpack the data as a byte array.  We assume total length < 2**64.
-    c3_d M = u3h(x_shape);
-    c3_d Na = u3h(u3t(x_shape));
-    c3_d Nb = u3h(y_shape);
-    c3_d P = u3h(u3t(y_shape));
+    c3_d M = u3x_atom(u3h(x_shape));
+    c3_d Na= u3x_atom(u3h(u3t(x_shape)));
+    c3_d Nb= u3x_atom(u3h(y_shape));
+    c3_d P = u3x_atom(u3h(u3t(y_shape)));
 
     if ((u3_nul != u3t(u3t(x_shape))) ||
         (u3_nul != u3t(u3t(y_shape))) ||
@@ -2042,79 +2051,74 @@
     }
     c3_d N = Na;
 
-    c3_y* x_bytes = (c3_y*)u3a_malloc((M*N)*sizeof(c3_y));
-    u3r_bytes(0, M*N, x_bytes, x_data);
-    c3_y* y_bytes = (c3_y*)u3a_malloc((N*P)*sizeof(c3_y));
-    u3r_bytes(0, N*P, y_bytes, y_data);
-    c3_y* c_bytes = (c3_y*)u3a_malloc((M*P)*sizeof(c3_y));
+    //  Unpack the data as a byte array.  We assume total length < 2**64.
+    // len_x is length in base units
+    c3_d len_x = _get_length(x_shape);    // M*N
 
-    u3_noun r_data;
+    // syz_x is length in bytes
+    c3_d syz_x = len_x * pow(2, bloq-3);  // M*N
+
+    // x_bytes is the data array (w/o leading 0x1)
+    c3_y* x_bytes = (c3_y*)u3a_malloc(syz_x*sizeof(c3_y));
+    u3r_bytes(0, syz_x, x_bytes, x_data);
+
+    // len_x is length in base units
+    c3_d len_y = _get_length(y_shape);    // N*P
+
+    // syz_x is length in bytes
+    c3_d syz_y = len_y * pow(2, bloq-3);  // N*P
+
+    // y_bytes is the data array (w/o leading 0x1)
+    c3_y* y_bytes = (c3_y*)u3a_malloc(syz_y*sizeof(c3_y));
+    u3r_bytes(0, syz_y, y_bytes, y_data);
+    
+    // len_r is length in base units
+    c3_d len_r = M*P;                     // M*P
+
+    // syz_r is length in bytes
+    c3_d syz_r = len_r * pow(2, bloq-3);  // M*P
+
+    // r_bytes is the result array
+    c3_y* r_bytes = (c3_y*)u3a_malloc((syz_r+1)*sizeof(c3_y));
+    r_bytes[syz_r] = 0x1;  // pin head
+    // initialize with 0x0s
+    for (c3_d i = 0; i < syz_r; i++) {
+      r_bytes[i] = 0x0;
+    }
 
     //  Switch on the block size.
-    switch (bloq) {
+    switch (u3x_atom(bloq)) {
       case 4:
-        hgemm('N', 'N', M, N, P, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, N, (float16_t*)y_bytes, N, (float16_t){SB_REAL16_ZERO}, (float16_t*)c_bytes, P);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes(M*P, c_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-        u3a_free(c_bytes);
-
-        return u3nc(u3nq(u3nl(M, P, u3_none), bloq, c3__real, u3_nul), r_data);
+        hgemm('N', 'N', M, N, P, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, N, (float16_t*)y_bytes, P, (float16_t){SB_REAL16_ZERO}, (float16_t*)r_bytes, P);
+        break;
 
       case 5:
-        sgemm('N', 'N', M, N, P, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, N, (float32_t*)y_bytes, N, (float32_t){SB_REAL32_ZERO}, (float32_t*)c_bytes, P);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes(M*P, c_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-        u3a_free(c_bytes);
-
-        return u3nc(u3nq(u3nl(M, P, u3_none), bloq, c3__real, u3_nul), r_data);
+        sgemm('N', 'N', M, N, P, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, N, (float32_t*)y_bytes, P, (float32_t){SB_REAL32_ZERO}, (float32_t*)r_bytes, P);
+        break;
 
       case 6:
-        dgemm('N', 'N', M, N, P, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, N, (float64_t*)y_bytes, N, (float64_t){SB_REAL64_ZERO}, (float64_t*)c_bytes, P);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes(M*P, c_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-        u3a_free(c_bytes);
-
-        return u3nc(u3nq(u3nl(M, P, u3_none), bloq, c3__real, u3_nul), r_data);
+        dgemm('N', 'N', M, N, P, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, N, (float64_t*)y_bytes, P, (float64_t){SB_REAL64_ZERO}, (float64_t*)r_bytes, P);
+        break;
 
       case 7:
-        qgemm('N', 'N', M, N, P, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, N, (float128_t*)y_bytes, N, (float128_t){SB_REAL128L_ZERO,SB_REAL128U_ZERO}, (float128_t*)c_bytes, P);
-
-        //  Unpack the result back into a noun.
-        r_data = u3i_bytes(M*P, c_bytes);
-
-        //  Clean up.
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-        u3a_free(c_bytes);
-
-        return u3nc(u3nq(u3nl(M, P, u3_none), bloq, c3__real, u3_nul), r_data);
-
-      default:
-        u3a_free(x_bytes);
-        u3a_free(y_bytes);
-        u3a_free(c_bytes);
-        
-        return u3_none;
+        qgemm('N', 'N', M, N, P, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, N, (float128_t*)y_bytes, P, (float128_t){SB_REAL128L_ZERO,SB_REAL128U_ZERO}, (float128_t*)r_bytes, P);
+        break;
     }
+
+    //  Unpack the result back into a noun.
+    u3_noun r_data = u3i_bytes(syz_r+1, r_bytes);
+    u3_noun M_ = u3i_chub(M);
+    u3_noun P_ = u3i_chub(P);
+
+    u3a_free(x_bytes);
+    u3a_free(y_bytes);
+    u3a_free(r_bytes);
+
+    return u3nc(u3nq(u3nt(M_, P_, u3_nul), u3k(bloq), c3__real, u3_nul), r_data);
   }
 
   u3_noun
-  u3wf_la_add(u3_noun cor)
+  u3wi_la_add(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2158,7 +2162,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_add_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_add_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2169,7 +2173,7 @@
   }
 
   u3_noun
-  u3wf_la_sub(u3_noun cor)
+  u3wi_la_sub(u3_noun cor)
   {
       // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2213,7 +2217,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_sub_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_sub_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2224,7 +2228,7 @@
   }
 
   u3_noun
-  u3wf_la_mul(u3_noun cor)
+  u3wi_la_mul(u3_noun cor)
   {
       // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2268,7 +2272,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_mul_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_mul_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2279,7 +2283,7 @@
   }
 
   u3_noun
-  u3wf_la_div(u3_noun cor)
+  u3wi_la_div(u3_noun cor)
   {
       // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2323,7 +2327,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_div_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_div_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2334,7 +2338,7 @@
   }
 
   u3_noun
-  u3wf_la_mod(u3_noun cor)
+  u3wi_la_mod(u3_noun cor)
   {
       // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2378,7 +2382,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_mod_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_mod_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2389,7 +2393,7 @@
   }
 
   u3_noun
-  u3wf_la_cumsum(u3_noun cor)
+  u3wi_la_cumsum(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -2418,7 +2422,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_cumsum_real(x_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_cumsum_real(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2429,7 +2433,7 @@
   }
 
   u3_noun
-  u3wf_la_argmin(u3_noun cor)
+  u3wi_la_argmin(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -2455,7 +2459,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_argmin_real(x_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_argmin_real(x_data, x_shape, x_bloq);
             // bare atom (@ index)
             return r_data;
 
@@ -2467,7 +2471,7 @@
   }
 
   u3_noun
-  u3wf_la_ravel(u3_noun cor)
+  u3wi_la_ravel(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -2492,7 +2496,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_ravel_real(x_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_ravel_real(x_data, x_shape, x_bloq);
             // (list @)
             return r_data;
 
@@ -2504,7 +2508,7 @@
   }
 
   u3_noun
-  u3wf_la_argmax(u3_noun cor)
+  u3wi_la_argmax(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -2530,7 +2534,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_argmax_real(x_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_argmax_real(x_data, x_shape, x_bloq);
             // bare atom (@ index)
             return r_data;
 
@@ -2542,7 +2546,7 @@
   }
 
   u3_noun
-  u3wf_la_min(u3_noun cor)
+  u3wi_la_min(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -2568,7 +2572,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_min_real(x_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_min_real(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2579,7 +2583,7 @@
   }
 
   u3_noun
-  u3wf_la_max(u3_noun cor)
+  u3wi_la_max(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -2605,7 +2609,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_max_real(x_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_max_real(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2616,7 +2620,7 @@
   }
 
   u3_noun
-  u3wf_la_abs(u3_noun cor)
+  u3wi_la_abs(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -2642,8 +2646,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_abs_real(x_data, x_shape, x_bloq);
-            fprintf(stderr, "abs: %lx\n", x_bloq);
+            u3_noun r_data = u3qi_la_abs_real(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2654,7 +2657,7 @@
   }
 
   u3_noun
-  u3wf_la_gth(u3_noun cor)
+  u3wi_la_gth(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2696,7 +2699,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_gth_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_gth_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2707,7 +2710,7 @@
   }
 
   u3_noun
-  u3wf_la_gte(u3_noun cor)
+  u3wi_la_gte(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2749,7 +2752,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_gte_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_gte_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2760,7 +2763,7 @@
   }
 
   u3_noun
-  u3wf_la_lth(u3_noun cor)
+  u3wi_la_lth(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2802,7 +2805,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_lth_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_lth_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2813,7 +2816,7 @@
   }
 
   u3_noun
-  u3wf_la_lte(u3_noun cor)
+  u3wi_la_lte(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -2855,7 +2858,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_lte_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_lte_real(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2866,7 +2869,7 @@
   }
 
   u3_noun
-  u3wf_la_adds(u3_noun cor)
+  u3wi_la_adds(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data, n;
@@ -2891,7 +2894,7 @@
       switch (x_kind) {
         case c3__real:
           _set_rounding(rnd);
-          u3_noun r_data = u3qf_la_adds_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_adds_real(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -2901,7 +2904,7 @@
   }
 
   u3_noun
-  u3wf_la_subs(u3_noun cor)
+  u3wi_la_subs(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data, n;
@@ -2926,7 +2929,7 @@
       switch (x_kind) {
         case c3__real:
           _set_rounding(rnd);
-          u3_noun r_data = u3qf_la_subs_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_subs_real(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -2936,7 +2939,7 @@
   }
 
   u3_noun
-  u3wf_la_muls(u3_noun cor)
+  u3wi_la_muls(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data, n;
@@ -2961,7 +2964,7 @@
       switch (x_kind) {
         case c3__real:
           _set_rounding(rnd);
-          u3_noun r_data = u3qf_la_muls_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_muls_real(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -2971,7 +2974,7 @@
   }
 
   u3_noun
-  u3wf_la_divs(u3_noun cor)
+  u3wi_la_divs(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data, n;
@@ -2996,7 +2999,7 @@
       switch (x_kind) {
         case c3__real:
           _set_rounding(rnd);
-          u3_noun r_data = u3qf_la_divs_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_divs_real(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -3006,7 +3009,7 @@
   }
 
   u3_noun
-  u3wf_la_mods(u3_noun cor)
+  u3wi_la_mods(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data, n;
@@ -3031,7 +3034,7 @@
       switch (x_kind) {
         case c3__real:
           _set_rounding(rnd);
-          u3_noun r_data = u3qf_la_mods_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_mods_real(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -3041,7 +3044,7 @@
   }
 
   u3_noun
-  u3wf_la_dot(u3_noun cor)
+  u3wi_la_dot(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -3085,7 +3088,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_dot_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_dot_real(x_data, y_data, x_shape, x_bloq);
             c3_d len_x0 = _get_dims(x_shape)[0];
             return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
@@ -3097,7 +3100,7 @@
   }
 
   u3_noun
-  u3wf_la_transpose(u3_noun cor)
+  u3wi_la_transpose(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -3121,14 +3124,14 @@
       {
         return u3m_bail(c3__exit);
       } else {
-        u3_noun r_data = u3qf_la_transpose(x_data, x_shape, x_bloq);
+        u3_noun r_data = u3qi_la_transpose(x_data, x_shape, x_bloq);
         return u3nc(u3nq(u3nt(u3k(u3h(x_shape)), u3k(u3h(u3t(x_shape))), u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
       }
     }
   }
 
   u3_noun
-  u3wf_la_linspace(u3_noun cor)
+  u3wi_la_linspace(u3_noun cor)
   {
     u3_noun x_meta, a, b, n, rnd;
 
@@ -3156,7 +3159,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_linspace_real(a, b, n, x_bloq);
+            u3_noun r_data = u3qi_la_linspace_real(a, b, n, x_bloq);
             x_shape = u3nt(u3x_atom(n), 0x1, u3_nul);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
@@ -3168,7 +3171,7 @@
   }
 
   u3_noun
-  u3wf_la_range(u3_noun cor)
+  u3wi_la_range(u3_noun cor)
   {
     u3_noun x_meta, a, b, d, rnd;
 
@@ -3196,7 +3199,7 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            u3_noun r_data = u3qf_la_range_real(a, b, d, x_bloq);
+            u3_noun r_data = u3qi_la_range_real(a, b, d, x_bloq);
             c3_d a_, b_, d_;
             c3_ds n_;
             switch (x_bloq) {
@@ -3222,7 +3225,10 @@
                 u3r_bytes(0, 16, (c3_y*)&a_, a);
                 u3r_bytes(0, 16, (c3_y*)&b_, b);
                 u3r_bytes(0, 16, (c3_y*)&d_, d);
-                n_ = f128_to_i64(f128_div(f128_sub((float128_t){b_}, (float128_t){a_}), (float128_t){d_}), softfloat_round_minMag, false);
+                float128_t tmp;
+                f128M_sub((float128_t*){&b_}, (float128_t*){&a_}, &tmp);
+                f128M_div(&tmp, (float128_t*){&d_}, &tmp);
+                n_ = f128M_to_i64(&tmp, softfloat_round_minMag, false);
                 break;
             }
             u3_noun n = u3i_chub(n_+1);
@@ -3237,7 +3243,7 @@
   }
 
   u3_noun
-  u3wf_la_diag(u3_noun cor)
+  u3wi_la_diag(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -3261,7 +3267,7 @@
       {
         return u3m_bail(c3__exit);
       } else {
-        u3_noun r_data = u3qf_la_diag(x_data, x_shape, x_bloq);
+        u3_noun r_data = u3qi_la_diag(x_data, x_shape, x_bloq);
         c3_d len_x0 = _get_dims(x_shape)[0];
         return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
       }
@@ -3269,7 +3275,7 @@
   }
 
   u3_noun
-  u3wf_la_trace(u3_noun cor)
+  u3wi_la_trace(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data;
@@ -3295,7 +3301,7 @@
       } else {
         switch (x_kind) {
           case c3__real: ;
-            u3_noun r_data = u3qf_la_trace_real(x_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_trace_real(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -3306,7 +3312,7 @@
   }
 
   u3_noun
-  u3wf_la_mmul(u3_noun cor)
+  u3wi_la_mmul(u3_noun cor)
   {
     // Each argument is a ray, [=meta data=@ux]
     u3_noun x_meta, x_data,
@@ -3326,22 +3332,18 @@
       u3_noun x_shape, x_bloq, x_kind, x_fxp,
               y_shape, y_bloq, y_kind, y_fxp,
               rnd;
-      if ( c3n == u3r_mean(x_meta,
-                            2, &x_shape,
-                            6, &x_bloq,
-                           14, &x_kind,
-                           15, &x_fxp,
-                            0) ||
-           c3n == u3r_mean(y_meta,
-                            2, &y_shape,
-                            6, &y_bloq,
-                           14, &y_kind,
-                           15, &y_fxp,
-                            0) ||
-           c3n == u3r_sing(x_bloq, y_bloq) ||
-           c3n == u3r_sing(x_kind, y_kind) ||
+      x_shape = u3h(x_meta);          //  2
+      x_bloq = u3h(u3t(x_meta));      //  6
+      x_kind = u3h(u3t(u3t(x_meta))); // 14
+      x_fxp = u3t(u3t(u3t(x_meta)));  // 15
+      y_shape = u3h(y_meta);          //  2
+      y_bloq = u3h(u3t(y_meta));      //  6
+      y_kind = u3h(u3t(u3t(y_meta))); // 14
+      y_fxp = u3t(u3t(u3t(y_meta)));  // 15
+      rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      if ( c3n == u3r_sing(x_bloq, y_bloq) ||
+           c3n == u3r_sing(x_kind, y_kind)
            //  fxp does not need to match so no check
-           c3n == u3r_mean(cor, u3x_con_sam, &rnd, 0)
          )
       {
         return u3m_bail(c3__exit);
@@ -3349,8 +3351,9 @@
         switch (x_kind) {
           case c3__real:
             _set_rounding(rnd);
-            return u3qf_la_mmul_real(x_data, y_data, x_shape, y_shape, x_bloq);
-            break;
+            u3_noun r_data = u3qi_la_mmul_real(x_data, y_data, x_shape, y_shape, x_bloq);
+            // result is already [meta data]
+            return r_data;
 
           default:
             return u3_none;

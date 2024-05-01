@@ -306,13 +306,13 @@
       |-
       ?:  =(0x1 data.ray)  (welp ~[;;((list ndray) els)] ;;((list ndray) fin))
       %=  $
-        els   (flop (rip bloq (cut bloq [0 (snag 0 dims)] data.ray)))
+        els   (tail (flop (rip bloq (cut bloq [0 +((snag 0 dims))] data:(spac `^ray`[[~[(snag 0 dims) 1] bloq kind fxp] `@ux`data.ray])))))
         fin   ?~  els  fin
               (welp ~[;;((list ndray) els)] ;;((list ndray) fin))
         data.ray  (rsh [bloq (snag 0 dims)] data.ray)
       ==
-    ::  cut off end
     !!
+    ::  cut off end
     ++  rip
       |=  [a=bite b=@]
       ^-  (list @)

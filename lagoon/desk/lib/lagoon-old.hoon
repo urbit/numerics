@@ -974,7 +974,7 @@
     ^-  $-([@ @] @)
     =,  meta
     ?+    `^kind`kind  ~|(kind !!)
-        %uint  
+        %uint
       ?+  fun  !!
         %add  ~(sum fe bloq)
         %sub  ~(dif fe bloq)

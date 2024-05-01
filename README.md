@@ -1,6 +1,6 @@
 #   Numerical Libraries for Urbit
 
-**Status ~2024.5.1:  Development work is primarily taking place in the `sigilante-reals` branch preparatory for Lagoon release with 410K and Saloon release with 409K.**
+**Status ~2024.5.1:  Development work is taking place preparatory for Lagoon release with 410K and Saloon release with 409K.**
 
 ![An evocative scene of a mysterious futuristic castle in the style of Flash Gordon](./img/hero-scene.jpg)
 

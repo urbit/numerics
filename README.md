@@ -1,9 +1,18 @@
 #   Numerical Libraries for Urbit
 
-We envision three libraries and associated jet code living in this repository:
+**Status ~2024.5.1:  Development work is primarily taking place in the `sigilante-reals` branch preparatory for Lagoon release with 410K and Saloon release with 409K.**
 
-- Lagoon (Linear AlGebra in hOON) will offer operations in the tradition of BLAS and LAPACK (like NumPy's pure matrix operations).
-- Saloon (Scientific ALgorithms in hOON) will offer transcendental functions (like NumPy's transcendental functions, optimizers, etc.).
-- Maroon (MAchine LeaRning in hOON) will offer machine learning algorithms as a sidecar to Urbit.
+![An evocative scene of a mysterious futuristic castle in the style of Flash Gordon](./img/hero-scene.jpg)
 
-We are also developing [SoftBLAS](https://github.com/urbit/SoftBLAS) to support software-defined jetting.
+This repository organizes the core numerical computing apparatus for Urbit:
+
+- `/lib/math` provides basic single-atom transcendental functions; it mirrors [`sigilante/libmath`](https://github.com/sigilante/libmath) which is the canonical version.
+- Lagoon (Linear AlGebra in hOON) offers operations in the tradition of BLAS and LAPACK (like NumPy's pure matrix operations).
+  - `/desk` contains the Hoon-specific code for Lagoon.
+  - `/vere` contains the C jets for the Vere runtime.
+- Saloon (Scientific ALgorithms in hOON) affords transcendental functions (like NumPy's transcendental functions, optimizers, etc.).
+  - `/desk` contains the Hoon-specific code for Saloon.
+- Maroon (MAchine LeaRning in hOON) implements machine learning algorithms as a sidecar to Urbit.
+  - `/desk` contains the Hoon-specific code for Maroon, currently an in-progress tinygrad implementation.
+
+The Urbit Foundation also provides [SoftBLAS](https://github.com/urbit/SoftBLAS) to support software-defined jetting.  It is used in the Lagoon jets.

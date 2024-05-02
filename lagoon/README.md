@@ -3,6 +3,8 @@
 **Current Status**
 
 - We are preparing a release of Lagoon `%real` with SoftBLAS-powered jets for release with Urbit 410K.
+- We are preparing a release of Saloon `%real` without jets for release with Urbit 410K or 409K.
+- We are working on an implementation of [tinygrad](https://tinygrad.org/).
 
 ---
 

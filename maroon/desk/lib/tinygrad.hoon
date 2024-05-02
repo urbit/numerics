@@ -1,7 +1,8 @@
   ::
 ::::  /lib/tinygrad
 ::
-/-  ls=lagoon
+/-  ls=lagoon,
+    ts=tinygrad
 /+  *saloon
 |%
 ::  +take: set +tg params
@@ -12,6 +13,64 @@
 ++  take
   |=  [inrnd=rounding-mode inrtol=@r]
   %*(. tg rnd inrnd, rtol inrtol)
+::
+++  const
+  |=  [=meta:ls val=@]
+  ^-  ray:ls
+  (fill:(lake rnd) meta val)
+::
+++  one
+  |=  [=meta:ls]
+  ^-  ray:ls
+  ?-    kind.meta
+      %uint
+    1
+    ::
+      %real
+    ?+    bloq.meta  !!
+        %7  .~~~1
+        %6  .~1
+        %5  .1
+        %4  .~~1
+    ==  ::  bloq
+  ==  ::  kind
+::
+++  pi-by-2
+  |=  [=meta:ls]
+  ^-  ray:ls
+  ?+    kind.meta  !!
+      %real
+    ?+    bloq.meta  !!
+        %7  ^~((~(div rq:math rnd) pi:rq:math .~~~2))
+        %6  ^~((~(div rd:math rnd) pi:rd:math .~2))
+        %5  ^~((~(div rs:math rnd) pi:rs:math .2))
+        %4  ^~((~(div rh:math rnd) pi:rh:math .~~2))
+    ==  ::  bloq
+  ==  ::  kind
+::
+++  log2
+  |=  [=meta:ls]
+  ^-  ray:ls
+  =/  log2
+    ?+  bloq.meta  !!
+      %7  log2:rq:math
+      %6  log2:rd:math
+      %5  log2:rs:math
+      %4  log2:rh:math
+    ==
+  ==  ::  bloq
+::
+++  ilog2
+  |=  [=meta:ls]
+  ^-  ray:ls
+  =/  log2
+    ?+  bloq.meta  !!
+      %7  ^~((~(div rq:math rnd) .~~~1 log2:rq:math)
+      %6  ^~((~(div rd:math rnd) .~1 log2:rd:math)
+      %5  ^~((~(div rs:math rnd) .1 log2:rs:math)
+      %4  ^~((~(div rh:math rnd) .~~1 log2:rh:math)
+    ==
+  ==  ::  bloq
 ::
 ++  tg
   =+  [rnd=*rounding-mode rtol=`@r`0x1]
@@ -62,13 +121,13 @@
     :: BinaryOps
     ::
     ::  ADD   = operator.add
-    ++  add  add:(lake rnd)
+    ++  add  add:(sake [rnd rtol])
     ::  SUB   = operator.sub
-    ++  sub  sub:(lake rnd)
+    ++  sub  sub:(sake [rnd rtol])
     ::  MUL   = operator.mul
-    ++  mul  mul:(lake rnd)
+    ++  mul  mul:(sake [rnd rtol])
     ::  DIV   = lambda x,y: int(x/y) if isinstance(x, int) else (x/y if y != 0 else x*math.inf)
-    ++  div  div:(lake rnd)
+    ++  div  div:(sake [rnd rtol])
     ::  MAX   = operator.max
     ++  max
       |=  [a=ray:ls b=ray:ls]
@@ -114,7 +173,7 @@
     ++  mulacc
       |=  [a=ray:ls b=ray:ls c=ray:ls]
       ^-  ray
-      (add:(lake rnd) (mul:(lake rnd) a b) c)
+      (add:(sake [rnd rtol]) (mul:(sake [rnd rtol]) a b) c)
     ::
     :: ReduceOps
     ::
@@ -162,6 +221,7 @@
   ::
   ::  tinygrad functions
   ::
+  +|  %functions
   :: ++  contiguous
   :: ++  contiguous-backward
   :: ++  cast
@@ -173,21 +233,27 @@
   ::
   ++  reciprocal
     |%
+    ::  1/x
     ++  forward
       |=  a=ray
       ^-  ray
-      (div:(lake rnd) (ones:(lake rnd) meta.a) a)
-    :: return grad_output.e(UnaryOps.NEG).e(BinaryOps.MUL, self.ret).e(BinaryOps.MUL, self.ret)
-    ++  backward  !!
-    :: - *self *self
+      (div:ops (const meta.a (one meta)) a)
+    :: -1/x^2
+    ++  backward
+      |=  a=ray
+      ^-  ray
+      (div:ops (neg:ops (const meta.a (one meta))) (mul:ops a a))
     --
   ::
   ++  sin
     |%
+    ::  sin(x)
     ++  forward   sin.ops
-        :: return self.x.const(math.pi / 2).e(BinaryOps.SUB, self.x).e(UnaryOps.SIN).e(BinaryOps.MUL, grad_output)
-    ++  backward  !!
-    :: self*sin(self - pi/2)
+    ::  cos(x) = -sin(x - pi/2)
+    ++  backward
+      |=  a=ray
+      ^-  ray
+      (neg:ops (sin:ops (sub:ops a (const meta.a (pi-by-2 meta.a)))))
     --
   ::
   ++  relu
@@ -195,7 +261,7 @@
     ++  forward
       |=  a=ray
       ^-  ray
-      (max:(lake rnd) a (zeros:(lake rnd) meta.a))
+      (max:(lake rnd) a (const meta.a 0x0))
     :: return self.ret.const(0).e(BinaryOps.CMPLT, self.ret).cast(grad_output.dtype).e(BinaryOps.MUL, grad_output)
     ++  backward  !!
     --
@@ -206,16 +272,11 @@
     ++  forward
       |=  a=ray
       ^-  ray
-      =/  log2
-        ?+  bloq.meta.a  !!
-          %7  log2:rq:math
-          %6  log2:rd:math
-          %5  log2:rs:math
-          %4  log2:rh:math
-        ==
-      (log-2:(sake [rnd rtol]) (mul:(lake rnd) a log2))
-    :: grad_output.e(BinaryOps.DIV, self.x)
-    ++  backward  !!
+      (log-2:(sake [rnd rtol]) (mul:ops a (const meta.a (log2 meta.a))))
+    ++  backward
+      |=  a=ray
+      ^-  ray
+      (div:ops (const meta.a (one meta)) a)
     --
   ::
   ++  exp
@@ -224,17 +285,156 @@
     ++  forward
       |=  a=ray
       ^-  ray
-      =/  ilog2
-        ?+  bloq.meta.a  !!
-          %7  log2:rq:math
-          %6  log2:rd:math
-          %5  log2:rs:math
-          %4  log2:rh:math
-        ==
-      (exp:(sake [rnd rtol]) (mul:(lake rnd) a log2))
-    :: grad_output.e(UnaryOps.EXP2).e(BinaryOps.MUL, grad_output)
+      (exp2:ops (mul:ops a (const meta.a (ilog2 meta.a))))
+    ++  backward
+      |=  a=ray
+      ^-  ray
+      (mul:ops (exp2:ops a) a)
+    --
+  ::
+  ++  sqrt
+    |%
+    ++  forward
+      |=  a=ray
+      ^-  ray
+      (sqrt:ops a)
+    ++  backward
+      |=  a=ray
+      ^-  ray
+      (div:ops a (mul:ops (const meta.a 2) (sqrt:ops a)))
+    --
+  ::
+  ++  sigmoid
+    |%
+    ++  forward
+      |=  a=ray
+      ^-  ray
+      (div:ops (const meta.a (one meta)) (add:ops (const meta.a (one meta)) (exp2:ops (mul:ops (neg:ops (const meta.a (ilog2 meta.a)))))))))))
+    ++  backward
+      |=  a=ray
+      ^-  ray
+      (mul:ops a (sub:ops (const meta.a 1) a))
+    --
+  ::
+  :: Binary ops
+  ::
+  ++  less
+    |%
+    ++  forward
+      |=  [a=ray b=ray]
+      ^-  ray
+      (cmplt:ops a b)
     ++  backward  !!
     --
-
-
+  ::
+  ++  eq
+    |%
+    ++  forward
+      |=  [a=ray b=ray]
+      ^-  ray
+      (cmpeq:ops a b)
+    ++  backward  !!
+    --
+  ::
+  ++  xor
+    |%
+    ++  forward
+      |=  [a=ray b=ray]
+      ^-  ray
+      (xor:ops a b)
+    ++  backward  !!
+    --
+  ::
+  ++  add
+    |%
+    ++  forward
+      |=  [a=ray b=ray]
+      ^-  ray
+      (add:ops a b)
+    ++  backward
+      |=  [a=ray b=ray]
+      ^-  ray
+      [a b]
+    --
+  ::
+  ++  sub
+    |%
+    ++  forward
+      |=  [a=ray b=ray]
+      ^-  ray
+      (sub:ops a b)
+    ++  backward
+      |=  [a=ray b=ray]
+      ^-  ray
+      [a (neg:ops b)]
+    --
+  ::
+  ++  mul
+    |%
+    ++  forward
+      |=  [a=ray b=ray]
+      ^-  ray
+      (mul:ops a b)
+    ++  backward
+      |=  [a=ray b=ray]
+      ^-  ray
+      [b a]
+    --
+  ::
+  ++  div
+    |%
+    ++  forward
+      |=  [a=ray b=ray]
+      ^-  ray
+      (div:ops a b)
+    ++  backward
+      |=  [a=ray b=ray]
+      ^-  ray
+      :-  (div:ops a b)
+      :: XXX ???
+      (neg:ops (mul:ops a (div:ops y (mul:ops x y))))
+    --
+  ::
+  :: Ternary ops
+  ::
+  ++  where
+    |%
+    ++  forward
+      |=  [a=ray b=ray c=ray]
+      ^-  ray
+      (where:ops a b c)
+    ++  backward  !!
+    --
+  ::
+  :: Reduce ops
+  ::
+  ++  sumred
+    |%
+    ++  forward
+      |=  a=ray
+      ^-  ray
+      (sumred:ops a)
+    ++  backward
+      |=  a=ray
+      ^-  ray
+      ::  XXX ??? not correct yet, just placeholder
+      (expand a)
+    --
+  ::
+  ++  maxred
+    |%
+    ++  forward
+      |=  a=ray
+      ^-  ray
+      (maxred:ops a)
+    ++  backward  !!
+    --
+  ::
+  :: Movement ops
+  ::
+  ++  expand  !!
+  ++  reshape  !!
+  ++  permute  !!
+  ++  shrink  !!
+  ++  flip  !!
 --

@@ -8,6 +8,7 @@ We support the following functions and special functions:
 - `++sub`, $-$ subtraction
 - `++mul`, $\times$ multiplication
 - `++div`, $/$ division
+- `++mod`, modulo (remainder after division)
 - `++fma`, $\text{fma}$ fused multiply-add
 - `++sgn`, $\text{sgn}$ signum (also `++sig`)
 - `++neg`, $-$ unary negation

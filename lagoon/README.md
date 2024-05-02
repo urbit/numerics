@@ -2,37 +2,36 @@
 
 **Current Status**
 
+- `/lib/math` is distributed via the [`%yard` desk](https://github.com/urbit/yard).
 - We are preparing a release of Lagoon `%real` with SoftBLAS-powered jets for release with Urbit 410K.
-- We are preparing a release of Saloon `%real` without jets for release with Urbit 410K or 409K.
-- We are working on an implementation of [tinygrad](https://tinygrad.org/).
+- We are preparing a release of Saloon `%real` without jets for release with Urbit 409K.
+- We are working on an implementation of [tinygrad](https://tinygrad.org/) for Maroon.
 
 ---
 
-We envision three libraries and associated jet code living in this repository:
+We envision four libraries and associated jet code living in this repository:
 
-- Lagoon (Linear AlGebra in hOON) will offer BLAS-like operations (like NumPy's pure matrix operations).
+- `/lib/math` offers basic special function support for floating-point atoms.
+- Lagoon (Linear AlGebra in hOON) offers BLAS-like operations (like NumPy's pure matrix operations).
   - Lagoon `%real`s are slated to ship with [410 K](https://github.com/urbit/UIPs/pull/45).
   - [SoftBLAS](https://github.com/urbit/SoftBLAS) provides a reproducible software-defined floating-point implementation of parts of BLAS and LAPACK suitable for jetting Lagoon.
   - `/lib/fixed` provides operations for fixed-precision operations.
-- Saloon (Scientific ALgorithms in hOON) will offer transcendental functions (like NumPy's transcendental functions, optimizers, etc.).
-  - [`/lib/math`](https://github.com/sigilante/libmath) provides a reference interface in Hoon atoms to which Saloon should adhere.
-- Maroon (MAchine LeaRning in hOON) will offer machine learning algorithms as a sidecar to Urbit.
+- Saloon (Scientific ALgorithms in hOON) offers transcendental functions (like NumPy's transcendental functions, optimizers, etc.).
+- Maroon (MAchine LeaRning in hOON) offers machine learning algorithms, starting with tinygrad.
 
----
+##  Type System
 
-- `%real` IEEE 754 float
-- `%cplx` IEEE 754 float/BLAS packed complex
-- `%uint` unsigned integers
-- `%int2` signed twos-complement integers
-- `%sint` signed ZigZag integers
+- `%real` IEEE 754 float (currently supported)
+- `%cplx` IEEE 754 float/BLAS packed complex (planned)
+- `%uint` unsigned integers (currently supported)
+- `%int2` signed twos-complement integers (planned)
+- `%sint` signed ZigZag integers (planned)
 - `%unum` → subdivide into one of:
-  - `%post` posits (32-bit or 16-bit)
-  - `%vald` valids (32-bit or 16-bit)
-- `%fixp` fixed-precision
+  - `%post` posits (32-bit or 16-bit) (planned)
+  - `%vald` valids (32-bit or 16-bit) (planned)
+- `%fixp` fixed-precision (planned)
 
----
-
-Fixed-Point Library `/lib/fixed`
+##  Fixed-Point Library `/lib/fixed`
 
 ```
 > `@ub`(add:fixed 0b100.0001.0000 [8 8] 0b101.0001.0000 [8 8])
@@ -51,7 +50,7 @@ Fixed-Point Library `/lib/fixed`
 [0b11 17 16]
 ```
 
----
+##  Lagoon 410K `%real` Release
 
 The 410 K release candidate for Lagoon provides `%real`-valued array operations equivalent to `@rh`, `@rs`, `@rd`, and `@rq` operations in vanilla Hoon.  (Other types have been removed for this release but will be re/introduced in a subsequent release.)  The following arms are provided:
 

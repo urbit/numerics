@@ -2,6 +2,7 @@
 
 **WIP ~2024.5.2 implementing tinygrad operations**
 
+- Our current objective is to implement `++forward` inference.
 - The `++backward` arms need to deal with `grad_output` arguments.
 
 ##  Code
@@ -74,7 +75,7 @@ Functions generally implement a `++forward` arm and a `++backward` (derivative) 
   - [x] Sum
   - [x] Max
 - Movement Ops
-  - [ ] Expand
+  - [x] Expand
   - [x] Reshape
   - [ ] Permute
   - [ ] Pad

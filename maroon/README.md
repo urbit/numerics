@@ -78,6 +78,26 @@ Functions generally implement a `++forward` arm and a `++backward` (derivative) 
   - [x] Expand
   - [x] Reshape
   - [ ] Permute
-  - [ ] Pad
-  - [ ] Shrink
-  - [ ] Flip
+  - [ ] Pad - figure out the NumPy logic
+  - [ ] Shrink - 
+  - [ ] Flip - write fn to reverse dir along axis
+
+shape=~[2 3 4 5]
+axis=~[1 3]
+shape=~[2 *3* 4 *5*]
+
+```py
+def forward(self, x:LazyBuffer, axis:Tuple[int, ...]) -> LazyBuffer:
+    self.arg = tuple([-1 if i in set(axis) else 1 for i in range(len(x.shape))])
+    return x.stride(self.arg)
+
+  def forward(self, x:LazyBuffer, arg:Tuple[Tuple[int, int], ...]) -> LazyBuffer:
+    self.narg = tuple([(p[0], s+p[0]) for s,p in zip(x.shape, arg)])
+    return x.pad(arg)
+
+def pad(self, arg:Tuple[Optional[Tuple[sint, sint]], ...], value:float=0.0) -> Tensor:
+    if all(x is None or x == (0,0) for x in arg):
+		return self
+    ret = F.Pad.apply(self, arg=(narg:=tuple(x if x is not None else (0,0) for x in arg)))
+    return ret if 0 == value else ret + F.Pad.apply(Tensor.ones_like(self), arg=narg).where(0, value)
+```

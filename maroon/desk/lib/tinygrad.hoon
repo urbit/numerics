@@ -452,17 +452,27 @@
       --
     ++  reshape
       |%
-      ::  (checked)
       ++  forward
         |=  [a=tensor:ts shape=(list @)]
         ^-  tensor:ts
         =.  shape.meta.a  shape
         a
-      ::  (checked)
       ++  backward  !!
       --
     ++  permute  !!
-    ++  shrink  !!
+    ++  pad  !!
+    ++  shrink
+      |%
+      ++  forward
+        |=  [a=tensor:ts shape=(list @)]
+        ^-  tensor:ts
+        =/  slices
+          %+  turn
+            shape
+          |=(a=@ `[`0 `(dec a)])
+        (submatrix:(lake rnd) slices a)
+      ++  backward  !!
+      --
     ++  flip  !!
     --  ::  fns
   --  ::  tg

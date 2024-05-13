@@ -223,7 +223,7 @@
       ret  (^add ret (^mul i.dex cof))
     ==
   ::  Return the stride in each dimension:  row, col, layer, &c.
-  ::  The stride is reported in units of bloq.
+  ::  The stride is reported in units of bits.
   ::
   ++  strides
     |=  =meta

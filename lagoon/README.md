@@ -7,6 +7,8 @@
 - We are preparing a release of Saloon `%real` without jets for release with Urbit 409K.
 - We are working on an implementation of [tinygrad](https://tinygrad.org/) for Maroon.
 
+- [ ] some notion of cursor in an array would be really helpful
+
 ---
 
 We envision four libraries and associated jet code living in this repository:

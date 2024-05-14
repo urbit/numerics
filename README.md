@@ -1,6 +1,6 @@
 #   Numerical Libraries for Urbit
 
-**Status ~2024.5.2:  Development work is taking place preparatory for Lagoon release with 410K and Saloon release with 409K.**
+**Status ~2024.5.14:  Lagoon releases with IEEE 754 reals in 410K; Saloon releases with corresponding functionality in 409K; Maroon is in progress for tinygrad.**
 
 ![An evocative scene of a mysterious futuristic castle in the style of Flash Gordon](./img/hero-scene.jpg)
 

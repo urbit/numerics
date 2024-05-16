@@ -665,8 +665,8 @@
   ::  Source
   ++  pow
     |=  [x=@rs n=@rs]  ^-  @rs
-    ::  fall through on integers (faster)
-    ?:  =(n (san (need (toi n))))  (pow-n x (san (need (toi n))))
+    ::  fall through on positive integers (faster)
+    ?:  &(=(n (san (need (toi n)))) (gth n .0))  (pow-n x (san (need (toi n))))
     (exp (mul n (log x)))
   ::    +sqrt:  @rs -> @rs
   ::
@@ -1446,8 +1446,8 @@
   ::  Source
   ++  pow
     |=  [x=@rd n=@rd]  ^-  @rd
-    ::  fall through on integers (faster)
-    ?:  =(n (san (need (toi n))))  (pow-n x (san (need (toi n))))
+    ::  fall through on positive integers (faster)
+    ?:  &(=(n (san (need (toi n)))) (gth n .~0))  (pow-n x (san (need (toi n))))
     (exp (mul n (log x)))
   ::    +sqrt:  @rd -> @rd
   ::
@@ -2209,8 +2209,8 @@
   ::  Source
   ++  pow
     |=  [x=@rh n=@rh]  ^-  @rh
-    ::  fall through on integers (faster)
-    ?:  =(n (san (need (toi n))))  (pow-n x (san (need (toi n))))
+    ::  fall through on positive integers (faster)
+    ?:  &(=(n (san (need (toi n)))) (gth n .~~0))  (pow-n x (san (need (toi n))))
     (exp (mul n (log x)))
   ::    +sqrt:  @rh -> @rh
   ::
@@ -2907,8 +2907,8 @@
   ::  Source
   ++  pow
     |=  [x=@rq n=@rq]  ^-  @rq
-    ::  fall through on integers (faster)
-    ?:  =(n (san (need (toi n))))  (pow-n x (san (need (toi n))))
+    ::  fall through on positive integers (faster)
+    ?:  &(=(n (san (need (toi n)))) (gth n .~~~0))  (pow-n x (san (need (toi n))))
     (exp (mul n (log x)))
   ::    +sqrt:  @rq -> @rq
   ::

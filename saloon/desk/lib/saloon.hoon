@@ -239,7 +239,7 @@
   ++  pow-n
     |=  [a=ray:ls b=ray:ls]
     ^-  ray
-    !! ::(bin-op:la a b (fun-scalar meta.a %pow-n))
+    (bin-op:la a b (fun-scalar meta.a %pow-n))
   ::    +log: $ray -> $ray
   ::
   ::  Returns the natural logarithm of each entry in a floating-point ray
@@ -271,7 +271,7 @@
   ++  pow
     |=  [a=ray:ls b=ray:ls]
     ^-  ray
-    !! ::(bin-op:la a b (fun-scalar meta.a %pow))
+    (bin-op:la a b (fun-scalar meta.a %pow))
   ::    +sqrt: $ray -> $ray
   ::
   ::  Returns the square root of each entry in a floating-point ray

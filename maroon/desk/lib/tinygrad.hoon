@@ -222,31 +222,35 @@
     :: ++  cast
     ++  neg
       |%
-      ::  (checked)
+      ::  -x
       ++  forward   neg:ops
-      ::  (checked)
+      ::  -x
       ++  backward  neg:ops
       --
     ::
     ++  reciprocal
       |%
       ::  1/x
-      ::  (checked)
       ++  forward
         |=  a=tensor:ts
         ^-  tensor:ts
         (div:ops (const:aux meta.a (one:aux meta.a)) a)
-      :: -1/x^2
-      ::  (checked)
-      ++  backward  !!
+      :: -1/x^2 = -(1/x)^2
+      ++  backward
+        |=  b=tensor:ts
+        ^-  tensor:ts
+        (neg:ops (mul:ops b b))
       --
     ::
     ++  sin
       |%
-      ::  (checked)
+      ::  sin(x)
       ++  forward   sin:ops
-      ::  (unchecked)
-      ++  backward  !!
+      ::  sin(pi/2-x) = cos(x)
+      ++  backward
+        |=  b=tensor:ts
+        ^-  tensor:ts
+        (sin:ops (sub:ops (const:aux meta.b (pi-by-2:aux meta.b)) b))
       --
     ::
     ++  relu
@@ -262,13 +266,16 @@
     ::
     ++  log
       |%
-      ::  (checked)
+      ::  log(2)*lb(x)
       ++  forward
         |=  a=tensor:ts
         ^-  tensor:ts
-        (log-2:(sake [rnd rtol]) (mul:ops a (const:aux meta.a (log2:aux meta.a))))
-      ::  (checked)
-      ++  backward  !!
+        (mul:ops (const:aux meta.a (log2:aux meta.a)) (log-2:(sake [rnd rtol]) a))
+      ::  1/x
+      ++  backward
+        |=  b=tensor:ts
+        ^-  tensor:ts
+        (div:ops (const:aux meta.b (one:aux meta.b)) b)
       --
     ::
     ++  exp

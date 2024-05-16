@@ -591,7 +591,7 @@
     ~/  %argmax
     |=  a=ray
     ^-  @ud
-    +:(find ~[(max a)] (ravel a))
+    +:(find ~[(get-item (max a) ~[0 0])] (ravel a))
   ::
   ++  min
     ~/  %min
@@ -606,7 +606,7 @@
     ~/  %argmin
     |=  a=ray
     ^-  @ud
-    +:(find ~[(min a)] (ravel a))
+    +:(find ~[(get-item (min a) ~[0 0])] (ravel a))
   ::
   ++  cumsum
     ~/  %cumsum
@@ -697,13 +697,13 @@
     =/  shape=(list @)  ~[(snag 1 shape) (snag 0 shape)]
     =/  prod=ray  (zeros [shape bloq kind ~])
     |-
-      ?:  =(i (snag 0 shape))
+      ?:  =(i (snag 0 shape.meta.a))
         prod
       %=  $
         i  +(i)
         prod
       |-
-        ?:  =(j (snag 1 shape))
+        ?:  =(j (snag 1 shape.meta.a))
           prod
         %=  $
           j  +(j)

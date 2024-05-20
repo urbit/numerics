@@ -267,7 +267,7 @@
     ~/  %ravel
     |=  a=ray
     ^-  (list @)
-    (flop (snip (rip bloq.meta.a data.a)))
+    (snip (rip bloq.meta.a data.a))
   ::
   ++  en-ray    :: baum to ray
     |=  =baum
@@ -583,7 +583,7 @@
     |=  a=ray
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
-      ?:  =(((fun-scalar meta.a %gth) b c) 0)
+      ?:  =(((fun-scalar meta.a %gth) b c) .1)
         b  c 
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
@@ -598,7 +598,7 @@
     |=  a=ray
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
-      ?:  =(((fun-scalar meta.a %lth) b c) 0)
+      ?:  =(((fun-scalar meta.a %lth) b c) .1)
         b  c 
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::

@@ -138,18 +138,20 @@
   ++  get-item  ::  extract item at index .dex
     |=  [=ray dex=(list @)]
     ^-  @ux
+    =/  len  (^sub (roll shape.meta.ray ^mul) 1)
     %^    cut
         bloq.meta.ray
-      [(get-bloq-offset meta.ray dex) 1]
+      [(^sub len (get-bloq-offset meta.ray dex)) 1]
     data.ray
   ::
   ++  set-item  ::  set item at index .dex to .val
     |=  [=ray dex=(list @) val=@]
     ^+  ray
+    =/  len  (^sub (roll shape.meta.ray ^mul) 1)
     :-  meta.ray
     %^    sew
         bloq.meta.ray
-      [(get-bloq-offset meta.ray dex) 1 val]
+      [(^sub len (get-bloq-offset meta.ray dex)) 1 val]
     data.ray
   ::
   ++  get-row

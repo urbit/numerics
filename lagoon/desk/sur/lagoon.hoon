@@ -18,7 +18,7 @@
 +$  kind              ::  $kind:  type of array scalars
   $?  %real           ::  IEEE 754 float
       %uint           ::  unsigned integer
-      :: %int2           ::  2s-complement integer (/lib/twoc)
+      %int2           ::  2s-complement integer (/lib/twoc)
       :: %cplx           ::  BLAS-compatible packed floats
       :: %unum           ::  unum/posit  @ruw, @ruh, @rub
       :: %fixp           ::  fixed-precision (/lib/fixed)

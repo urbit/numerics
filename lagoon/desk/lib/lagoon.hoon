@@ -53,7 +53,7 @@
         %int2
       !!
       ::
-        %real
+        %i754
       ?+    bloq.meta  ~|(bloq.meta !!)
         %7  %rq
         %6  %rd
@@ -270,7 +270,7 @@
     ~/  %ravel
     |=  a=ray
     ^-  (list @)
-    (flop (snip (rip bloq.meta.a data.a)))
+    (tail (flop (rip bloq.meta.a data.a)))
   ::
   ++  en-ray    :: baum to ray
     |=  =baum
@@ -338,7 +338,6 @@
     ==
   ::
   ++  fill
-    ::  don't jet
     |=  [=meta x=@]
     ^-  ray
     =/  len  (roll shape.meta ^mul)
@@ -346,14 +345,12 @@
     (con +:(zeros meta) (fil bloq.meta len x))
   ::
   ++  spac
-    ::  don't jet
     |=  =ray
     ^-  ^ray
     :-  meta.ray
     (con data:(zeros meta.ray) data.ray)
   ::
   ++  unspac
-    ::  don't jet
     |=  =ray
     ^-  ^ray
     :-  meta.ray
@@ -370,7 +367,6 @@
   ::
   ::
   ++  eye      ::  produces identity matrix of shape nxn.
-    ::  don't jet
     |=  =meta
     ^-  ray
     ~_  leaf+"lagoon-fail"
@@ -393,7 +389,7 @@
       ::
         %int2  !!
       ::
-        %real
+        %i754
       ?+  bloq.meta  ~|(bloq.meta !!)
         %7  .~~~1
         %6  .~1
@@ -403,14 +399,12 @@
     ==
   ::    Zeroes
   ++  zeros
-    ::  don't jet
     |=  =meta  ^-  ray
     ~_  leaf+"lagoon-fail"
     :-  meta
     (lsh [bloq.meta (roll shape.meta ^mul)] 1)
   ::    Ones
   ++  ones
-    ::  don't jet
     |=  =meta  ^-  ray
     ~_  leaf+"lagoon-fail"
     =/  one
@@ -419,7 +413,7 @@
         ::
           %int2  !!
         ::
-          %real
+          %i754
         ?+  bloq.meta  !!
           %7  .~~~1
           %6  .~1
@@ -450,13 +444,13 @@
     shape.meta
   ::  Produce a 1-dimensional range along one dimension
   ::  as [a b) with interval d.
-  ::  Only produces %real.
+  ::  Only produces %i754.
   ::
   ++  range
     ~/  %range
     |=  [=meta [a=@ b=@] d=@]
     ^-  ray
-    =.  kind.meta  %real
+    =.  kind.meta  %i754
     %-  spac
     %-  en-ray
     ::
@@ -499,14 +493,14 @@
     ==
   ::  Produce a 1-dimensional range along one dimension
   ::  as [a b] with number of steps n.
-  ::  Only produces %real.
+  ::  Only produces %i754.
   ::
   ++  linspace
     ~/  %linspace
     |=  [=meta [a=@ b=@] n=@ud]
     ^-  ray
     =.  shape.meta  ~[n]
-    =.  kind.meta  %real
+    =.  kind.meta  %i754
     %-  spac
     %-  en-ray
     :-  meta
@@ -563,7 +557,6 @@
   ::  Produce an n-dimensional array containing a single value.
   ::
   ++  scale
-    ::  don't jet
     |=  [=meta data=@]
     ^-  ray
     =.  shape.meta  `(list @)`(zing (reap (lent shape.meta) ~[1]))
@@ -574,7 +567,7 @@
         %int2
       (spac [meta `@ux`data])
       ::
-        %real
+        %i754
       ::  convert date to fl to @r XXX TODO REVISIT whether we want to specify input type
       =/  fin
         ?+    bloq.meta  !!
@@ -632,7 +625,6 @@
     (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar meta.a %mul) b c)))
   ::
   ++  reshape
-    ::  don't jet
     |=  [a=ray shape=(list @)]
     ^-  ray
     =/  in-cnt  (reel shape.meta.a ^mul)
@@ -978,7 +970,7 @@
       ::
         %int2  !!
       ::
-        %real
+        %i754
       ?+    `^bloq`bloq  !!
           %7
         ?+  fun  !!
@@ -1050,7 +1042,7 @@
       ::
         %int2  !!
       ::
-        %real
+        %i754
       ?+    bloq  !!
           %7
         ?+  fun  !!

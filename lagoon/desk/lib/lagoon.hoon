@@ -144,7 +144,8 @@
     =/  len  (^sub (roll shape.meta.ray ^mul) 1)
     %^    cut
         bloq.meta.ray
-      [(^sub len (get-bloq-offset meta.ray dex)) 1]
+      :: [(^sub len (get-bloq-offset meta.ray dex)) 1]
+      [(get-bloq-offset meta.ray dex) 1]
     data.ray
   ::
   ++  set-item  ::  set item at index .dex to .val
@@ -154,7 +155,8 @@
     :-  meta.ray
     %^    sew
         bloq.meta.ray
-      [(^sub len (get-bloq-offset meta.ray dex)) 1 val]
+      :: [(^sub len (get-bloq-offset meta.ray dex)) 1 val]
+      [(get-bloq-offset meta.ray dex) 1 val]
     data.ray
   ::
   ++  get-row
@@ -211,7 +213,7 @@
   ++  get-item-number  ::  convert n-dimensional index to scalar index
     |=  [shape=(list @) dex=(list @)]
     ^-  @
-    =.  dex  (flop dex)
+    :: =.  dex  (flop dex)
     =/  sap  (flop shape)
     =/  cof  1
     =/  ret  0
@@ -286,8 +288,8 @@
         %+  con
           data.a
         %+  lsh
-          [bloq.meta.a (dec (^sub n i))]
-        ;;(@ (get-item-baum baum (get-dim shape.meta.a i)))
+          [bloq.meta.a i]
+        (get-item-baum baum (get-dim shape.meta.a i))
     ==
   ::
   ++  de-ray    :: ray to baum
@@ -307,11 +309,12 @@
       =|  fin=(list ndray)
       =|  els=ndray
       |-
-      ?:  =(0x1 data.ray)  (welp ~[;;((list ndray) els)] ;;((list ndray) fin))
+      ?:  =(0x1 data.ray)  (welp ;;((list ndray) fin) ~[;;((list ndray) els)])
       %=  $
-        els   (tail (flop (rip bloq (cut bloq [0 +((snag 0 dims))] data:(spac `^ray`[[~[(snag 0 dims) 1] bloq kind fxp] `@ux`data.ray])))))
-        fin   ?~  els  fin
-              (welp ~[;;((list ndray) els)] ;;((list ndray) fin))
+        els   (snip (rip bloq (cut bloq [0 +((snag 0 dims))] data:(spac `^ray`[[~[(snag 0 dims) 1] bloq kind fxp] `@ux`data.ray]))))
+        fin   ?~  els  fin  :: skip on first row
+              ?~  fin  `(list (list ndray))`~[;;((list ndray) els)]
+              (welp ;;((list (list ndray)) fin) ~[;;((list ndray) els)])
         data.ray  (rsh [bloq (snag 0 dims)] data.ray)
       ==
     !!

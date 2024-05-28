@@ -15,56 +15,55 @@
   =|  val=@ux
   ::  Header field 'BM' (2 bytes)
   =.  val  0x4d42
-  ::  File size in bytes (4 bytes)
-  =/  syz  (roll shape.meta add)
-  =.  val  (con (lsh [3 2] val) syz)
-  ::  Reserved (4 bytes)
+  ::  File size in bytes (4 bytes, MSB)
+  =/  syz  (add (roll shape.meta mul) 54)
+  =.  val  (con (lsh [3 4] syz) val)
+  ::  Reserved (4 bytes, MSB)
   =/  res  0x0
-  =.  val  (con (lsh [3 4] val) res)
-  ::  Start of pixel data (4 bytes) = 54
+  =.  val  (con (lsh [3 6] res) val)
+  ::  Start of pixel data (4 bytes, MSB) = 54
   =/  off  0x36
-  =.  val  (con (lsh [3 4] val) off)
+  =.  val  (con (lsh [3 10] off) val)
   [val 14]
 ::  DIB header, including width in bytes.
 ++  dib-hdr
   |=  =meta:ls
   ^-  [dat=@ux len=@]
   =|  val=@ux
-  ::  Header name
-  =.  val  `@ux`%'BITMAPINFOHEADER'
+  ::  Header name - BITMAPINFOHEADER
   ::  Header size (4 bytes)
   =/  syz  0x28
-  =.  val  (con (lsh [3 4] val) syz)
+  =.  val  syz
   ::  Image width in pixels (4 bytes)
   =/  wyd  (snag 1 shape.meta)
-  =.  val  (con (lsh [3 4] val) wyd)
+  =.  val  (con (lsh [3 4] wyd) val)
   ::  Image height in pixels (4 bytes)
   =/  hyt  (snag 0 shape.meta)
-  =.  val  (con (lsh [3 4] val) hyt)
+  =.  val  (con (lsh [3 8] hyt) val)
   ::  Number of color planes (2 bytes)
   =/  pln  0x1
-  =.  val  (con (lsh [3 2] val) pln)
+  =.  val  (con (lsh [3 12] pln) val)
   ::  Bits per pixel (2 bytes)
   =/  bpp  0x18
-  =.  val  (con (lsh [3 2] val) bpp)
+  =.  val  (con (lsh [3 14] bpp) val)
   ::  Compression method (4 bytes)
   =/  cmp  0x0
-  =.  val  (con (lsh [3 4] val) cmp)
+  =.  val  (con (lsh [3 16] cmp) val)
   ::  Image size in bytes (4 bytes)
   =/  siz  (roll shape.meta add)
-  =.  val  (con (lsh [3 4] val) siz)
+  =.  val  (con (lsh [3 20] siz) val)
   ::  Horizontal resolution in pixels per meter (4 bytes)
   =/  xpm  0x24
-  =.  val  (con (lsh [3 4] val) xpm)
+  =.  val  (con (lsh [3 24] xpm) val)
   ::  Vertical resolution in pixels per meter (4 bytes)
   =/  ypm  0x24
-  =.  val  (con (lsh [3 4] val) ypm)
+  =.  val  (con (lsh [3 28] ypm) val)
   ::  Number of colors in the color palette (4 bytes)
   =/  clr  0x0
-  =.  val  (con (lsh [3 4] val) clr)
+  =.  val  (con (lsh [3 32] clr) val)
   ::  Number of important colors used (4 bytes)
   =/  imp  0x0
-  =.  val  (con (lsh [3 4] val) imp)
+  =.  val  (con (lsh [3 36] imp) val)
   [val 40]
 ::  ++write-task
 ::
@@ -97,18 +96,17 @@
   ::  height at 23--26
   =/  hyt  (cut 3 [22 4] fil)
   ~&  >  [wyd hyt]
-  ::  color depth
+  ::  color depth, bytes per pixel
   =/  dep  (cut 3 [28 4] fil)
-  =/  bpm  (div dep 8)
+  =/  bpp  (div dep 8)
+  ?>  (gte bpp 3)  :: we don't handle smaller bit widths yet
   ::  pixel data at offset
   =/  off  (cut 3 [10 4] fil)
   =/  len  (met 3 fil)
   =/  raw  (cut 3 [off len] fil)
   ~|  %bmp-wrong-shape
-  ?>  =(:(mul bpm hyt wyd) (cut 3 [34 4] fil))
-  ^-  raw:bmp
-  :-  [~[hyt wyd bpm] 3 %uint ~]
-  raw
+  ?>  =(:(mul bpp hyt wyd) (cut 3 [34 4] fil))
+  (spac:la [[~[hyt wyd bpp] 3 %uint ~] raw])
 ::  ++export
 ::
 ::  Export ray to BMP-style hexadecimal.
@@ -116,24 +114,12 @@
 ++  export
   |=  =raw:bmp
   ^-  bmp:bmp
-  |^
   =|  val=@ux
   ::  BMP header
   =.  val  `@ux`-:(fil-hdr meta.raw)
   ::  DIB header
-  =.  val  (con (lsh [3 14] val) `@ux`-:(dib-hdr meta.raw))
+  =.  val  (con (lsh [3 14] `@ux`-:(dib-hdr meta.raw)) val)
   ::  Pixel data
-  =.  val  `@ux`(con (lsh [3 40] val) data:(unspac:la raw))
+  =.  val  (con (lsh [3 54] data:(unspac:la raw)) val)
   val
-  ++  zip3  :: derived but not identical to /lib/sequent
-    |*  [a=(list) b=(list) c=(list)]
-    =/  d=(list _?>(?=(^ a) i.a))  ~
-    |-  ^-  (list _?>(?=(^ a) i.a))
-    ?~  a  ?~  b  ?~  c  d
-           ~|('lists of unequal length' !!)
-           ~|('lists of unequal length' !!)
-    ?~  b  ~|('lists of unequal length' !!)
-    ?~  c  ~|('lists of unequal length' !!)
-    $(a t.a, b t.b, c t.c, d [i.a i.b i.c d])
-  --
 --

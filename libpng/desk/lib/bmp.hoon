@@ -66,23 +66,24 @@
   =/  imp  0x0
   =.  val  (con (lsh [3 4] val) imp)
   [val 40]
-::  .^(@ux %cx %/data/lucy/bmp)
 ::  ++write-task
 ::
 ::  Write to Clay.
 ::  (write-task /path/to/output/png my-ray)
-:: ++  write-task
-::   |=  [=path =raw:png]
-::   ^-  task:clay
-::   :*  %info
-::       %base
-::       ^-  nori
-::       %&
-::       :*  path
-::           %ins
-::           %png
-::           !>((export raw))
-::   ==  ==
+++  write-task
+  |=  [=path =raw:bmp]
+  ^-  task:clay
+  :*  %info
+      %base
+      ^-  nori:clay
+      :*  %&
+      ^-  soba:clay
+      :~  :-  path
+          ^-  miso:clay
+          :-  %ins
+          :-  %bmp
+          !>((export raw))
+  ==  ==  ==
 ::  ++import
 ::
 ::  Import ray from BMP file as RGB.
@@ -105,8 +106,6 @@
   =/  raw  (cut 3 [off len] fil)
   ~|  %bmp-wrong-shape
   ?>  =(:(mul bpm hyt wyd) (cut 3 [34 4] fil))
-  ::  split pixel data by RGB at 24 bytes
-  =/  idx  0
   ^-  raw:bmp
   :-  [~[hyt wyd bpm] 3 %uint ~]
   raw
@@ -115,21 +114,16 @@
 ::  Export ray to BMP-style hexadecimal.
 ::  (export my-ray)
 ++  export
-  |=  [rraw=raw:bmp graw=raw:bmp braw=raw:bmp]
+  |=  =raw:bmp
   ^-  bmp:bmp
   |^
   =|  val=@ux
   ::  BMP header
-  =.  val  `@ux`-:(fil-hdr meta:rraw)
+  =.  val  `@ux`-:(fil-hdr meta.raw)
   ::  DIB header
-  =.  val  (con (lsh [3 14] val) `@ux`-:(dib-hdr meta:rraw))
+  =.  val  (con (lsh [3 14] val) `@ux`-:(dib-hdr meta.raw))
   ::  Pixel data
-  =/  rgb  %+  rep  3
-    %^    zip3
-        `(list @ux)`(snip (rip 3 data.rraw))
-      `(list @ux)`(snip (rip 3 data.graw))
-    `(list @ux)`(snip (rip 3 data.braw))
-  =.  val  `@ux`(con (lsh [3 40] val) rgb)
+  =.  val  `@ux`(con (lsh [3 40] val) data:(unspac:la raw))
   val
   ++  zip3  :: derived but not identical to /lib/sequent
     |*  [a=(list) b=(list) c=(list)]

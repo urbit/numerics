@@ -272,7 +272,7 @@
     ~/  %ravel
     |=  a=ray
     ^-  (list @)
-    (tail (flop (rip bloq.meta.a data.a)))
+    (snip (rip bloq.meta.a data.a))
   ::
   ++  en-ray    :: baum to ray
     |=  =baum
@@ -365,6 +365,53 @@
     =.  shape.meta  (reap (lent shape.meta) 1)
     %-  spac
     [meta data]
+  ::
+  ++  change
+    |=  [=ray =kind =bloq]
+    ^-  ^ray
+    ?+    kind.meta.ray  !!
+        %uint
+      ?+    kind  !!
+          :: %uint -> %uint
+          %uint
+        %-  en-ray
+        :-  [shape.meta.ray bloq %uint fxp.meta.ray]
+        data:(de-ray ray)
+          :: %uint -> %i754
+          %i754
+        %-  en-ray
+        :-  [shape.meta.ray bloq %i754 fxp.meta.ray]
+        %+  turn  (ravel ray)
+        ?+  bloq  !!
+          %7  sun:rq
+          %6  sun:rd
+          %5  sun:rs
+          %4  sun:rh
+        ==
+      ==
+      ::
+        %i754
+      ?+    kind  !!
+          :: %i754 -> %uint
+          :: XXX will incorrectly convert negative values to %uint
+          %uint
+        %-  en-ray
+        :-  [shape.meta.ray bloq %uint fxp.meta.ray]
+        %+  turn  (ravel ray)
+        ?+  bloq.meta.ray  !!
+          %7  :(cork toi:rq need @u (curr ^div 2))
+          %6  :(cork toi:rd need @u (curr ^div 2))
+          %5  :(cork toi:rs need @u (curr ^div 2))
+          %4  :(cork toi:rh need @u (curr ^div 2))
+        ==
+          :: %i754 -> %i754
+          %i754
+        ?>  &((^gte bloq %4) (^lte bloq %7))
+        %-  en-ray
+        :-  [shape.meta.ray bloq %i754 fxp.meta.ray]
+        data:(de-ray ray)
+      ==
+    ==
   ::
   ::  Builders
   ::

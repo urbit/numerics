@@ -37,9 +37,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, less than
   ::    Examples
-  ::      > (lth:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=0x1.0000.0000.0000.0000.0000.0000.3f80.0000.0000.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (lth:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (lth:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.0000.0000.0000.0000.0000.0000.3f80.0000.0000.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (lth:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.0] t=[i=~[.0] t=~[~[.0] ~[.1] ~[.0]]]]
   ::  Source
   ++  lth  lth:(lake rnd)
@@ -47,9 +47,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, less than or equal to
   ::    Examples
-  ::      > (lte:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.3f80.0000.0000.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (lte:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (lte:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.3f80.0000.0000.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (lte:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.0] t=~[~[.1] ~[.1] ~[.0]]]]
   ::  Source
   ++  lte  lte:(lake rnd)
@@ -58,9 +58,9 @@
   ::  Returns the BOOLEAN comparison of two floating-point rays, less than or equal to
   ::  Alias for +lte.
   ::    Examples
-  ::      > (leq:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.3f80.0000.0000.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (leq:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (leq:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.3f80.0000.0000.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (leq:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.0] t=~[~[.1] ~[.1] ~[.0]]]]
   ::  Source
   ++  leq  lte:(lake rnd)
@@ -68,9 +68,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, equal to
   ::    Examples
-  ::      > (equ:la:la (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.0000.0000.0000.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (equ:la:la (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (equ:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.0000.0000.0000.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (equ:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.0] t=~[~[.1] ~[.0] ~[.0]]]]
   ::  Source
   ++  equ  equ:(lake rnd)
@@ -78,9 +78,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, greater than
   ::    Examples
-  ::      > (gth:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=data=0x1.0000.0000.3f80.0000.0000.0000.0000.0000.3f80.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (gth:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (gth:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=data=0x1.0000.0000.3f80.0000.0000.0000.0000.0000.3f80.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (gth:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.0] t=[i=~[.1] t=~[~[.0] ~[.0] ~[.1]]]]
   ::  Source
   ++  gth  gth:(lake rnd)
@@ -88,9 +88,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, greater than or equal to
   ::    Examples
-  ::      > (gte:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=data=0x1.3f80.0000.3f80.0000.3f80.0000.0000.0000.3f80.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (gte:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (gte:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=data=0x1.3f80.0000.3f80.0000.3f80.0000.0000.0000.3f80.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (gte:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.1] t=~[~[.1] ~[.0] ~[.1]]]]
   ::  Source
   ++  gte  gte:(lake rnd)
@@ -99,9 +99,9 @@
   ::  Returns the BOOLEAN comparison of two floating-point rays, greater than or equal to
   ::  Alias for +gte.
   ::    Examples
-  ::      > (geq:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=data=0x1.3f80.0000.3f80.0000.3f80.0000.0000.0000.3f80.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (geq:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (geq:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=data=0x1.3f80.0000.3f80.0000.3f80.0000.0000.0000.3f80.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (geq:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.1] t=~[~[.1] ~[.0] ~[.1]]]]
   ::  Source
   ++  geq  gte:(lake rnd)
@@ -109,9 +109,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, equal to
   ::    Examples
-  ::      > (neq:la:la (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=0x1.0000.0000.3f80.0000.0000.0000.3f80.0000.3f80.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (neq:la:la (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (neq:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.0000.0000.3f80.0000.0000.0000.3f80.0000.3f80.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (neq:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.0] t=[i=~[.1] t=~[~[.0] ~[.1] ~[.1]]]]
   ::  Source
   ++  neq  neq:(lake rnd)
@@ -119,9 +119,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, close to
   ::    Examples
-  ::      > (is-close:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.3f80.0000.0000.0000.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (is-close:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > (is-close:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.3f80.0000.0000.0000.0000]
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (is-close:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.0] t=~[~[.1] ~[.1] ~[.0]]]
   ::  Source
   ++  is-close
@@ -132,9 +132,9 @@
   ::
   ::  Returns the LOOBEAN comparison of two floating-point rays, all close to
   ::    Examples
-  ::      > (all-close:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
+  ::      > (all-close:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
   ::      %.n
-  ::      > (all-close:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (ones:la:la [~[5 1] 5 %real ~]))
+  ::      > (all-close:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (ones:la:la [~[5 1] 5 %i754 ~]))
   ::      %.y
   ::  Source
   ++  all-close  all:(lake rnd)
@@ -142,9 +142,9 @@
   ::
   ::  Returns the LOOBEAN comparison of two floating-point rays, any close to
   ::    Examples
-  ::      > (any-close:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
+  ::      > (any-close:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
   ::      %.y
-  ::      > (any-close:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (en-ray:la:la [~[5 1] 5 %real ~] ~[.1 .0 .1 .2 .0]))
+  ::      > (any-close:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
   ::      %.y
   ::  Source
   ++  any-close  any:(lake rnd)
@@ -175,8 +175,8 @@
   ::
   ::  Returns the fused multiply-add of three floating-point rays
   ::  Examples
-  ::    > (fma:sa:sa:sa (ones:la:la [~[5 1] 5 %real ~]) (ones:la:la [~[5 1] 5 %real ~]) (ones:la:la [~[5 1] 5 %real ~]))
-  ::    [meta=[shape=~[5 1] bloq=5 kind=%real fxp=~] data=0x1.4000.0000.4000.0000.4000.0000.4000.0000.4000.0000]
+  ::    > (fma:sa:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (ones:la:la [~[5 1] 5 %i754 ~]) (ones:la:la [~[5 1] 5 %i754 ~]))
+  ::    [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.4000.0000.4000.0000.4000.0000.4000.0000.4000.0000]
   ::  Source
   ++  fma  |=([a=ray:ls b=ray:ls c=ray:ls] (add:(lake rnd) (mul:(lake rnd) a b) c))
   ::    +neg:  $ray -> $ray
@@ -318,6 +318,7 @@
     |=  [=bloq =kind fun=unary-ops]
     ^-  $-(@ @)
     ?-    kind
+        %int2  !!
         %uint
       ?-  fun
         %neg        !!
@@ -333,7 +334,7 @@
         %cbrt       !!
       ==  ::  fun
       ::
-        %real
+        %i754
       ?+    bloq  !!
           %7
         ?-  fun
@@ -402,13 +403,14 @@
     |=  [=meta fun=binary-ops]
     ^-  $-([@ @] @)
     ?-    kind.meta
+        %int2  !!
         %uint
       ?-  fun
         %pow        (fun-scalar meta %pow-n)
         %pow-n      |=([x=@u n=@u] ^-(@u ?:(=(0 n) 1 =/(p x |-(?:((^lth n 2) p $(n (dec n), p (^mul p x))))))))
       ==  ::  fun
       ::
-        %real
+        %i754
       ?+    bloq.meta  !!
           %7
         ?-  fun

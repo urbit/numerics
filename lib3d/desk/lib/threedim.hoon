@@ -5,6 +5,7 @@
 /-  ls=lagoon,
     ts=threedim
 /+  *lagoon,
+    math,
     *saloon
 |%
 ::  Render 3D points in 2D space.
@@ -24,7 +25,7 @@
   b
 ::  Produce a grid of points for the canvas with rendered points indicated.
 ++  gen-3d
-  |=  [ipts=(list (list @rs)) =view:ts]
+  |=  [ipts=(list (list @rs)) =view:ts =lens:ts]
   ^-  ray:ls
   =/  m  (lent ipts)
   =/  n  (lent (snag 0 ipts))
@@ -61,4 +62,88 @@
   =/  current-bin  (add:rs min (mul:rs ds (sun:rs idx)))
   ?:  (lth:rs p current-bin)  idx
   $(idx +(idx))
+::  +triplicate
+::
+::  Convert single points into triples of the point.
+::  For this case, we are working with @rs values only.
+++  triplicate
+  |=  =ray:ls
+  ^-  ray:ls
+  =,  meta.ray
+  =/  pts  (ravel:la ray)
+  =/  mn  (lent pts)
+  =|  pxl=(list @rs)
+  |-
+  ?~  pts  (en-ray:la [~[(mul 3 mn)] +.meta.ray] pxl)
+  $(pts t.pts, pxl [i.pts i.pts i.pts pxl])
+::
+++  look-at-matrix
+  |=  =lens
+  ^-  ray:ls
+  =/  c-posn  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[x.lens y.lens z.lens]])
+  =/  t-posn  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[tx.lens ty.lens tz.lens]])
+  =/  up  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[.0.0 .1.0 .0.0]])
+  ::  Create the look-at view matrix.
+  =/  f  (sub:la c-posn t-posn)
+  =.  f  (div:la f (sqrt:sa (dot:la f f)))
+  =/  r1  (sub:rs (mul:rs (get-item u ~[1]) (get-item f ~[2])) (mul:rs (get-item u ~[2]) (get-item f ~[1])))
+  =/  r2  (sub:rs (mul:rs (get-item u ~[2]) (get-item f ~[0])) (mul:rs (get-item u ~[0]) (get-item f ~[2])))
+  =/  r3  (sub:rs (mul:rs (get-item u ~[0]) (get-item f ~[1])) (mul:rs (get-item u ~[1]) (get-item f ~[0])))
+  =/  r  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[r1 r2 r3]])
+  =.  r  (div:la r (sqrt:sa (dot:la r r)))
+  =/  u1  (sub:rs (mul:rs (get-item f ~[1]) (get-item r ~[2])) (mul:rs (get-item f ~[2]) (get-item r ~[1])))
+  =/  u2  (sub:rs (mul:rs (get-item f ~[2]) (get-item r ~[0])) (mul:rs (get-item f ~[0]) (get-item r ~[2])))
+  =/  u3  (sub:rs (mul:rs (get-item f ~[0]) (get-item r ~[1])) (mul:rs (get-item f ~[1]) (get-item r ~[0])))
+  =/  u  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[u1 u2 u3]])
+  =/  m  (eye:la 4)
+  =.  m  (set-item:la m ~[0 0] (get-item r ~[0]))
+  =.  m  (set-item:la m ~[0 1] (get-item r ~[1]))
+  =.  m  (set-item:la m ~[0 2] (get-item r ~[2]))
+  =.  m  (set-item:la m ~[1 0] (get-item u ~[0]))
+  =.  m  (set-item:la m ~[1 1] (get-item u ~[1]))
+  =.  m  (set-item:la m ~[1 2] (get-item u ~[2]))
+  =.  m  (set-item:la m ~[2 0] (get-item f ~[0]))
+  =.  m  (set-item:la m ~[2 1] (get-item f ~[1]))
+  =.  m  (set-item:la m ~[2 2] (get-item f ~[2]))
+  =/  mr  (mmul:la (sub:la .0 (submatrix:la ~[`[[`0 `0]] `[[`2 `2]]] m)) c-posn)
+  =.  m  (set-item:la m ~[3 0] (get-item mr ~[0]))
+  =.  m  (set-item:la m ~[3 1] (get-item mr ~[1]))
+  =.  m  (set-item:la m ~[3 2] (get-item mr ~[2]))
+  =.  m  (set-item:la m ~[3 3] (get-item mr ~[3]))
+  m
+::
+++  project-points
+  |=  [pts=ray:ls =view:ts =lens:ts]
+  ^-  ray:ls
+  =/  fov  60  ::  field of view, degrees
+  =/  asp  (div:rs (get-item view ~[1]) (get-item view ~[0]))  ::  aspect ratio
+  =/  near  .0.1  ::  near clipping plane
+  =/  far  .1000  ::  far clipping plane
+  ::  Compute the projection matrix.
+  =/  f  (div:rs .1 (tan:sa (mul-scalar:la (deg2rad fov) .0.5)))
+  =/  m  (zeros:la 4 4)
+  =.  m  (set-item:la m ~[0 0] (div:rs f asp))
+  =.  m  (set-item:la m ~[1 1] f)
+  =.  m  (set-item:la m ~[2 2] (div:rs (add:rs near far) (sub:rs near far)))
+  =.  m  (set-item:la m ~[2 3] (mul:rs (mul:rs .2 near far) (div:rs near far)))
+  =.  m  (set-item:la m ~[3 2] -1)
+  ::  Compute the view matrix.
+  =/  l  (look-at-matrix lens)
+  ::  Project the points to camera space.
+  =/  ph  
+
+  ::  Perspective divide.
+
+  ::  Transform the points to screen space.
+  =/  pix  (add-scalar:la (mul-scalar:la (submatrix:la ~[`[[~ ~]] `[[~ `3]]] ph) .5) .5)
+  =.  pix  (set-col:la pix ~[0] (mul:la (get-col:la pix ~[0]) (sun:rs nx.view)))
+  =.  pix  (set-col:la pix ~[1] (mul:la (get-col:la pix ~[1]) (sun:rs ny.view)))
+  pix
+::
+++  deg2rad
+  |=  deg=@rs
+  ^-  ray:ls
+  =/  pi  pi:rs:math
+  =/  rad  (mul:rs (mul:rs pi .5.555555e-3) deg)
+  rad
 --

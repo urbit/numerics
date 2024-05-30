@@ -31,10 +31,13 @@
 =/  pts  ;;((list (list @rs)) +.q.dat)
 ~&  >  "Loaded {<(lent pts)>} points."
 ::  Define the Camera and Viewport: Set up the camera position and the parameters of the viewport (the 2D grid).
-=/  img  (gen-3d:threedim pts [.-1 .1 .-1 .1 100 100])
-~&  >>  meta.img
-~&  >  "Rendered points."
-=/  raw  (change:la (mul-scalar:la img .255) %uint 3)
-~&  >>  meta.raw
+=/  =lens  [.2 .2 .2 .0 .0 .0]
+=/  =view  [.-1 .1 .-1 .1 50 50]
+=/  grd  (gen-3d:threedim pts view lens)
+~&  >  "Generated 3D coordinates."
+~&  >>  meta.grd
+=/  raw  (change:la (mul-scalar:la grd .255) %uint 3)
+::  Convert 8-bit points to 24-bit 
+=/  img  (triplicate:threedim grd)
 ~&  >  "Converted to bitmap."
 (write-task:bmp /dat/[data-file]/bmp raw)

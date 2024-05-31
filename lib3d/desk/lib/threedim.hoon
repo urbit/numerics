@@ -78,71 +78,103 @@
   $(pts t.pts, pxl [i.pts i.pts i.pts pxl])
 ::
 ++  look-at-matrix
-  |=  =lens
+  |=  =lens:ts
   ^-  ray:ls
-  =/  c-posn  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[x.lens y.lens z.lens]])
-  =/  t-posn  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[tx.lens ty.lens tz.lens]])
-  =/  up  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[.0.0 .1.0 .0.0]])
+  =/  c-posn  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[x.lens] ~[y.lens] ~[z.lens]])
+  =/  t-posn  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[tx.lens] ~[ty.lens] ~[tz.lens]])
+  =/  u  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[.0.0] ~[.1.0] ~[.0.0]])
   ::  Create the look-at view matrix.
   =/  f  (sub:la c-posn t-posn)
-  =.  f  (div:la f (sqrt:sa (dot:la f f)))
-  =/  r1  (sub:rs (mul:rs (get-item u ~[1]) (get-item f ~[2])) (mul:rs (get-item u ~[2]) (get-item f ~[1])))
-  =/  r2  (sub:rs (mul:rs (get-item u ~[2]) (get-item f ~[0])) (mul:rs (get-item u ~[0]) (get-item f ~[2])))
-  =/  r3  (sub:rs (mul:rs (get-item u ~[0]) (get-item f ~[1])) (mul:rs (get-item u ~[1]) (get-item f ~[0])))
-  =/  r  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[r1 r2 r3]])
-  =.  r  (div:la r (sqrt:sa (dot:la r r)))
-  =/  u1  (sub:rs (mul:rs (get-item f ~[1]) (get-item r ~[2])) (mul:rs (get-item f ~[2]) (get-item r ~[1])))
-  =/  u2  (sub:rs (mul:rs (get-item f ~[2]) (get-item r ~[0])) (mul:rs (get-item f ~[0]) (get-item r ~[2])))
-  =/  u3  (sub:rs (mul:rs (get-item f ~[0]) (get-item r ~[1])) (mul:rs (get-item f ~[1]) (get-item r ~[0])))
-  =/  u  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[u1 u2 u3]])
-  =/  m  (eye:la 4)
-  =.  m  (set-item:la m ~[0 0] (get-item r ~[0]))
-  =.  m  (set-item:la m ~[0 1] (get-item r ~[1]))
-  =.  m  (set-item:la m ~[0 2] (get-item r ~[2]))
-  =.  m  (set-item:la m ~[1 0] (get-item u ~[0]))
-  =.  m  (set-item:la m ~[1 1] (get-item u ~[1]))
-  =.  m  (set-item:la m ~[1 2] (get-item u ~[2]))
-  =.  m  (set-item:la m ~[2 0] (get-item f ~[0]))
-  =.  m  (set-item:la m ~[2 1] (get-item f ~[1]))
-  =.  m  (set-item:la m ~[2 2] (get-item f ~[2]))
-  =/  mr  (mmul:la (sub:la .0 (submatrix:la ~[`[[`0 `0]] `[[`2 `2]]] m)) c-posn)
-  =.  m  (set-item:la m ~[3 0] (get-item mr ~[0]))
-  =.  m  (set-item:la m ~[3 1] (get-item mr ~[1]))
-  =.  m  (set-item:la m ~[3 2] (get-item mr ~[2]))
-  =.  m  (set-item:la m ~[3 3] (get-item mr ~[3]))
+  =.  f  (div-scalar:la f (get-item:la (sqrt:sa (dot:la f f)) ~[0 0]))
+  =/  r1  `@rs`(sub:rs (mul:rs `@rs`(get-item:la u ~[1 0]) `@rs`(get-item:la f ~[2 0])) (mul:rs `@rs`(get-item:la u ~[2 0]) `@rs`(get-item:la f ~[1 0])))
+  =/  r2  `@rs`(sub:rs (mul:rs `@rs`(get-item:la u ~[2 0]) `@rs`(get-item:la f ~[0 0])) (mul:rs `@rs`(get-item:la u ~[0 0]) `@rs`(get-item:la f ~[2 0])))
+  =/  r3  `@rs`(sub:rs (mul:rs `@rs`(get-item:la u ~[0 0]) `@rs`(get-item:la f ~[1 0])) (mul:rs `@rs`(get-item:la u ~[1 0]) `@rs`(get-item:la f ~[0 0])))
+  =/  r  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[r1] ~[r2] ~[r3]])
+  =.  r  (div-scalar:la r (get-item:la (sqrt:sa (dot:la r r)) ~[0 0]))
+  =/  u1  (sub:rs (mul:rs `@rs`(get-item:la f ~[1 0]) `@rs`(get-item:la r ~[2 0])) (mul:rs `@rs`(get-item:la f ~[2 0]) `@rs`(get-item:la r ~[1 0])))
+  =/  u2  (sub:rs (mul:rs `@rs`(get-item:la f ~[2 0]) `@rs`(get-item:la r ~[0 0])) (mul:rs `@rs`(get-item:la f ~[0 0]) `@rs`(get-item:la r ~[2 0])))
+  =/  u3  (sub:rs (mul:rs `@rs`(get-item:la f ~[0 0]) `@rs`(get-item:la r ~[1 0])) (mul:rs `@rs`(get-item:la f ~[1 0]) `@rs`(get-item:la r ~[0 0])))
+  =/  u  (en-ray:la [~[3 1] 5 %i754 ~] ~[~[u1] ~[u2] ~[u3]])
+  =/  m  (eye:la [~[4 4] 5 %i754 ~])
+  =.  m  (set-item:la m ~[0 0] (get-item:la r ~[0 0]))
+  =.  m  (set-item:la m ~[0 1] (get-item:la r ~[1 0]))
+  =.  m  (set-item:la m ~[0 2] (get-item:la r ~[2 0]))
+  =.  m  (set-item:la m ~[1 0] (get-item:la u ~[0 0]))
+  =.  m  (set-item:la m ~[1 1] (get-item:la u ~[1 0]))
+  =.  m  (set-item:la m ~[1 2] (get-item:la u ~[2 0]))
+  =.  m  (set-item:la m ~[2 0] (get-item:la f ~[0 0]))
+  =.  m  (set-item:la m ~[2 1] (get-item:la f ~[1 0]))
+  =.  m  (set-item:la m ~[2 2] (get-item:la f ~[2 0]))
+  ::  status:  need to fix +submatrix
+  =/  mr  (mmul:la (sub:la (zeros:la [~[2 2] 5 %i754 ~]) (submatrix:la ~[`[[`0 `0]] `[[`2 `2]]] m)) c-posn)
+  =.  m  (set-item:la m ~[3 0] (get-item:la mr ~[0 0]))
+  =.  m  (set-item:la m ~[3 1] (get-item:la mr ~[1 0]))
+  =.  m  (set-item:la m ~[3 2] (get-item:la mr ~[2 0]))
+  =.  m  (set-item:la m ~[3 3] (get-item:la mr ~[3 0]))
   m
 ::
 ++  project-points
   |=  [pts=ray:ls =view:ts =lens:ts]
   ^-  ray:ls
-  =/  fov  60  ::  field of view, degrees
-  =/  asp  (div:rs (get-item view ~[1]) (get-item view ~[0]))  ::  aspect ratio
+  =/  fov  .60  ::  field of view, degrees
+  =/  asp  (div:rs (sun:rs nx.view) (sun:rs ny.view))  ::  aspect ratio
   =/  near  .0.1  ::  near clipping plane
   =/  far  .1000  ::  far clipping plane
   ::  Compute the projection matrix.
-  =/  f  (div:rs .1 (tan:sa (mul-scalar:la (deg2rad fov) .0.5)))
-  =/  m  (zeros:la 4 4)
+  =/  f  (div:rs .1 (tan:rs:math (mul:rs (deg2rad fov) .0.5)))
+  =/  m  (zeros:la [~[4 4] 5 %i754 ~])
   =.  m  (set-item:la m ~[0 0] (div:rs f asp))
   =.  m  (set-item:la m ~[1 1] f)
   =.  m  (set-item:la m ~[2 2] (div:rs (add:rs near far) (sub:rs near far)))
-  =.  m  (set-item:la m ~[2 3] (mul:rs (mul:rs .2 near far) (div:rs near far)))
+  =.  m  (set-item:la m ~[2 3] (mul:rs :(mul:rs .2 near far) (div:rs near far)))
   =.  m  (set-item:la m ~[3 2] -1)
   ::  Compute the view matrix.
   =/  l  (look-at-matrix lens)
   ::  Project the points to camera space.
-  =/  ph  
-
-  ::  Perspective divide.
-
+  =/  ph  (ones:la [~[(snag 0 shape.meta.pts) 4] 5 %i754 ~])
+  =.  ph  (set-col:la ph ~[0] (get-col:la pts ~[0]))
+  =.  ph  (set-col:la ph ~[1] (get-col:la pts ~[1]))
+  =.  ph  (set-col:la ph ~[2] (get-col:la pts ~[2]))
+  =/  pc  (mmul:la (mmul:la ph (transpose:la l)) m)
+  ::  Perspective divide.  (seems to be unnecessary)
+  :: =.  pc  (div:la pc (get-col:la pc ~[3]))
   ::  Transform the points to screen space.
-  =/  pix  (add-scalar:la (mul-scalar:la (submatrix:la ~[`[[~ ~]] `[[~ `3]]] ph) .5) .5)
-  =.  pix  (set-col:la pix ~[0] (mul:la (get-col:la pix ~[0]) (sun:rs nx.view)))
-  =.  pix  (set-col:la pix ~[1] (mul:la (get-col:la pix ~[1]) (sun:rs ny.view)))
+  =/  pix  (add-scalar:la (mul-scalar:la (submatrix:la ~[`[[~ ~]] `[[~ `3]]] pc) .5) .5)
+  =.  pix  (set-col:la pix ~[0] (mul-scalar:la (get-col:la pix ~[0]) (sun:rs nx.view)))
+  =.  pix  (set-col:la pix ~[1] (mul-scalar:la (get-col:la pix ~[1]) (sun:rs ny.view)))
   pix
+::
+++  render-point-cloud
+  |=  [pts=ray:ls =view:ts =lens:ts]
+  ^-  ray:ls
+  ::  Initialize with black background.
+  =/  img  (zeros:la [~[nx.view ny.view 3] 5 %i754 ~])
+  ::  Project points to 2D.
+  =/  p2d  (project-points pts view lens)
+  =/  m  (snag 0 shape.meta.p2d)
+  ::  Calculate depth (distance from camera).
+  =/  dd  (sub-scalar:la pts .2)
+  =/  d  (sqrt:sa (dot:la dd dd))
+  =/  dn  %+  div:la
+            (sub-scalar:la d (get-item:la (min:la d) ~[0]))
+          (sub:la (max:la d) (min:la d))
+  ::  Rasterize points.
+  =|  idx=@
+  |-
+  ?:  =(m idx)  img
+  =/  px  (get-item:la p2d ~[idx 0])
+  =/  py  (get-item:la p2d ~[idx 1])
+  ?:  &(&((lte .0 px) (lth px nx.view)) &((lte .0 py) (lth py ny.view)))
+    $(idx +(idx))
+  =/  shd  (get-item:la dn ~[idx])
+  %=  $
+    idx  +(idx)
+    img  (set-item:la (set-item:la (set-item:la img ~[py px 0] shd) ~[py px 1] shd) ~[py px 2] shd)
+  ==
 ::
 ++  deg2rad
   |=  deg=@rs
-  ^-  ray:ls
+  ^-  @rs
   =/  pi  pi:rs:math
   =/  rad  (mul:rs (mul:rs pi .5.555555e-3) deg)
   rad

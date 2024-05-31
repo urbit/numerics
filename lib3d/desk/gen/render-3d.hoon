@@ -2,7 +2,8 @@
 ::::  Version ~2024.5.29 by ~lagrev-nocfep
 ::
 ::  Load a point cloud and render to a bitmap.
-/-  ls=lagoon
+/-  ls=lagoon,
+    ts=threedim
 /+  bmp,
     *lagoon,
     threedim
@@ -28,12 +29,13 @@
 =/  fil  .^(@t %cx /(scot %p p.bec)/[q.bec]/(scot %da p.r.bec)/dat/[data-file]/hoon)
 ~&  >  "Loaded /dat/{(trip data-file)}.hoon."
 =/  dat  (ride %noun fil)
-=/  pts  ;;((list (list @rs)) +.q.dat)
-~&  >  "Loaded {<(lent pts)>} points."
+=/  xts  ;;((list (list @rs)) +.q.dat)
+~&  >  "Loaded {<(lent xts)>} points."
+=/  pts  (en-ray:la [~[(lent xts) (lent (snag 0 xts))] 5 %i754 ~] xts)
 ::  Define the Camera and Viewport: Set up the camera position and the parameters of the viewport (the 2D grid).
-=/  =lens  [.2 .2 .2 .0 .0 .0]
-=/  =view  [.-1 .1 .-1 .1 50 50]
-=/  grd  (gen-3d:threedim pts view lens)
+=/  =lens:ts  [.2 .2 .2 .0 .0 .0]
+=/  =view:ts  [.-1 .1 .-1 .1 50 50]
+=/  grd  (render-point-cloud:threedim pts view lens)
 ~&  >  "Generated 3D coordinates."
 ~&  >>  meta.grd
 =/  raw  (change:la (mul-scalar:la grd .255) %uint 3)

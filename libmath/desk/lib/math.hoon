@@ -517,6 +517,12 @@
     =/  i2  (add (sun i) (sun i))
     =.  term  (mul (neg term) (div (mul x x) (mul i2 (add i2 .1))))
     $(i +(i), p (add p term), po p)
+  ++  sin-cheb
+    |=  x=@rs  ^-  @rs
+    ^-  @rs
+    =/  a  .1
+
+
   ::    +cos:  @rs -> @rs
   ::
   ::  Returns the cosine of a floating-point atom.
@@ -803,6 +809,31 @@
     ?:  (lth dcm .0.5)
       int
     (add int .1)
+  ::    +cheb
+  ::
+  ::  Returns the Chebyshev polynomial of the first kind of a floating-point
+  ::  atom.  The Chebyshev polynomials are defined by the recurrence relation
+  ::  T_n(x) = 2x T_{n-1}(x) - T_{n-2}(x) with T_0(x) = 1 and T_1(x) = x.
+  ::    Examples
+  ::      > ((cheb 0) .0.25)
+  ::      .1
+  ::      > ((cheb 1) .0.25)
+  ::      .0.25
+  ::      > ((cheb 2) .0.25)
+  ::      .-0.875
+  ::      > ((cheb 3) .0.25)
+  ::      .-0.6875
+  ::      > ((cheb 3) .-0.25)
+  ::      .0.6875
+  ::  Source:
+  ++  cheb
+    |=  n=@ud
+    ^~
+    |=  x=@rs
+    ^-  @rs
+    ?:  =(0 n)  .1
+    ?:  =(1 n)  x
+    (sub :(mul .2 x $(n (dec n))) $(n (dec (dec n))))
   --
 ::  double precision
 ++  rd
@@ -1584,6 +1615,31 @@
     ?:  (lth dcm .~0.5)
       int
     (add int .~1)
+  ::    +cheb
+  ::
+  ::  Returns the Chebyshev polynomial of the first kind of a floating-point
+  ::  atom.  The Chebyshev polynomials are defined by the recurrence relation
+  ::  T_n(x) = 2x T_{n-1}(x) - T_{n-2}(x) with T_0(x) = 1 and T_1(x) = x.
+  ::    Examples
+  ::      > ((cheb 0) .~0.25)
+  ::      .~1
+  ::      > ((cheb 1) .~0.25)
+  ::      .~0.25
+  ::      > ((cheb 2) .~0.25)
+  ::      .~-0.875
+  ::      > ((cheb 3) .~0.25)
+  ::      .~-0.6875
+  ::      > ((cheb 3) .~-0.25)
+  ::      .~0.6875
+  ::  Source:
+  ++  cheb
+    |=  n=@ud
+    ^~
+    |=  x=@rd
+    ^-  @rd
+    ?:  =(0 n)  .~1
+    ?:  =(1 n)  x
+    (sub :(mul .~2 x $(n (dec n))) $(n (dec (dec n))))
   --
 ::  half precision
 ++  rh
@@ -2279,6 +2335,31 @@
   ::      .~~1
   ::  Source
   ++  arg  abs
+  ::    +cheb
+  ::
+  ::  Returns the Chebyshev polynomial of the first kind of a floating-point
+  ::  atom.  The Chebyshev polynomials are defined by the recurrence relation
+  ::  T_n(x) = 2x T_{n-1}(x) - T_{n-2}(x) with T_0(x) = 1 and T_1(x) = x.
+  ::    Examples
+  ::      > ((cheb 0) .~~0.25)
+  ::      .~~1
+  ::      > ((cheb 1) .~~0.25)
+  ::      .~~0.25
+  ::      > ((cheb 2) .~~0.25)
+  ::      .~~-0.875
+  ::      > ((cheb 3) .~~0.25)
+  ::      .~~-0.6875
+  ::      > ((cheb 3) .~~-0.25)
+  ::      .~~0.6875
+  ::  Source:
+  ++  cheb
+    |=  n=@ud
+    ^~
+    |=  x=@rh
+    ^-  @rh
+    ?:  =(0 n)  .~~1
+    ?:  =(1 n)  x
+    (sub :(mul .~~2 x $(n (dec n))) $(n (dec (dec n))))
   --
 ::  quad precision
 ++  rq
@@ -2977,6 +3058,32 @@
   ::      .~~~1
   ::  Source
   ++  arg  abs
+  ::    +cheb
+  ::
+  ::  Returns the Chebyshev polynomial of the first kind of a floating-point
+  ::  atom.  The Chebyshev polynomials are defined by the recurrence relation
+  ::  T_n(x) = 2x T_{n-1}(x) - T_{n-2}(x) with T_0(x) = 1 and T_1(x) = x.
+  ::    Examples
+  ::      > ((cheb 0) .~~~0.25)
+  ::      .~~~1
+  ::      > ((cheb 1) .~~~0.25)
+  ::      .~~~0.25
+  ::      > ((cheb 2) .~~~0.25)
+  ::      .~~~-0.875
+  ::      > ((cheb 3) .~~~0.25)
+  ::      .~~~-0.6875
+  ::      > ((cheb 3) .~~~-0.25)
+  ::      .~~~0.6875
+  ::  Source:
+  ++  cheb
+    |=  n=@ud
+    ^~
+    |=  x=@rq
+    ^-  @rq
+    ?:  =(0 n)  .~~~1
+    ?:  =(1 n)  x
+    (sub :(mul .~~~2 x $(n (dec n))) $(n (dec (dec n))))
+
   --
 ::  reference values
 ++  reference

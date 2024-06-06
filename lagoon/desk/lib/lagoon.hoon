@@ -71,7 +71,7 @@
     ~/  %submatrix
     |=  [sli=(list slice) a=ray]
     ::
-    ::  example: sli=~[`[`1 `3] `[`1 ~] ~] is equivalent to a[1:4,1:]
+    ::  example: sli=~[`[`1 `3] `[`1 ~] ~] is equivalent to a[1:3,1:,:]
     ::
     ^-  ray
     ::
@@ -100,14 +100,13 @@
     ::
     ::  calculate the shape of the result
     =/  out-shape=(list @)
-    %+  turn  
+    %+  turn
       out-indices
     |=(inds=(list (list @)) (lent inds))
     :: 
     ::  grab submatrix entries from cartesian product
     =/  new-dat=@ux
     %+  rep  bloq.meta.a
-    %-  flop
     %+  turn
       (gather out-indices)
     |=  dex=(list @)

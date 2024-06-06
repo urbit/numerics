@@ -517,6 +517,12 @@
     =/  i2  (add (sun i) (sun i))
     =.  term  (mul (neg term) (div (mul x x) (mul i2 (add i2 .1))))
     $(i +(i), p (add p term), po p)
+  ++  sin-cheb
+    |=  x=@rs  ^-  @rs
+    ^-  @rs
+    =/  a  .1
+
+
   ::    +cos:  @rs -> @rs
   ::
   ::  Returns the cosine of a floating-point atom.

@@ -8,7 +8,7 @@
 ::  then to test each operation on each kind of ray.
 ::
 ::  +$  kind              ::  $kind:  type of array scalars
-::    $?  %real           ::  IEEE 754 float
+::    $?  %i754           ::  IEEE 754 float
 ::        %uint           ::  unsigned integer
 ::        %int2           ::  2s-complement integer
 ::        %cplx           ::  BLAS-compatible packed floats
@@ -152,8 +152,8 @@
   =/  meta-40-3=meta  [[40 ~] 3 %uint ~]
   =/  assay-10-4=ray  (iota:la meta-10-4)
   =/  assay-40-3=ray  (iota:la meta-40-3)
-  =/  canon-10-4=ray  [meta=meta-10-4 data=0x1.0000.0001.0002.0003.0004.0005.0006.0007.0008.0009]
-  =/  canon-40-3=ray  [meta=meta-40-3 data=0x1.0001.0203.0405.0607.0809.0a0b.0c0d.0e0f.1011.1213.1415.1617.1819.1a1b.1c1d.1e1f.2021.2223.2425.2627]
+  =/  canon-10-4=ray  [meta=meta-10-4 data=0x1.0009.0008.0007.0006.0005.0004.0003.0002.0001.0000]
+  =/  canon-40-3=ray  [meta=meta-40-3 data=0x1.2726.2524.2322.2120.1f1e.1d1c.1b1a.1918.1716.1514.1312.1110.0f0e.0d0c.0b0a.0908.0706.0504.0302.0100]
   ;:  weld
     %+  is-equal
       canon-10-4

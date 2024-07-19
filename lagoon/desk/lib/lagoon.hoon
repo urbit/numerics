@@ -326,6 +326,12 @@
       (^rip a b)
     --
   ::
+  ++  check
+    |=  =ray
+    ^-  ?
+    .=  (roll shape.meta.ray ^mul)
+    (dec (met bloq.meta.ray data.ray))
+  ::
   ++  get-item-baum
     |=  [=baum dex=(list @)]
     ^-  @
@@ -633,6 +639,7 @@
   ++  max
     ~/  %max
     |=  a=ray
+    ?>  (check a)
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
       ?.  =(((fun-scalar meta.a %gth) b c) 0)
@@ -643,11 +650,13 @@
     ~/  %argmax
     |=  a=ray
     ^-  @ud
+    ?>  (check a)
     +:(find ~[(get-item (max a) ~[0 0])] (ravel a))
   ::
   ++  min
     ~/  %min
     |=  a=ray
+    ?>  (check a)
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
       ?.  =(((fun-scalar meta.a %lth) b c) 0)
@@ -658,24 +667,28 @@
     ~/  %argmin
     |=  a=ray
     ^-  @ud
+    ?>  (check a)
     +:(find ~[(get-item (min a) ~[0 0])] (ravel a))
   ::
   ++  cumsum
     ~/  %cumsum
     |=  a=ray
     ^-  ray
+    ?>  (check a)
     %+  scalar-to-ray  meta.a
     (reel (ravel a) |=([b=@ c=@] ((fun-scalar meta.a %add) b c)))
   ::
   ++  prod
     |=  a=ray
     ^-  ray
+    ?>  (check a)
     %+  scalar-to-ray  meta.a
     (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar meta.a %mul) b c)))
   ::
   ++  reshape
     |=  [a=ray shape=(list @)]
     ^-  ray
+    ?>  (check a)
     =/  in-cnt  (reel shape.meta.a ^mul)
     =/  out-cnt  (reel shape ^mul)
     ?>  =(in-cnt out-cnt)
@@ -686,6 +699,8 @@
     ~/  %stack
     |=  [a=ray b=ray dim=@ud]
     ^-  ray
+    ?>  (check a)
+    ?>  (check b)
     ::  check same dims overall
     ?>  =((lent shape.meta.a) (lent shape.meta.b))
     ::  check same dims other than target dim
@@ -741,6 +756,7 @@
   ++  transpose
     ~/  %transpose
     |=  a=ray  ^-  ray
+    ?>  (check a)
     =,  meta.a
     ?>  =(2 (lent shape))
     =/  i  0
@@ -767,6 +783,7 @@
     ~/  %diag
     |=  a=ray
     ^-  ray
+    ?>  (check a)
     =,  meta.a
     ?>  =(2 (lent shape))
     ?>  =(-.shape +<.shape)
@@ -795,6 +812,8 @@
   ++  mmul
     ~/  %mmul
     |=  [a=ray b=ray]
+    ?>  (check a)
+    ?>  (check b)
     =/  i  0
     =/  j  0
     =/  k  0
@@ -909,6 +928,7 @@
   ++  pow-n
     |=  [a=ray n=@ud]
     ^-  ray
+    ?>  (check a)
     ?~  =(0 n)  (ones meta.a)
     =/  b=ray   a
     |-  ^-  ray
@@ -1115,6 +1135,7 @@
   ++  el-wise-op
     |=  [a=ray fun=$-(@ @)]
     ^-  ray
+    ?>  (check a)
     %-  spac
     :-  meta.a
     =/  ali  (flop (ravel a))  :: compensate for LSB
@@ -1127,6 +1148,8 @@
     |=  [a=ray b=ray op=$-([@ @] @)]
     ^-  ray
     ?>  =(meta.a meta.b)
+    ?>  (check a)
+    ?>  (check b)
     %-  spac
     :-  meta.a
     =/  ali  (ravel a)
@@ -1142,6 +1165,9 @@
     ^-  ray
     ?>  =(meta.a meta.b)
     ?>  =(meta.c meta.b)
+    ?>  (check a)
+    ?>  (check b)
+    ?>  (check c)
     %-  spac:la
     :-  meta.a
     =/  ali  (ravel:la a)

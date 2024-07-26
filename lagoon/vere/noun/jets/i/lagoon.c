@@ -116,14 +116,20 @@
 */
   static inline c3_o _check(u3_noun ray)
   {
+    fprintf(stderr, "_check\r\n");
     //  Calculate expected size.
     u3_atom shp = u3h(u3h(ray));        // (reported) shape of ray, +4
     u3_atom blq = u3h(u3t(u3h(ray)));   // block size of ray, +10
     u3_atom sin = _get_length(shp);     // calculated length of ray
+    fprintf(stderr, "_check2\r\n");
 
     //  Calculate actual size.
     u3_atom len = u3r_met(blq, u3t(ray));   // length of ray
+    fprintf(stderr, "_check3\r\n");
+    fprintf(stderr, "\r\nsin: %lld, len: %lld\r\n", sin, len);
     u3_atom dex = u3wa_dec(len);            // decrement length b/c of pinned 1
+
+    fprintf(stderr, "\r\nsin: %lld, dex: %lld\r\n", sin, dex);
 
     return __(sin == dex);
   }
@@ -2443,6 +2449,7 @@
       x_kind = u3h(u3t(u3t(x_meta))); // 14
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
+      fprintf(stderr, "u3wi_la_cumsum\r\n");
       if ( c3n == u3ud(x_bloq) ||
            c3n == u3ud(x_kind) ||
            c3n == _check(cor)
@@ -2450,6 +2457,7 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        fprintf(stderr, "u3wi_la_cumsum 2\r\n");
         switch (x_kind) {
           case c3__i754:
             _set_rounding(rnd);
@@ -3196,7 +3204,7 @@
           case c3__i754:
             _set_rounding(rnd);
             u3_noun r_data = _soft_run(u3qi_la_linspace_i754(a, b, n, x_bloq));
-            x_shape = u3nt(u3x_atom(n), 0x1, u3_nul);
+            x_shape = u3nt(u3x_atom(n), u3_nul);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:

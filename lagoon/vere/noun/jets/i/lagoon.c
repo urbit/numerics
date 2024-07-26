@@ -108,6 +108,26 @@
     return dims;
   }
 
+/* check consistency of array shape and bloq size
+    |=  =ray
+    ^-  ?
+    .=  (roll shape.meta.ray ^mul)
+    (dec (met bloq.meta.ray data.ray))
+*/
+  static inline c3_o _check(u3_noun ray)
+  {
+    //  Calculate expected size.
+    u3_atom shp = u3h(u3h(ray));        // (reported) shape of ray, +4
+    u3_atom blq = u3h(u3t(u3h(ray)));   // block size of ray, +10
+    u3_atom sin = _get_length(shp);     // calculated length of ray
+
+    //  Calculate actual size.
+    u3_atom len = u3r_met(blq, u3t(ray));   // length of ray
+    u3_atom dex = u3wa_dec(len);            // decrement length b/c of pinned 1
+
+    return __(sin == dex);
+  }
+
 /* add - axpy = 1*x+y
 */
   u3_noun
@@ -2424,7 +2444,8 @@
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       if ( c3n == u3ud(x_bloq) ||
-           c3n == u3ud(x_kind)
+           c3n == u3ud(x_kind) ||
+           c3n == _check(cor)
          )
       {
         return u3m_bail(c3__exit);
@@ -2499,7 +2520,8 @@
       x_bloq = u3h(u3t(x_meta));      //  6
       x_kind = u3h(u3t(u3t(x_meta))); // 14
       if ( c3n == u3ud(x_bloq) ||
-           c3n == u3ud(x_kind)
+           c3n == u3ud(x_kind) ||
+           c3n == _check(cor)
          )
       {
         return u3m_bail(c3__exit);
@@ -2537,7 +2559,8 @@
       x_kind = u3h(u3t(u3t(x_meta))); // 14
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       if ( c3n == u3ud(x_bloq) ||
-           c3n == u3ud(x_kind)
+           c3n == u3ud(x_kind) ||
+           c3n == _check(cor)
          )
       {
         return u3m_bail(c3__exit);
@@ -2575,7 +2598,8 @@
       x_kind = u3h(u3t(u3t(x_meta))); // 14
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       if ( c3n == u3ud(x_bloq) ||
-           c3n == u3ud(x_kind)
+           c3n == u3ud(x_kind) ||
+           c3n == _check(cor)
          )
       {
         return u3m_bail(c3__exit);
@@ -2612,7 +2636,8 @@
       x_kind = u3h(u3t(u3t(x_meta))); // 14
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       if ( c3n == u3ud(x_bloq) ||
-           c3n == u3ud(x_kind)
+           c3n == u3ud(x_kind) ||
+           c3n == _check(cor)
          )
       {
         return u3m_bail(c3__exit);
@@ -3129,7 +3154,8 @@
       x_kind = u3h(u3t(u3t(x_meta))); // 14
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       if ( c3n == u3ud(x_bloq) ||
-           c3n == u3ud(x_kind)
+           c3n == u3ud(x_kind) ||
+           c3n == _check(cor)
          )
       {
         return u3m_bail(c3__exit);
@@ -3273,7 +3299,8 @@
       x_kind = u3h(u3t(u3t(x_meta))); // 14
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       if ( c3n == u3ud(x_bloq) ||
-           c3n == u3ud(x_kind)
+           c3n == u3ud(x_kind) ||
+           c3n == _check(cor)
          )
       {
         return u3m_bail(c3__exit);
@@ -3353,7 +3380,9 @@
       y_fxp = u3t(u3t(u3t(y_meta)));  // 15
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       if ( c3n == u3r_sing(x_bloq, y_bloq) ||
-           c3n == u3r_sing(x_kind, y_kind)
+           c3n == u3r_sing(x_kind, y_kind) ||
+           c3n == _check(u3nc(x_meta, x_data)) ||
+           c3n == _check(u3nc(y_meta, y_data))
            //  fxp does not need to match so no check
          )
       {

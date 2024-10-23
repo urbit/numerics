@@ -19,7 +19,7 @@
   $?  %i754           ::  IEEE 754 float
       %uint           ::  unsigned integer
       %int2           ::  2s-complement integer (/lib/twoc)
-      :: %cplx           ::  BLAS-compatible packed floats
+      :: %c754           ::  BLAS-compatible packed floats
       :: %unum           ::  unum/posit  @ruw, @ruh, @rub
       :: %fixp           ::  fixed-precision (/lib/fixed)
   ==

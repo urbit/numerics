@@ -1,4 +1,5 @@
 /-  lagoon
+/+  *twoc  :: import w/o face because main logic in named door
 =+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
@@ -51,7 +52,8 @@
       %ud
       ::
         %int2
-      !!
+      ::  There is no term for %int2; it is not a @s.
+      %$
       ::
         %i754
       ?+    bloq.meta  ~|(bloq.meta !!)
@@ -374,14 +376,22 @@
   ++  change
     |=  [=ray =kind =bloq]
     ^-  ^ray
-    ?+    kind.meta.ray  !!
+    ?-    kind.meta.ray
         %uint
-      ?+    kind  !!
+      ?-    kind
           :: %uint -> %uint
           %uint
         %-  en-ray
         :-  [shape.meta.ray bloq %uint tail.meta.ray]
         data:(de-ray ray)
+        ::
+          :: %uint -> %int2
+          %int2
+        %-  en-ray
+        :-  [shape.meta.ray bloq %int2 tail.meta.ray]
+        %+  turn  (ravel ray)
+        (corl ~(s-to-twoc twoc bloq) sun:si)
+        ::
           :: %uint -> %i754
           %i754
         %-  en-ray
@@ -395,20 +405,60 @@
         ==
       ==
       ::
+        %int2
+      ?-    kind
+          :: %int2 -> %uint
+          %uint
+        %-  en-ray
+        :-  [shape.meta.ray bloq %uint tail.meta.ray]
+        %+  turn  (ravel ray)
+        :(corl (curr ^div 2) |=(=@s ?:((syn:si s) s !!)) ~(twoc-to-s twoc bloq))
+        ::
+          :: %int2 -> %int2
+          %int2
+        %-  en-ray
+        :-  [shape.meta.ray bloq %int2 tail.meta.ray]
+        data:(de-ray ray)
+        ::
+          :: %int2 -> %i754
+          %i754
+        %-  en-ray
+        :-  [shape.meta.ray bloq %i754 tail.meta.ray]
+        %+  turn  (ravel ray)
+        ?+  bloq  !!
+          %7  ~(san rq rnd)
+          %6  ~(san rd rnd)
+          %5  ~(san rs rnd)
+          %4  ~(san rh rnd)
+        ==
+      ==
+      ::
         %i754
-      ?+    kind  !!
+      ?-    kind
           :: %i754 -> %uint
-          :: XXX will incorrectly convert negative values to %uint
           %uint
         %-  en-ray
         :-  [shape.meta.ray bloq %uint tail.meta.ray]
         %+  turn  (ravel ray)
         ?+  bloq.meta.ray  !!
-          %7  |=(a=@rq ^-(@u (^div (need (~(toi rq rnd) a)) 2)))
-          %6  |=(a=@rd ^-(@u (^div (need (~(toi rd rnd) a)) 2)))
-          %5  |=(a=@rs ^-(@u (^div (need (~(toi rs rnd) a)) 2)))
-          %4  |=(a=@rh ^-(@u (^div (need (~(toi rh rnd) a)) 2)))
+          %7  |=(a=@rq ^-(@u (^div (need (~(toi rq rnd) ?:((sig:rq a) a !!))) 2)))
+          %6  |=(a=@rd ^-(@u (^div (need (~(toi rd rnd) ?:((sig:rd a) a !!))) 2)))
+          %5  |=(a=@rs ^-(@u (^div (need (~(toi rs rnd) ?:((sig:rs a) a !!))) 2)))
+          %4  |=(a=@rh ^-(@u (^div (need (~(toi rh rnd) ?:((sig:rh a) a !!))) 2)))
         ==
+        ::
+          :: %i754 -> %int2
+          %int2
+        %-  en-ray
+        :-  [shape.meta.ray bloq %int2 tail.meta.ray]
+        %+  turn  (ravel ray)
+        ?+  bloq.meta.ray  !!
+          %7  |=(a=@rq (~(s-to-twoc twoc bloq) (need (~(toi rq rnd) a))))
+          %6  |=(a=@rd (~(s-to-twoc twoc bloq) (need (~(toi rd rnd) a))))
+          %5  |=(a=@rs (~(s-to-twoc twoc bloq) (need (~(toi rs rnd) a))))
+          %4  |=(a=@rh (~(s-to-twoc twoc bloq) (need (~(toi rh rnd) a))))
+        ==
+        ::
           :: %i754 -> %i754
           %i754
         ?>  &((^gte bloq %4) (^lte bloq %7))
@@ -1026,8 +1076,6 @@
         %div  |=([b=_1 c=_1] (~(sit fe bloq) (^div b c)))
         %mod  |=([b=@ c=@] (~(sit fe bloq) (^mod b c)))
         %pow  |=([b=@ c=@] (~(sit fe bloq) (pow b c)))
-        ::%exp  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        ::%log  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
         %gth  |=([b=@ c=@] !(^gth b c))
         %gte  |=([b=@ c=@] !(^gte b c))
         %lth  |=([b=@ c=@] !(^lth b c))

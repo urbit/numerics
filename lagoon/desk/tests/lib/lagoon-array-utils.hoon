@@ -194,6 +194,26 @@
       |.((set-row:la input-magic-3x3x3-4u ~[3 3] (en-ray:la [~[1 3] 4 %uint ~] ~[~[0x0 0x1 0x2]])))
   ==
 
+++  test-change-uint-to-uint  ^-  tang
+  =/  input-iota-1x8-3u  (iota:la [shape=~[8] bloq=3 kind=%uint prec=~])
+  =/  canon-iota-1x8-3u  (iota:la [shape=~[8] bloq=3 kind=%uint prec=~])
+  =/  input-iota-1x8-4u  (iota:la [shape=~[8] bloq=4 kind=%uint prec=~])
+  =/  canon-iota-1x8-4u  (iota:la [shape=~[8] bloq=4 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>(canon-iota-1x8-3u)
+      !>((change:la input-iota-1x8-3u %uint 3))
+    %+  expect-eq
+      !>(canon-iota-1x8-4u)
+      !>((change:la input-iota-1x8-4u %uint 4))
+    %+  expect-eq
+      !>(canon-iota-1x8-4u)
+      !>((change:la input-iota-1x8-3u %uint 4))
+    %+  expect-eq
+      !>(canon-iota-1x8-3u)
+      !>((change:la input-iota-1x8-4u %uint 3))
+  ==
+
 --
 :: to-tank
 :: get-term
@@ -222,3 +242,4 @@
 :: spac
 :: unspac
 :: scalar-to-ray
+

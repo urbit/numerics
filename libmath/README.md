@@ -24,7 +24,7 @@ We support the following functions and special functions:
 - `++log-2`, $\log_{2}$ (log base-2)
 - `++pow`, $\text{pow}$
 - `++sqrt`, $\sqrt{}$ (also `++sqt`)
-- `++cbrt`, $\sqrt[\uproot{3}]{}$ (also `++cbt`)
+- `++cbrt`, $\sqrt[3]{}$ (also `++cbt`)
 - `++arg` (alias for `++abs` in real values)
 
 Logical functions:

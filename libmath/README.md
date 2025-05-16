@@ -23,8 +23,8 @@ We support the following functions and special functions:
 - `++log-10`, $\log_{10}$ (log base-10)
 - `++log-2`, $\log_{2}$ (log base-2)
 - `++pow`, $\text{pow}$
-- `++sqrt`, $\sqrt$ (also `++sqt`)
-- `++cbrt`, $\cbrt$ (also `++cbt`)
+- `++sqrt`, $\sqrt{}$ (also `++sqt`)
+- `++cbrt`, $\cbrt{}$ (also `++cbt`)
 - `++arg` (alias for `++abs` in real values)
 
 Logical functions:

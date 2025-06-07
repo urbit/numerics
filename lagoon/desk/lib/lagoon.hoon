@@ -2,7 +2,7 @@
 =+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
-~%  %lagoon  ..part  ~
+~%  %non  ..part  ~  :: nest non in hex for now
 |%
 ::  +lake: set +la params
 ::
@@ -16,7 +16,7 @@
 ++  la
   ^|
   =+  [rnd=*rounding-mode]
-  ~/  %la-core
+  ~/  %lagoon
   |%
   ::
   ::  Utilities
@@ -71,7 +71,7 @@
     ~/  %submatrix
     |=  [sli=(list slice) a=ray]
     ::
-    ::  example: sli=~[`[`1 `3] `[`1 ~] ~] is equivalent to a[1:4,1:]
+    ::  example: sli=~[`[`1 `3] `[`1 ~] ~] is equivalent to a[1:3,1:,:]
     ::
     ^-  ray
     ::
@@ -100,14 +100,13 @@
     ::
     ::  calculate the shape of the result
     =/  out-shape=(list @)
-    %+  turn  
+    %+  turn
       out-indices
     |=(inds=(list (list @)) (lent inds))
     :: 
     ::  grab submatrix entries from cartesian product
     =/  new-dat=@ux
     %+  rep  bloq.meta.a
-    %-  flop
     %+  turn
       (gather out-indices)
     |=  dex=(list @)
@@ -211,16 +210,17 @@
     (get-item-number shape.meta dex)
   ::
   ++  get-item-number  ::  convert n-dimensional index to scalar index
-    |=  [shape=(list @) dex=(list @)]
+    |=  [sap=(list @) dex=(list @)]
     ^-  @
-    :: =.  dex  (flop dex)
     =/  sap  (flop shape)
     =/  cof  1
     =/  ret  0
+    =.  sap  (flop sap)
+    =.  dex  (flop dex)
     |-  ^+  ret
-    ?~  sap  ret
-    ?~  dex  !!
-    ?>  (^lth i.dex i.sap)
+    ?~  sap  ret :: out of indices, return
+    ?~  dex  !!  :: no indices past size
+    ?>  (^lth i.dex i.sap)  :: index must be less than size
     %=  $
       sap  t.sap
       dex  t.dex
@@ -241,7 +241,7 @@
     %=  $
       idx         +(idx)
       shape.meta  t.shape.meta
-      res         [(^mul (^pow 2 bloq.meta) stride) res]
+      res         [(^mul (pow 2 bloq.meta) stride) res]
     ==
   ::
   ++  get-dim  :: convert scalar index to n-dimensional index
@@ -269,7 +269,7 @@
     (^mod (^div len wid) num)
   ::
   ++  ravel
-    ~/  %ravel
+    :: ~/  %ravel
     |=  a=ray
     ^-  (list @)
     (snip (rip bloq.meta.a data.a))
@@ -311,7 +311,7 @@
       |-
       ?:  =(0x1 data.ray)  (welp ;;((list ndray) fin) ~[;;((list ndray) els)])
       %=  $
-        els   (snip (rip bloq (cut bloq [0 +((snag 0 dims))] data:(spac `^ray`[[~[(snag 0 dims) 1] bloq kind fxp] `@ux`data.ray]))))
+        els   (snip (rip bloq (cut bloq [0 +((snag 0 dims))] data:(spac `^ray`[[~[(snag 0 dims) 1] bloq kind tail] `@ux`data.ray]))))
         fin   ?~  els  fin  :: skip on first row
               ?~  fin  `(list (list ndray))`~[;;((list ndray) els)]
               (welp ;;((list (list ndray)) fin) ~[;;((list ndray) els)])
@@ -326,6 +326,12 @@
       ?~  (^rip a b)  (reap cnt 0)
       (^rip a b)
     --
+  ::
+  ++  check
+    |=  =ray
+    ^-  ?
+    .=  (roll shape.meta.ray ^mul)
+    (dec (met bloq.meta.ray data.ray))
   ::
   ++  get-item-baum
     |=  [=baum dex=(list @)]
@@ -375,18 +381,18 @@
           :: %uint -> %uint
           %uint
         %-  en-ray
-        :-  [shape.meta.ray bloq %uint fxp.meta.ray]
+        :-  [shape.meta.ray bloq %uint tail.meta.ray]
         data:(de-ray ray)
           :: %uint -> %i754
           %i754
         %-  en-ray
-        :-  [shape.meta.ray bloq %i754 fxp.meta.ray]
+        :-  [shape.meta.ray bloq %i754 tail.meta.ray]
         %+  turn  (ravel ray)
         ?+  bloq  !!
-          %7  sun:rq
-          %6  sun:rd
-          %5  sun:rs
-          %4  sun:rh
+          %7  ~(sun rq rnd)
+          %6  ~(sun rd rnd)
+          %5  ~(sun rs rnd)
+          %4  ~(sun rh rnd)
         ==
       ==
       ::
@@ -396,19 +402,19 @@
           :: XXX will incorrectly convert negative values to %uint
           %uint
         %-  en-ray
-        :-  [shape.meta.ray bloq %uint fxp.meta.ray]
+        :-  [shape.meta.ray bloq %uint tail.meta.ray]
         %+  turn  (ravel ray)
         ?+  bloq.meta.ray  !!
-          %7  :(cork toi:rq need @u (curr ^div 2))
-          %6  :(cork toi:rd need @u (curr ^div 2))
-          %5  :(cork toi:rs need @u (curr ^div 2))
-          %4  :(cork toi:rh need @u (curr ^div 2))
+          %7  |=(a=@rq ^-(@u (^div (need (~(toi rq rnd) a)) 2)))
+          %6  |=(a=@rd ^-(@u (^div (need (~(toi rd rnd) a)) 2)))
+          %5  |=(a=@rs ^-(@u (^div (need (~(toi rs rnd) a)) 2)))
+          %4  |=(a=@rh ^-(@u (^div (need (~(toi rh rnd) a)) 2)))
         ==
           :: %i754 -> %i754
           %i754
         ?>  &((^gte bloq %4) (^lte bloq %7))
         %-  en-ray
-        :-  [shape.meta.ray bloq %i754 fxp.meta.ray]
+        :-  [shape.meta.ray bloq %i754 tail.meta.ray]
         data:(de-ray ray)
       ==
     ==
@@ -493,7 +499,7 @@
       (en-ray [~[n] bloq.meta %uint ~] (gulf 0 (dec n)))
     shape.meta
   ::  Produce a 1-dimensional range along one dimension
-  ::  as [a b) with interval d.
+  ::  as [a, b) with interval d.
   ::  Only produces %i754.
   ::
   ++  range
@@ -506,40 +512,39 @@
     ::
     ?+    bloq.meta  !!
         %7
-      =/  ba  (sub:rq b a)
+      =/  ba  (~(sub rq rnd) b a)
       =/  bad  `(list @)`~[a]
       |-  ^-  baum
-      ?:  (?:((lth:rq ba .~~~0) lth:rq gth:rq) (add:rq (snag 0 bad) d) b)
+      ?:  (?:((~(lth rq rnd) ba .~~~0) ~(lte rq rnd) ~(gte rq rnd)) (~(add rq rnd) (snag 0 bad) d) b)
         =.  shape.meta  ~[(lent bad)]
         [meta (flop bad)]
-      $(bad [(add:rq (snag 0 bad) d) bad])
+      $(bad [(~(add rq rnd) (snag 0 bad) d) bad])
       ::
         %6
-      =/  ba  (sub:rd b a)
+      =/  ba  (~(sub rd rnd) b a)
       =/  bad  `(list @)`~[a]
       |-  ^-  baum
-      ?:  (?:((lth:rd ba .~0) lth:rd gth:rd) (add:rd (snag 0 bad) d) b)
+      ?:  (?:((~(lth rd rnd) ba .~0) ~(lte rd rnd) ~(gte rd rnd)) (~(add rd rnd) (snag 0 bad) d) b)
         =.  shape.meta  ~[(lent bad)]
         [meta (flop bad)]
-      $(bad [(add:rd (snag 0 bad) d) bad])
+      $(bad [(~(add rd rnd) (snag 0 bad) d) bad])
       ::
         %5
-      =/  ba  (sub:rs b a)
+      =/  ba  (~(sub rs rnd) b a)
       =/  bad  `(list @)`~[a]
       |-  ^-  baum
-      ?:  (?:((lth:rs ba .0) lth:rs gth:rs) (add:rs (snag 0 bad) d) b)
+      ?:  (?:((~(lth rs rnd) ba .0) ~(lte rs rnd) ~(gte rs rnd)) (~(add rs rnd) (snag 0 bad) d) b)
         =.  shape.meta  ~[(lent bad)]
         [meta (flop bad)]
-      $(bad [(add:rs (snag 0 bad) d) bad])
+      $(bad [(~(add rs rnd) (snag 0 bad) d) bad])
       ::
         %4
-      =/  ba  (sub:rh b a)
+      =/  ba  (~(sub rh rnd) b a)
       =/  bad  `(list @)`~[a]
       |-  ^-  baum
-      ?:  (?:((lth:rh ba .~~0) lth:rh gth:rh) (add:rh (snag 0 bad) d) b)
-        =.  shape.meta  ~[(lent bad)]
+      ?:  (?:((~(lth rh rnd) ba .~~0) ~(lte rh rnd) ~(gte rh rnd)) (~(add rh rnd) (snag 0 bad) d) b)
         [meta (flop bad)]
-      $(bad [(add:rh (snag 0 bad) d) bad])
+      $(bad [(~(add rh rnd) (snag 0 bad) d) bad])
     ==
   ::  Produce a 1-dimensional range along one dimension
   ::  as [a b] with number of steps n.
@@ -551,47 +556,47 @@
     ^-  ray
     =.  shape.meta  ~[n]
     =.  kind.meta  %i754
-    %-  spac
+    ?<  =(n 0)
+    ?:  =(n 1)  (en-ray meta ~[a])
     %-  en-ray
     :-  meta
     ::
     ?+    bloq.meta  !!
         %7
-      =/  ba  (sub:rq b a)
-      =/  d  (div:rq ba (sun:rq (dec n)))
-      =/  bad  `(list @)`~[a]
+      =/  ba  (~(sub rq rnd) b a)
+      =/  d  (~(div rq rnd) ba (~(sun rq rnd) (dec n)))
+      =|  bad=(list @)
       =|  i=@ud
       |-  ^-  ndray
-      ::  we compare to +(+(i)) b/c a is already in there and b is now added
-      ?:  =(n +(+(i)))  (flop [b bad])
-      $(i +(i), bad [(add:rq (snag 0 bad) d) bad])
+      ?:  (^lte n +(i))  (flop [b bad])
+      $(i +(i), bad [(~(add rq rnd) a (~(mul rq rnd) (~(sun rq rnd) i) d)) bad])
       ::
         %6
-      =/  ba  (sub:rd b a)
-      =/  d  (div:rd ba (sun:rd (dec n)))
-      =/  bad  `(list @)`~[a]
+      =/  ba  (~(sub rd rnd) b a)
+      =/  d  (~(div rd rnd) ba (~(sun rd rnd) (dec n)))
+      =|  bad=(list @)
       =|  i=@ud
       |-  ^-  ndray
-      ?:  =(n +(+(i)))  (flop [b bad])
-      $(i +(i), bad [(add:rd (snag 0 bad) d) bad])
+      ?:  (^lte n +(i))  (flop [b bad])
+      $(i +(i), bad [(~(add rd rnd) a (~(mul rd rnd) (~(sun rd rnd) i) d)) bad])
       ::
         %5
-      =/  ba  (sub:rs b a)
-      =/  d  (div:rs ba (sun:rs (dec n)))
-      =/  bad  `(list @)`~[a]
+      =/  ba  (~(sub rs rnd) b a)
+      =/  d  (~(div rs rnd) ba (~(sun rs rnd) (dec n)))
+      =|  bad=(list @)
       =|  i=@ud
       |-  ^-  ndray
-      ?:  =(n +(+(i)))  (flop [b bad])
-      $(i +(i), bad [(add:rs (snag 0 bad) d) bad])
+      ?:  (^lte n +(i))  (flop [b bad])
+      $(i +(i), bad [(~(add rs rnd) a (~(mul rs rnd) (~(sun rs rnd) i) d)) bad])
       ::
         %4
-      =/  ba  (sub:rh b a)
-      =/  d  (div:rh ba (sun:rh (dec n)))
-      =/  bad  `(list @)`~[a]
+      =/  ba  (~(sub rh rnd) b a)
+      =/  d  (~(div rh rnd) ba (~(sun rh rnd) (dec n)))
+      =|  bad=(list @)
       =|  i=@ud
       |-  ^-  ndray
-      ?:  =(n +(+(i)))  (flop [b bad])
-      $(i +(i), bad [(add:rh (snag 0 bad) d) bad])
+      ?:  (^lte n +(i))  (flop [b bad])
+      $(i +(i), bad [(~(add rh rnd) a (~(mul rh rnd) (~(sun rh rnd) i) d)) bad])
     ==
   ::  Coerce 1D array along specified dimension with given overall
   ::  dimensionality.
@@ -634,6 +639,7 @@
   ++  max
     ~/  %max
     |=  a=ray
+    ?>  (check a)
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
       ?.  =(((fun-scalar meta.a %gth) b c) 0)
@@ -644,11 +650,13 @@
     ~/  %argmax
     |=  a=ray
     ^-  @ud
+    ?>  (check a)
     +:(find ~[(get-item (max a) ~[0 0])] (ravel a))
   ::
   ++  min
     ~/  %min
     |=  a=ray
+    ?>  (check a)
     =/  fun
       |:  [b=1 c=-:(ravel a)] 
       ?.  =(((fun-scalar meta.a %lth) b c) 0)
@@ -659,24 +667,28 @@
     ~/  %argmin
     |=  a=ray
     ^-  @ud
+    ?>  (check a)
     +:(find ~[(get-item (min a) ~[0 0])] (ravel a))
   ::
   ++  cumsum
     ~/  %cumsum
     |=  a=ray
     ^-  ray
+    ?>  (check a)
     %+  scalar-to-ray  meta.a
     (reel (ravel a) |=([b=@ c=@] ((fun-scalar meta.a %add) b c)))
   ::
   ++  prod
     |=  a=ray
     ^-  ray
+    ?>  (check a)
     %+  scalar-to-ray  meta.a
     (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar meta.a %mul) b c)))
   ::
   ++  reshape
     |=  [a=ray shape=(list @)]
     ^-  ray
+    ?>  (check a)
     =/  in-cnt  (reel shape.meta.a ^mul)
     =/  out-cnt  (reel shape ^mul)
     ?>  =(in-cnt out-cnt)
@@ -687,6 +699,8 @@
     ~/  %stack
     |=  [a=ray b=ray dim=@ud]
     ^-  ray
+    ?>  (check a)
+    ?>  (check b)
     ::  check same dims overall
     ?>  =((lent shape.meta.a) (lent shape.meta.b))
     ::  check same dims other than target dim
@@ -742,6 +756,7 @@
   ++  transpose
     ~/  %transpose
     |=  a=ray  ^-  ray
+    ?>  (check a)
     =,  meta.a
     ?>  =(2 (lent shape))
     =/  i  0
@@ -768,13 +783,14 @@
     ~/  %diag
     |=  a=ray
     ^-  ray
+    ?>  (check a)
     =,  meta.a
     ?>  =(2 (lent shape))
     ?>  =(-.shape +<.shape)
     ^-  ray
     %-  en-ray
     ^-  baum
-    :-  `meta`[~[-.shape 1] bloq kind fxp]
+    :-  `meta`[~[-.shape 1] bloq kind tail]
     ^-  ndray
     %+  turn
       `(list @)`(flop (gulf 0 (dec -.shape)))
@@ -796,6 +812,8 @@
   ++  mmul
     ~/  %mmul
     |=  [a=ray b=ray]
+    ?>  (check a)
+    ?>  (check b)
     =/  i  0
     =/  j  0
     =/  k  0
@@ -910,6 +928,7 @@
   ++  pow-n
     |=  [a=ray n=@ud]
     ^-  ray
+    ?>  (check a)
     ?~  =(0 n)  (ones meta.a)
     =/  b=ray   a
     |-  ^-  ray
@@ -1008,8 +1027,6 @@
         %div  |=([b=_1 c=_1] (~(sit fe bloq) (^div b c)))
         %mod  |=([b=@ c=@] (~(sit fe bloq) (^mod b c)))
         %pow  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        ::%exp  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
-        ::%log  |=([b=@ c=@] (~(sit fe bloq) (^pow b c)))
         %gth  |=([b=@ c=@] !(^gth b c))
         %gte  |=([b=@ c=@] !(^gte b c))
         %lth  |=([b=@ c=@] !(^lth b c))
@@ -1096,19 +1113,19 @@
       ?+    bloq  !!
           %7
         ?+  fun  !!
-          %abs  |=(b=@ ?:((gte:rq b .~~~0) b (mul:rq b .~~~-1)))
+          %abs  |=(b=@ ?:((~(gte rq rnd) b .~~~0) b (~(mul rq rnd) b .~~~-1)))
         ==
           %6
         ?+  fun  !!
-          %abs  |=(b=@ ?:((gte:rd b .~0) b (mul:rd b .~-1)))
+          %abs  |=(b=@ ?:((~(gte rd rnd) b .~0) b (~(mul rd rnd) b .~-1)))
         ==
           %5
         ?+  fun  !!
-          %abs  |=(b=@ ?:((gte:rs b .0) b (mul:rs b .-1)))
+          %abs  |=(b=@ ?:((~(gte rs rnd) b .0) b (~(mul rs rnd) b .-1)))
         ==
           %4
         ?+  fun  !!
-          %abs  |=(b=@ ?:((gte:rh b .~~0) b (mul:rh b .~~-1)))
+          %abs  |=(b=@ ?:((~(gte rh rnd) b .~~0) b (~(mul rh rnd) b .~~-1)))
         ==
       ==
     ==
@@ -1116,6 +1133,7 @@
   ++  el-wise-op
     |=  [a=ray fun=$-(@ @)]
     ^-  ray
+    ?>  (check a)
     %-  spac
     :-  meta.a
     =/  ali  (flop (ravel a))  :: compensate for LSB
@@ -1128,11 +1146,12 @@
     |=  [a=ray b=ray op=$-([@ @] @)]
     ^-  ray
     ?>  =(meta.a meta.b)
+    ?>  (check a)
+    ?>  (check b)
     %-  spac
     :-  meta.a
     =/  ali  (ravel a)
     =/  bob  (ravel b)
-    %^  rev  bloq.meta.a  (lent ali)
     %+  rep  bloq.meta.a
     %+  turn
       (gulf 0 (dec (lent ali)))
@@ -1144,12 +1163,14 @@
     ^-  ray
     ?>  =(meta.a meta.b)
     ?>  =(meta.c meta.b)
+    ?>  (check a)
+    ?>  (check b)
+    ?>  (check c)
     %-  spac:la
     :-  meta.a
     =/  ali  (ravel:la a)
     =/  bob  (ravel:la b)
     =/  car  (ravel:la c)
-    %^  rev  bloq.meta.a  (lent ali)
     %+  rep  bloq.meta.a
     %+  turn
       (gulf 0 (dec (lent ali)))

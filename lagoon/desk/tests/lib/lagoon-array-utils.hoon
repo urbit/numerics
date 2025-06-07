@@ -17,7 +17,7 @@
   ==
 ::
 ++  is-close
-  |=  [a=ray b=ray =term]  ^-  tang
+  |=  [a=ray b=ray]  ^-  tang
   ?:  (all:la (is-close:la a b [atol rtol]))  ~
   :~  [%palm [": " ~ ~ ~] [leaf+"expected" "{<a>}"]]
       [%palm [": " ~ ~ ~] [leaf+"actual  " "{<b>}"]]

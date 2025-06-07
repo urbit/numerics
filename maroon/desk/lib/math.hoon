@@ -1,1 +1,1 @@
-libmath/desk/lib/math.hoon
+numerics/libmath/desk/lib/math.hoon

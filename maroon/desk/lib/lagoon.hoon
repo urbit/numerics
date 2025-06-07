@@ -1,1 +1,1 @@
-lagoon/desk/lib/lagoon.hoon
+numerics/lagoon/desk/lib/lagoon.hoon

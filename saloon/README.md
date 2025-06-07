@@ -1,130 +1,40 @@
 #   Scientific ALgorithms in hOON
 
-**wip as of ~2023.3.24**
+Transcendental and algebraic functions for use with Lagoon `+$ray`s.
 
-Transcendental and algebraic functions in native Hoon (and later jets).
+We support the following functions and special functions:
 
-It's time to supersede [`lazytrig`](https://github.com/sigilante/lazytrig).
+- `++add`, $+$ addition (pass-through from Lagoon)
+- `++sub`, $-$ subtraction (pass-through from Lagoon)
+- `++mul`, $\times$ multiplication (pass-through from Lagoon)
+- `++div`, $/$ division (pass-through from Lagoon)
+- `++fma`, $\text{fma}$ fused multiply-add
+- `++neg`, $-$ unary negation
+- `++factorial`, $!$ factorial
+- `++abs`, $\text{abs}$ (pass-through from Lagoon)
+- `++exp`, $\exp$
+- `++sin`, $\sin$
+- `++cos`, $\cos$
+- `++tan`, $\tan$
+- `++pow-n`, $\text{pow}$ to integer power
+- `++log`, $\log$ (natural logarithm)
+- `++log-10`, $\log_{10}$ (log base-10)
+- `++log-2`, $\log_{2}$ (log base-2)
+- `++pow`, $\text{pow}$
+- `++sqrt`, $\sqrt$ (also `++sqt`)
+- `++cbrt`, $\cbrt$ (also `++cbt`)
 
-Arms in `++rs` and other `@r`-servicing cores will be provided with necessary transcendental and trigonometric functions.
+Logical functions:
 
-As a first pass, we implement operators for `@rs`, `@rd`, `@rq`, and `@rh`.  After Lagoon is merged, we implement `@lvs`, `@lms`, `@lvd`, and `@lmd`.
-
-- [ ] `@rs`
-- [ ] `@rd`
-- [ ] `@rq`
-- [ ] `@rh`
-- [ ] `@rsc`
-- [ ] `@rdc`
-- [ ] `@rqc`
-- [ ] `@rhc`
-- [ ] `@lvs`
-- [ ] `@lvd`
-- [ ] `@lvq`
-- [ ] `@lvh`
-- [ ] `@lms`
-- [ ] `@lmd`
-- [ ] `@lmq`
-- [ ] `@lmh`
-
-This requires us to finally resolves the treatment of complex numbers in Hoon (which I've here noted as `@rsc` etc.).
-
-- Possible four-letter alternative names:  sake, salt, saxe, soon, star
-- Possible two-letter core names:  sa, sl
-
-Checkmarks are a first pass in `@rs` single-precision floating-point implementation:
-
-##  Constants
-
-- [x] `pi`
-- [x] `e`
-- [ ] `i` (complex only)
-- [x] `phi`
-- [x] `sqrt2`
-
-##  Comparison
-
-- [x] `isclose`
-- [x] `allclose` (over a `(list @r)`)
-- [x] `isint`
-- [ ] `isreal` (complex only)
-- [ ] `isimag` (complex only)
-
-##  Algebraic
-
-- [x] `sgn` (also `++sig` for compatibility)
-- [x] `abs`
-- [x] `sqrt`
-- [x] `cbrt`
-- [x] `arg`
-- [ ] `conj` (complex conjugate) (complex only)
-- [x] `pow`
-- [x] `pown` (faster integer `pow`)
-- [x] `log`
-- [x] `log10`
-- [x] `log2`
-- [x] `exp`
-- [x] `binomial` (Binomial coefficient)
-
-##  Trigonometric
-
-- [x] `sin`
-- [x] `cos`
-- [x] `tan`
-- [x] `csc`
-- [x] `sec`
-- [x] `cot`
-- [x] `arcsin`
-- [x] `arccos`
-- [x] `arctan`
-- [x] `arccsc`
-- [x] `arcsec`
-- [x] `arccot`
-- [x] `crd` (chord)
-- [x] `siv` (versine)
-
-##  Hyperbolic
-
-- [x] `sinh`
-- [x] `cosh`
-- [x] `tanh`
-- [x] `csch`
-- [x] `sech`
-- [x] `coth`
-- [x] `arcsinh`
-- [x] `arccosh`
-- [x] `arctanh`
-- [x] `arccsch`
-- [x] `arcsech`
-- [x] `arccoth`
-
-##  Analytical
-
-- [ ] `besselj`
-- [ ] `bessely`
-- [ ] `besseli`
-- [ ] `besselk`
-- [ ] `ai`
-- [ ] `bi`
-- [ ] `gamma`
-- [ ] `elliptic`
-- [x] `zeta`
-
-##  Operations
-
-- [x] `round` (regular banker's roundaing)
-  - [x] `round-decimal` (rounding to specific accuracy, e.g. `.100.01`)
-- [x] `linspace` (`++gulf` which evenly spans a range in floating-point)
-- [x] `iota` (APL-style `++gulf` in floating-point)
-- [x] `diff` (placeholder for adaptive algorithm in future)
-  - [x] `difffinite` (finite difference)
-  - [ ] `diffpade` (Padé approximation)
-- [x] `integrate` (placeholder for adaptive algorithm as door in future)
-  - [x] `inttrapez` (trapezoid rule)
-  - [x] `intsimpson` (Simpson's rule)
-- [x] `newton` (locate a function zero using Newton's method)
-
-The library will pass through `++rs` behaviors for `++add` and so forth for ease of use.  Thus Saloon's `++rs` can act as a drop-in core for almost all Hoon `++rs` arms (except `++exp` and `++ma`).
+- `++lth`, $<$ (pass-through from Lagoon)
+- `++lte` $\leq$ (also `++leq`) (pass-through from Lagoon)
+- `++gth`, $>$ (pass-through from Lagoon)
+- `++gte`, $\geq$ (also `++geq`) (pass-through from Lagoon)
+- `++equ`, $=$ (pass-through from Lagoon)
+- `++neq`, $\neq$ (pass-through from Lagoon)
+- `is-close` (pass-through from Lagoon)
+- `all-close` (pass-through from Lagoon `++all`)
+- `any-close` (pass-through from Lagoon `++any`)
 
 ##  References
 

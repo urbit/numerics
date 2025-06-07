@@ -1,7 +1,8 @@
   ::
 ::::  /lib/tinygrad
 ::
-/-  ls=lagoon
+/-  ls=lagoon,
+    ts=tinygrad
 /+  *saloon
 |%
 ::  +take: set +tg params
@@ -19,6 +20,63 @@
   ::  tinygrad opcodes
   ::
   |%
+  ++  aux
+    |%
+    ++  const
+      |=  [=meta:ls val=@]
+      ^-  tensor:ts
+      (fill:(lake rnd) meta val)
+    ::
+    ++  one
+      |=  [=meta:ls]
+      ^-  @
+      ?-    kind.meta
+          %uint
+        1
+        ::
+          %real
+        ?+    bloq.meta  !!
+            %7  .~~~1
+            %6  .~1
+            %5  .1
+            %4  .~~1
+        ==  ::  bloq
+      ==  ::  kind
+    ::
+    ++  pi-by-2
+      |=  [=meta:ls]
+      ^-  @
+      ?+    kind.meta  !!
+          %real
+        ?+    bloq.meta  !!
+            %7  ^~((~(div rq:math [rnd rtol]) pi:rq:math .~~~2))
+            %6  ^~((~(div rd:math [rnd rtol]) pi:rd:math .~2))
+            %5  ^~((~(div rs:math [rnd rtol]) pi:rs:math .2))
+            %4  ^~((~(div rh:math [rnd rtol]) pi:rh:math .~~2))
+        ==  ::  bloq
+      ==  ::  kind
+    ::
+    ++  log2
+      |=  [=meta:ls]
+      ^-  @
+      ?+  bloq.meta  !!
+        %7  log2:rq:math
+        %6  log2:rd:math
+        %5  log2:rs:math
+        %4  log2:rh:math
+      ==
+    ::
+    ++  ilog2
+      |=  [=meta:ls]
+      ^-  @
+      ?+  bloq.meta  !!
+        %7  ^~((~(div rq:math [rnd rtol]) .~~~1 log2:rq:math))
+        %6  ^~((~(div rd:math [rnd rtol]) .~1 log2:rd:math))
+        %5  ^~((~(div rs:math [rnd rtol]) .1 log2:rs:math))
+        %4  ^~((~(div rh:math [rnd rtol]) .~~1 log2:rh:math))
+      ==
+    --  ::  aux
+  ::
   ++  ops
     |%
     ::
@@ -26,53 +84,46 @@
     ::
     ::  EXP2  = hook_overflow(math.inf, lambda x: math.exp(x*math.log(2)))
     ++  exp2
-      |=  a=ray:ls
-      ^-  ray
-      =/  log2
-        ?+  bloq.meta.a  !!
-          %7  log2:rq:math
-          %6  log2:rd:math
-          %5  log2:rs:math
-          %4  log2:rh:math
-        ==
-      (exp:(sake [rnd rtol]) (mul-scalar:la a log2))
+      |=  a=tensor:ts
+      ^-  tensor:ts
+      (exp:(sake [rnd rtol]) (mul-scalar:la a (log2:aux meta.a)))
     ::  LOG2  = lambda x: math.log2(x) if x > 0 else -math.inf if x == 0 else math.nan,
     ++  log2
-      |=  a=ray:ls
-      ^-  ray
+      |=  a=tensor:ts
+      ^-  tensor:ts
       (log-2:(sake [rnd rtol]) a)
     ::  CAST
     ++  cast  el-wise-op:(lake rnd)
     ::  SIN   = math.sin
     ++  sin
-      |=  a=ray:ls
-      ^-  ray
+      |=  a=tensor:ts
+      ^-  tensor:ts
       (sin:(sake [rnd rtol]) a)
     ::  SQRT  = lambda x: math.sqrt(x) if x >= 0 else math.nan,
     ++  sqrt
-      |=  a=ray:ls
-      ^-  ray
+      |=  a=tensor:ts
+      ^-  tensor:ts
       (sqrt:(sake [rnd rtol]) a)
     ::  NEG   = lambda x: (not x) if isinstance(x, bool) else -x,
     ++  neg
-      |=  a=ray:ls
-      ^-  ray
+      |=  a=tensor:ts
+      ^-  tensor:ts
       (neg:(sake [rnd rtol]) a)
     ::
     :: BinaryOps
     ::
     ::  ADD   = operator.add
-    ++  add  add:(lake rnd)
+    ++  add  add:(sake [rnd rtol])
     ::  SUB   = operator.sub
-    ++  sub  sub:(lake rnd)
+    ++  sub  sub:(sake [rnd rtol])
     ::  MUL   = operator.mul
-    ++  mul  mul:(lake rnd)
+    ++  mul  mul:(sake [rnd rtol])
     ::  DIV   = lambda x,y: int(x/y) if isinstance(x, int) else (x/y if y != 0 else x*math.inf)
-    ++  div  div:(lake rnd)
+    ++  div  div:(sake [rnd rtol])
     ::  MAX   = operator.max
     ++  max
-      |=  [a=ray:ls b=ray:ls]
-      ^-  ray
+      |=  [a=tensor:ts b=tensor:ts]
+      ^-  tensor:ts
       (bin-op:(lake rnd) a b (fun-scalar meta.a %max))
     ::  NOTE: MOD, CMPLT don't have to be implemented on vectors, just scalars
     ::  MOD   = lambda x,y: abs(int(x))%abs(int(y))*(1,-1)[x<0]
@@ -80,18 +131,18 @@
     ++  mod  mod:(lake rnd)
     ::  CMPLT = operator.lt
     ++  cmplt
-      |=  [a=ray:ls b=ray:ls]
-      ^-  ray
+      |=  [a=tensor:ts b=tensor:ts]
+      ^-  tensor:ts
       (bin-op:(lake rnd) a b (fun-scalar meta.a %cmplt))
     ::  CMPEQ = operator.eq
     ++  cmpeq
-      |=  [a=ray:ls b=ray:ls]
-      ^-  ray
+      |=  [a=tensor:ts b=tensor:ts]
+      ^-  tensor:ts
       (bin-op:(lake rnd) a b (fun-scalar meta.a %cmpeq))
     ::  XOR   = operator.xor
     ++  xor
-      |=  [a=ray:ls b=ray:ls]
-      ^-  ray
+      |=  [a=tensor:ts b=tensor:ts]
+      ^-  tensor:ts
       ?>  =(meta.a meta.b)
       (spac:la meta.a (mix data:a data:b))
     ::
@@ -99,8 +150,8 @@
     ::
     ::  WHERE  = lambda x,y,z: y if x else z
     ++  where
-      |=  [a=ray:ls b=ray:ls c=ray:ls]
-      ^-  ray
+      |=  [a=tensor:ts b=tensor:ts c=tensor:ts]
+      ^-  tensor:ts
       |^
       (ter-op:(lake rnd) a b c where-op)
       ++  where-op
@@ -112,9 +163,9 @@
       --
     ::  MULACC = lambda x,y,z,dtype: f"(({x}*{y})+{z})"
     ++  mulacc
-      |=  [a=ray:ls b=ray:ls c=ray:ls]
-      ^-  ray
-      (add:(lake rnd) (mul:(lake rnd) a b) c)
+      |=  [a=tensor:ts b=tensor:ts c=tensor:ts]
+      ^-  tensor:ts
+      (add:(sake [rnd rtol]) (mul:(sake [rnd rtol]) a b) c)
     ::
     :: ReduceOps
     ::
@@ -158,83 +209,278 @@
           ==  ::  fn
         ==  ::  bloq
       ==  ::  kind
-    --
+    --  ::  ops
+  
   ::
-  ::  tinygrad functions
-  ::
-  :: ++  contiguous
-  :: ++  contiguous-backward
-  :: ++  cast
-  ++  neg
+  ++  fns
     |%
-    ++  forward   neg.ops
-    ++  backward  neg.ops
-    --
-  ::
-  ++  reciprocal
-    |%
-    ++  forward
-      |=  a=ray
-      ^-  ray
-      (div:(lake rnd) (ones:(lake rnd) meta.a) a)
-    :: return grad_output.e(UnaryOps.NEG).e(BinaryOps.MUL, self.ret).e(BinaryOps.MUL, self.ret)
-    ++  backward  !!
-    :: - *self *self
-    --
-  ::
-  ++  sin
-    |%
-    ++  forward   sin.ops
-        :: return self.x.const(math.pi / 2).e(BinaryOps.SUB, self.x).e(UnaryOps.SIN).e(BinaryOps.MUL, grad_output)
-    ++  backward  !!
-    :: self*sin(self - pi/2)
-    --
-  ::
-  ++  relu
-    |%
-    ++  forward
-      |=  a=ray
-      ^-  ray
-      (max:(lake rnd) a (zeros:(lake rnd) meta.a))
-    :: return self.ret.const(0).e(BinaryOps.CMPLT, self.ret).cast(grad_output.dtype).e(BinaryOps.MUL, grad_output)
-    ++  backward  !!
-    --
-  ::
-  ++  log
-    |%
-    :: x.e(UnaryOps.LOG2).e(BinaryOps.MUL, x.const(math.log(2)))
-    ++  forward
-      |=  a=ray
-      ^-  ray
-      =/  log2
-        ?+  bloq.meta.a  !!
-          %7  log2:rq:math
-          %6  log2:rd:math
-          %5  log2:rs:math
-          %4  log2:rh:math
-        ==
-      (log-2:(sake [rnd rtol]) (mul:(lake rnd) a log2))
-    :: grad_output.e(BinaryOps.DIV, self.x)
-    ++  backward  !!
-    --
-  ::
-  ++  exp
-    |%
-    :: x.e(BinaryOps.MUL, x.const(1/math.log(2))).e(UnaryOps.EXP2)
-    ++  forward
-      |=  a=ray
-      ^-  ray
-      =/  ilog2
-        ?+  bloq.meta.a  !!
-          %7  log2:rq:math
-          %6  log2:rd:math
-          %5  log2:rs:math
-          %4  log2:rh:math
-        ==
-      (exp:(sake [rnd rtol]) (mul:(lake rnd) a log2))
-    :: grad_output.e(UnaryOps.EXP2).e(BinaryOps.MUL, grad_output)
-    ++  backward  !!
-    --
-
-
+    ::
+    ::  tinygrad functions
+    ::
+    :: ++  contiguous
+    :: ++  contiguous-backward
+    :: ++  cast
+    ++  neg
+      |%
+      ::  -x
+      ++  forward   neg:ops
+      ::  -x
+      ++  backward  neg:ops
+      --
+    ::
+    ++  reciprocal
+      |%
+      ::  1/x
+      ++  forward
+        |=  a=tensor:ts
+        ^-  tensor:ts
+        (div:ops (const:aux meta.a (one:aux meta.a)) a)
+      :: -1/x^2 = -(1/x)^2
+      ++  backward
+        |=  b=tensor:ts
+        ^-  tensor:ts
+        (neg:ops (mul:ops b b))
+      --
+    ::
+    ++  sin
+      |%
+      ::  sin(x)
+      ++  forward   sin:ops
+      ::  sin(pi/2-x) = cos(x)
+      ++  backward
+        |=  b=tensor:ts
+        ^-  tensor:ts
+        (sin:ops (sub:ops (const:aux meta.b (pi-by-2:aux meta.b)) b))
+      --
+    ::
+    ++  relu
+      |%
+      ::  (checked)
+      ++  forward
+        |=  a=tensor:ts
+        ^-  tensor:ts
+        (where:ops (gth:(lake rnd) a (const:aux meta.a 0x0)) a (const:aux meta.a 0x0))
+      ::  (unchecked)
+      ++  backward  !!
+      --
+    ::
+    ++  log
+      |%
+      ::  log(2)*lb(x)
+      ++  forward
+        |=  a=tensor:ts
+        ^-  tensor:ts
+        (mul:ops (const:aux meta.a (log2:aux meta.a)) (log-2:(sake [rnd rtol]) a))
+      ::  1/x
+      ++  backward
+        |=  b=tensor:ts
+        ^-  tensor:ts
+        (div:ops (const:aux meta.b (one:aux meta.b)) b)
+      --
+    ::
+    ++  exp
+      |%
+      ::  (checked)
+      ++  forward
+        |=  a=tensor:ts
+        ^-  tensor:ts
+        (mul:ops `tensor:ts`(const:aux meta.a (ilog2:aux meta.a)) `tensor:ts`(exp2:ops a))
+      ::  (unchecked)
+      ++  backward  !!
+      --
+    ::
+    ++  sqrt
+      |%
+      ::  (checked)
+      ++  forward
+        |=  a=tensor:ts
+        ^-  tensor:ts
+        (sqrt:ops a)
+      ::  (checked)
+      ++  backward  !!
+      --
+    :: (checked against https://towardsdatascience.com/derivative-of-the-sigmoid-function-536880cf918e)
+    ++  sigmoid
+      |%
+      ::  (checked)
+      ++  forward
+        |=  a=tensor:ts
+        ^-  tensor:ts
+        =/  one  (const:aux meta.a (one:aux meta.a))
+        (div:ops one (add:ops one (exp2:ops (mul:ops (neg:ops (const:aux meta.a (ilog2:aux meta.a))) a))))
+      ::  (checked)
+      ++  backward  !!
+      --
+    ::
+    :: Binary ops
+    ::
+    ++  less
+      |%
+      ::  (checked)
+      ++  forward
+        |=  [a=tensor:ts b=tensor:ts]
+        ^-  tensor:ts
+        (cmplt:ops a b)
+      ::  (checked)
+      ++  backward  !!
+      --
+    ::
+    ++  eq
+      |%
+      ::  (checked)
+      ++  forward
+        |=  [a=tensor:ts b=tensor:ts]
+        ^-  tensor:ts
+        (cmpeq:ops a b)
+      ::  (checked)
+      ++  backward  !!
+      --
+    ::
+    ++  xor
+      |%
+      ::  (checked)
+      ++  forward
+        |=  [a=tensor:ts b=tensor:ts]
+        ^-  tensor:ts
+        (xor:ops a b)
+      ::  (checked)
+      ++  backward  !!
+      --
+    ::
+    ++  add
+      |%
+      ::  (checked)
+      ++  forward
+        |=  [a=tensor:ts b=tensor:ts]
+        ^-  tensor:ts
+        (add:ops a b)
+      ::  (checked)
+      ++  backward  !!
+      --
+    ::
+    ++  sub
+      |%
+      ::  (checked)
+      ++  forward
+        |=  [a=tensor:ts b=tensor:ts]
+        ^-  tensor:ts
+        (sub:ops a b)
+      ::  (unchecked)
+      ++  backward  !!
+      --
+    ::
+    ++  mul
+      |%
+      ::  (checked)
+      ++  forward
+        |=  [a=tensor:ts b=tensor:ts]
+        ^-  tensor:ts
+        (mul:ops a b)
+      ::  (unchecked)
+      ++  backward  !!
+      --
+    ::
+    ++  div
+      |%
+      ::  (checked)
+      ++  forward
+        |=  [a=tensor:ts b=tensor:ts]
+        ^-  tensor:ts
+        (div:ops a b)
+      ::  (unchecked)
+      ++  backward  !!
+      --
+    ::
+    :: Ternary ops
+    ::
+    ++  where
+      |%
+      ::  (checked)
+      ++  forward
+        |=  [a=tensor:ts b=tensor:ts c=tensor:ts]
+        ^-  tensor:ts
+        (where:ops a b c)
+      ::  (checked)
+      ++  backward  !!
+      --
+    ::
+    :: Reduce ops
+    ::
+    ++  sumred
+      |%
+      ::  (checked)
+      ++  forward
+        |=  a=tensor:ts
+        ^-  tensor:ts
+        (sumred:ops a)
+      ::  (unchecked)
+      ++  backward  !!
+      --
+    ::
+    ++  maxred
+      |%
+      ::  (checked)
+      ++  forward
+        |=  a=tensor:ts
+        ^-  tensor:ts
+        (maxred:ops a)
+      ::  (unchecked)
+      ++  backward  !!
+      --
+    ::
+    :: Movement ops
+    ::
+    ++  expand
+      |%
+      ++  forward
+        |=  [a=tensor:ts shape=(list @)]
+        ^-  tensor:ts
+        |^
+        =/  r  (zeros:(lake rnd) [shape bloq.meta.a kind.meta.a fxp.meta.a])
+        ::  recursively set values into expanded tensor
+        =/  ldx  (turn shape.meta.a dec)
+        =/  dex  (reap (lent ldx) 0)
+        |-
+        ?:  =(ldx dex)  (set-item:(lake rnd) r dex (get-item:(lake rnd) a dex))
+        $(dex (inc-index dex shape.meta.a), r (set-item:(lake rnd) r dex (get-item:(lake rnd) a dex)))
+        ::  Using modular arithmetic, calculate the next index.
+        ++  inc-index
+          |=  [dex=(list @) str=(list @)]
+          ^-  (list @)
+          ?>  =((lent str) (lent dex))
+          =/  i  0
+          |-
+          =/  j  (snag i dex)
+          ?:  =(+(j) (snag i str))
+            $(i +(i), dex (snap dex i 0))
+          (snap dex i +(j))
+        --
+      ++  backward  !!
+      --
+    ++  reshape
+      |%
+      ++  forward
+        |=  [a=tensor:ts shape=(list @)]
+        ^-  tensor:ts
+        =.  shape.meta.a  shape
+        a
+      ++  backward  !!
+      --
+    ++  permute  !!
+    ++  pad  !!
+    ++  shrink
+      |%
+      ++  forward
+        |=  [a=tensor:ts shape=(list @)]
+        ^-  tensor:ts
+        =/  slices
+          %+  turn
+            shape
+          |=(a=@ `[`0 `(dec a)])
+        (submatrix:(lake rnd) slices a)
+      ++  backward  !!
+      --
+    ++  flip  !!
+    --  ::  fns
+  --  ::  tg
 --

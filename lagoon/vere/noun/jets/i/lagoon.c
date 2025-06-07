@@ -150,7 +150,8 @@
 
     // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
-    u3r_bytes(0, syz_x+1, y_bytes, y_data);
+    u3r_bytes(0, syz_x, y_bytes, y_data);
+    y_bytes[syz_x] = 0x1;
     
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
@@ -208,8 +209,9 @@
 
     // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
-    u3r_bytes(0, syz_x+1, y_bytes, y_data);
-    
+    u3r_bytes(0, syz_x, y_bytes, y_data);
+    y_bytes[syz_x] = 0x1;
+
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
       case 4:
@@ -267,7 +269,8 @@
 
     // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
-    u3r_bytes(0, syz_x+1, y_bytes, y_data);
+    u3r_bytes(0, syz_x, y_bytes, y_data);
+    y_bytes[syz_x] = 0x1;
 
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
@@ -333,7 +336,8 @@
 
     // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
-    u3r_bytes(0, syz_x+1, y_bytes, y_data);
+    u3r_bytes(0, syz_x, y_bytes, y_data);
+    y_bytes[syz_x] = 0x1;
 
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
@@ -399,7 +403,8 @@
 
     // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
     c3_y* y_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
-    u3r_bytes(0, syz_x+1, y_bytes, y_data);
+    u3r_bytes(0, syz_x, y_bytes, y_data);
+    y_bytes[syz_x] = 0x1;
 
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
@@ -1769,12 +1774,12 @@
     }
     //  Assert length of dims is 2.
     if (u3qb_lent(shape) != 2) {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     }
     //  Unpack shape into an array of dimensions.
     c3_d *dims = _get_dims(shape);
     if (dims[0] != dims[1]) {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     }
 
     //  Unpack the data as a byte array.  We assume total length < 2**64.
@@ -1816,7 +1821,7 @@
   {
     //  Assert length of dims is 2.
     if (u3qb_lent(shape) != 2) {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     }
     //  Unpack shape into an array of dimensions.
     c3_d *dims = _get_dims(shape);
@@ -2068,10 +2073,15 @@
     c3_d Nb= u3x_atom(u3h(y_shape));
     c3_d P = u3x_atom(u3h(u3t(y_shape)));
 
+    //  Fence on valid bloq size.
+    if (bloq < 4 || bloq > 7) {
+      return u3_none;
+    }
+
     if ((u3_nul != u3t(u3t(x_shape))) ||
         (u3_nul != u3t(u3t(y_shape))) ||
         (Na != Nb)) {
-      return u3m_bail(c3__exit);
+      return u3_none;
     }
     c3_d N = Na;
 
@@ -2158,7 +2168,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2172,7 +2182,7 @@
            c3n == u3ud(rnd)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -2205,7 +2215,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2219,7 +2229,7 @@
            c3n == u3ud(rnd)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -2252,7 +2262,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2266,7 +2276,7 @@
            c3n == u3ud(rnd)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -2299,7 +2309,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2313,7 +2323,7 @@
            c3n == u3ud(rnd)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -2346,7 +2356,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2360,7 +2370,7 @@
            c3n == u3ud(rnd)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -2388,7 +2398,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2402,7 +2412,7 @@
            c3n == _check(u3nc(x_meta, x_data))
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -2430,7 +2440,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind;
       x_shape = u3h(x_meta);          //  2
@@ -2441,7 +2451,7 @@
            c3n == _check(u3nc(x_meta, x_data))
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2468,7 +2478,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind;
       x_shape = u3h(x_meta);          //  2
@@ -2479,7 +2489,7 @@
            c3n == _check(u3nc(x_meta, x_data))
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2506,7 +2516,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind;
       x_shape = u3h(x_meta);          //  2
@@ -2517,7 +2527,7 @@
            c3n == _check(u3nc(x_meta, x_data))
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2544,7 +2554,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail;
       x_shape = u3h(x_meta);          //  2
@@ -2556,7 +2566,7 @@
            c3n == _check(u3nc(x_meta, x_data))
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2583,7 +2593,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail;
       x_shape = u3h(x_meta);          //  2
@@ -2595,7 +2605,7 @@
            c3n == _check(u3nc(x_meta, x_data))
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2622,7 +2632,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail;
       x_shape = u3h(x_meta);          //  2
@@ -2633,7 +2643,7 @@
            c3n == u3ud(x_kind)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2665,7 +2675,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind;
       x_shape = u3h(x_meta);          //  2
@@ -2675,7 +2685,7 @@
            c3n == u3ud(x_kind)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2707,7 +2717,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind;
       x_shape = u3h(x_meta);          //  2
@@ -2717,7 +2727,7 @@
            c3n == u3ud(x_kind)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2749,7 +2759,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind;
       x_shape = u3h(x_meta);          //  2
@@ -2759,7 +2769,7 @@
            c3n == u3ud(x_kind)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2791,7 +2801,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind;
       x_shape = u3h(x_meta);          //  2
@@ -2801,7 +2811,7 @@
            c3n == u3ud(x_kind)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -2830,7 +2840,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(n) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2866,7 +2876,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(n) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2902,7 +2912,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(n) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2938,7 +2948,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(n) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -2974,7 +2984,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(n) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -3013,7 +3023,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               rnd;
@@ -3026,7 +3036,7 @@
            c3n == u3ud(x_kind)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -3055,7 +3065,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail;
       x_shape = u3h(x_meta);          //  2
@@ -3067,7 +3077,7 @@
            c3n == _check(cor)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         u3_noun r_data = u3qi_la_transpose(x_data, x_shape, x_bloq);
         if (r_data == u3_none) { return u3_none; }
@@ -3088,7 +3098,7 @@
                          u3x_sam_7, &n,
                          0))
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail;
       x_shape = u3h(x_meta);          //  2
@@ -3102,7 +3112,7 @@
            (n < 1)                    // crash on zero size
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -3131,7 +3141,7 @@
                          u3x_sam_7, &d,
                          0))
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail;
       x_shape = u3h(x_meta);          //  2
@@ -3143,7 +3153,7 @@
            c3n == u3ud(x_kind)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:
@@ -3153,19 +3163,24 @@
             c3_d a_, b_, d_;
             c3_ds n_;
             switch (x_bloq) {
-              case 4:
+              case 4: {
+                c3_d a_, b_, d_;
                 u3r_bytes(0, 2, (c3_y*)&a_, a);
                 u3r_bytes(0, 2, (c3_y*)&b_, b);
                 u3r_bytes(0, 2, (c3_y*)&d_, d);
                 n_ = f16_to_i64(f16_ceil(f16_div(f16_sub((float16_t){b_}, (float16_t){a_}), (float16_t){d_})), softfloat_round_minMag, false) - 1;
                 break;
-              case 5:
+              }
+              case 5: {
+                c3_d a_, b_, d_;
                 u3r_bytes(0, 4, (c3_y*)&a_, a);
                 u3r_bytes(0, 4, (c3_y*)&b_, b);
                 u3r_bytes(0, 4, (c3_y*)&d_, d);
                 n_ = f32_to_i64(f32_ceil(f32_div(f32_sub((float32_t){b_}, (float32_t){a_}), (float32_t){d_})), softfloat_round_minMag, false) - 1;
                 break;
-              case 6:
+              }
+              case 6: {
+                c3_d a_, b_, d_;
                 u3r_bytes(0, 8, (c3_y*)&a_, a);
                 u3r_bytes(0, 8, (c3_y*)&b_, b);
                 u3r_bytes(0, 8, (c3_y*)&d_, d);
@@ -3206,7 +3221,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail;
       x_shape = u3h(x_meta);          //  2
@@ -3218,7 +3233,7 @@
            c3n == _check(cor)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         u3_noun r_data = u3qi_la_diag(x_data, x_shape, x_bloq);
         if (r_data == u3_none) { return u3_none; }
@@ -3240,7 +3255,7 @@
                          0) ||
          c3n == u3ud(x_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail;
       if ( c3n == u3r_mean(x_meta,
@@ -3251,7 +3266,7 @@
                             0)
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754: {
@@ -3282,7 +3297,7 @@
          c3n == u3ud(x_data) ||
          c3n == u3ud(y_data) )
     {
-      return u3m_bail(c3__exit);
+      u3m_bail(c3__exit);
     } else {
       u3_noun x_shape, x_bloq, x_kind, x_tail,
               y_shape,
@@ -3297,7 +3312,7 @@
            c3n == _check(u3nc(y_meta, y_data))
          )
       {
-        return u3m_bail(c3__exit);
+        u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
           case c3__i754:

@@ -7,7 +7,7 @@
 ::
 ::  Type III universal numbers (unums) are divided into three classes:
 ::  1. Posits, or precise real numbers (well, as real as floats anyway).
-::  2. Quires, or 
+::  2. Quires, or compensated auxiliary sums.
 ::  3. Valids, or bounded intervals.
 ::
 ::  We represent these using Hoon auras at three bitwidths:
@@ -50,11 +50,36 @@
       ==
   |%
   ::
+  ::    +huge:  @rpb
+  ::
+  ::  Returns the value of the largest representable number.
+  ::    Examples
+  ::      > `@ub`huge
+  ::      0b111.1111
+  ::  Source
+  ++  huge  `@rpb`0x7f         ::  2**24
+  ::    +tiny:  @rpb
+  ::
+  ::  Returns the value of the smallest representable normal number.
+  ::    Examples
+  ::      > `@ub`tiny
+  ::      0b1
+  ::  Source
+  ++  tiny  `@rpb`0x1          ::  2**-24
+  ::    +nar:  @rpb
+  ::
+  ::  Returns the value of Not a Real (NaR).
+  ::    Examples
+  ::      > `@ub`nar
+  ::      0b1000.0000
+  ::  Source
+  ++  nar  `@rpb`0x80          ::  NaR, Not a Real (NaN)
+  ::
   ::  Operations
   ::
-  ::    +sea:  @pb -> $up
+  ::    +sea:  @rpb -> $up
   ::
-  ::  Returns the +$up representation of a floating-point atom.
+  ::  Returns the +$up representation of a posit atom.
   ::    Examples
   ::      :: posit 1.0
   ::      > (sea 0b100.0000)
@@ -67,7 +92,37 @@
   ::      [%p s=%.y r=0b111.1111 e=0b0 f=0b0]
   ::      :: posit largest possible negative 8-bit value, -2**24+1
   ::  Source
-  ++  sea  !!
+  ++  sea
+    =seaa !:
+    |=  =@rpb
+    :: ^-  up
+    |^
+    ::  Sign bit at MSB.
+    =/  s=@  (rsh [0 7] (dis 0x80 rpb))
+    ::  Regime bits, unary run-length encoding.
+    =/  k  (get-regime rpb)
+    =/  r=@s  ?:(s.k (sum:si w.k -1) (dif:si --0 w.k))
+    ::  Exponent bits, two if available.
+    =/  rr=@  %+  dis
+                %+  lsh
+                  (add r ?:(s.k --1 --2))
+                (rep 0 (reap (add r ?:(s.k --1 --2)) 0b1))
+              rpb
+    =/  e=@  (rep 0 (scag 2 (slag rr (flop (rip 0 rr)))))
+    ::  Fraction bits (implicit leading 0b1).
+    =/  f=@  (rep 0 (slag (add rr (met 0 e)) (flop (rip 0 rpb))))
+    [s r e f]
+    ::  Retrieve unary run-length encoded regime bits.
+    ::  k in Gustafson's notation.
+    ++  get-regime
+      |=  p=@
+      ^-  [s=? w=@s]
+      =/  ps=(list @)  (flop (rip 0 p))
+      =/  sg  =(0 (snag 0 ps))
+      =/  off  (find ?:(sg ~[1] ~[0]) ps)
+      ?~  off  [sg --7]
+      [sg (sun:si u.off)]
+    --
   ::
   ::    +to-rs:  @pb -> @rs
   ::
@@ -91,6 +146,61 @@
     %+  mul:rs
       :(sub:rs .1 s s)
     :(add:rs (mul:rs .4 r) e s)
+  ::
+  ++  to-rpb  !!
+  ::
+  ++  add
+    |=  [a=@rpb b=@rpb]
+    ^-  @rpb
+  :: - `++add`, $+$ addition
+  :: - `++sub`, $-$ subtraction
+  :: - `++mul`, $\times$ multiplication
+  :: - `++div`, $/$ division
+  :: - `++mod`, modulo (remainder after division)
+  :: - `++fma`, $\text{fma}$ fused multiply-add
+  :: - `++sgn`, $\text{sgn}$ signum (also `++sig`)
+  :: - `++neg`, $-$ unary negation
+  :: - `++factorial`, $!$ factorial
+  :: - `++abs`, $\text{abs}$
+  :: - `++exp`, $\exp$
+  :: - `++sin`, $\sin$
+  :: - `++cos`, $\cos$
+  :: - `++tan`, $\tan$
+  :: - `++pow-n`, $\text{pow}$ to integer power
+  :: - `++log`, $\log$ (natural logarithm)
+  :: - `++log-10`, $\log_{10}$ (log base-10)
+  :: - `++log-2`, $\log_{2}$ (log base-2)
+  :: - `++pow`, $\text{pow}$
+  :: - `++sqrt`, $\sqrt{}$ (also `++sqt`)
+  :: - `++cbrt`, $\sqrt[3]{}$ (also `++cbt`)
+  :: - `++arg` (alias for `++abs` in real values)
+
+  :: Logical functions:
+
+  :: - `++lth`, $<$
+  :: - `++lte` $\leq$ (also `++leq`)
+  :: - `++gth`, $>$
+  :: - `++gte`, $\geq$ (also `++geq`)
+  :: - `++equ`, $=$
+  :: - `++neq`, $\neq$
+  :: - `is-close`
+  :: - `all-close`
+  :: - `is-int`
+
+  :: Constants (to machine accuracy):
+
+  :: - `++tau`, $\tau = 2 \pi$
+  :: - `++pi`, $\pi$
+  :: - `++e`, $e$ (base of natural logarithm)
+  :: - `++phi`, $\phi$, Euler's constant
+  :: - `++sqt2`, $\sqrt{2}$
+  :: - `++invsqt2`, $\frac{1}{\sqrt{2}}$
+  :: - `++log2`, $\log 2$
+  :: - `++invlog2`, $\frac{1}{\log 2}$
+  :: - `++log10`, $\log 10$
+  :: - `++huge`, largest valid number in `bloq` width
+  :: - `++tiny`, smallest valid number in `bloq` size
+
   --
 ::  Type III Unum Posit, 16-bit width ("half")
 ::  Type III Unum Posit, 32-bit width ("single")

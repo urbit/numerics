@@ -1,8 +1,7 @@
   ::
 ::::  Mathematical library
 ::
-::  Pure Hoon implementations are naive formally correct algorithms,
-::  awaiting efficient jetting with GNU Scientific Library.
+::  Pure Hoon implementations of (often naive) formally correct algorithms.
 ::
 |%
 ++  rs

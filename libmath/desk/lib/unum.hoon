@@ -156,16 +156,16 @@
   ::      > `@ub`huge
   ::      0b111.1111
   ::  Source
-  ++  huge  `@rpb`0x7f         ::  2**8
+  ++  huge  `@rpb`0x7f         ::  2**6
   ::
   ::    +neghuge:  @rpb
   ::
   ::  Returns the value of the largest representable number.
   ::    Examples
   ::      > `@ub`neg-huge
-  ::      0b1111.1111
+  ::      0b1000.0001
   ::  Source
-  ++  neg-huge  `@rpb`0xff     ::  -2**8
+  ++  neg-huge  `@rpb`0x81     ::  -2**6
   ::    +tiny:  @rpb
   ::
   ::  Returns the value of the smallest representable normal number.
@@ -173,26 +173,34 @@
   ::      > `@ub`tiny
   ::      0b1
   ::  Source
-  ++  tiny  `@rpb`0x1          ::  2**-8
+  ++  tiny  `@rpb`0x1          ::  2**-6
+  ::    +neg-tiny:  @rpb
+  ::
+  ::  Returns the value of the smallest representable negative normal number.
+  ::    Examples
+  ::      > `@ub`neg-tiny
+  ::      0b1111.1111
+  ::  Source
+  ++  neg-tiny  `@rpb`0xff     ::  -2**-6
   ::
   ::  Operations
   ::
-  ::    +sea:  @rpb -> $up
+  ::    +from:  @rpb -> $up
   ::
   ::  Returns the +$up representation of a posit atom.
   ::    Examples
   ::      :: posit 1.0
-  ::      > (sea 0b100.0000)
+  ::      > (from 0b100.0000)
   ::      [%p b=3 s=%.y r=--0 e=--0 f=0]
   ::      :: posit 0.5
-  ::      > (sea 0b10.0000)
+  ::      > (from 0b10.0000)
   ::      [%p b=3 s=%.y r=-1 e=--0 f=0]
   ::      :: posit largest possible 8-bit value, 2**24
-  ::      > (sea 0b111.1111)
+  ::      > (from 0b111.1111)
   ::      [%p b=3 s=%.y r=--5 e=--0 f=127]
   ::      :: posit largest possible negative 8-bit value, -2**24+1
   ::  Source
-  ++  sea
+  ++  from
     |=  =@rpb
     ^-  up
     |^
@@ -226,14 +234,42 @@
       $(k +(k), b (dec b))
     --
   ::
-  ::    +to-rs:  @pb -> @rs
+  ::    +into:  $up -> @rpb
   ::
-  ::  Returns the closest @rs equivalent to a posit.
-  ::  $((1-3s)+f)\times 2^{(1-2s)\times(4r+e+s)}$
+  ::  Returns the closest @rpb equivalent to a posit tuple.
+  ::  $((1-3s)+f)\times 2^{(1-2s)\times(2^0r+e+s)}$
   ::
   ::  Source
+  ++  into
+    |=  =up
+    ^-  @rpb
+    =|  rpb=@rpbD
+    ?:  ?=(%z -.up)  `@rpb`0x0
+    ?:  ?=(%n -.up)  `@rpb`0x80
+    ?>  ?=(%p -.up)
+    ::  s sign bit
+    =.  rpb  (lsh [0 7] s.up)
+    ::  r regime bits
+    ::  TODO scale regime for other posit sizes 2**es
+    =+  [sg ab]=(old:si r.up)
+    =/  r0  ?:(sg %| %&)
+    =/  k   ?:(sg +(ab) ab)
+    =.  rpb
+      %+  con  rpb
+      =/  rs  (fil 0 k r0)
+      (lsh [0 (sub 7 k)] rs)
+    ?:  (gte k 7)  rpb  :: regime bits are full, no fraction
+    ::  regime terminator
+    =.  rpb
+      %+  con  rpb
+      (lsh [0 (sub 7 +(k))] !r0)
+    ::  no exponent in posit8
+    ::  f fraction bits
+    ?:  (gte +(k) 7)  rpb  :: regime bits are full, no fraction
+    %+  con  rpb
+    (rsh [0 (sub (sub 7 +(+(k))) (met 0 f.up))] f.up)
   :: ++  to-rs
-  ::   |=  =@rpb
+  ::   |=  =up
   ::   ^-  @rs
   ::   =/  =pb  (sea rpb)
   ::   =/  s=@  `@`s.pb

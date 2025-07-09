@@ -1,5 +1,4 @@
-/+  *math,  :: notably, this shadows floating-point doors
-    twoc
+/+  *math   :: notably, this shadows floating-point doors
   ::
 ::::  Mathematical library
 ::
@@ -19,6 +18,13 @@
 ::  While we square on quires and valids, the current implementation is
 ::  only for posits.
 ::
+::  A posit has four fields:
+::  - Sign bit (1), 0 for positive, 1 for negative.
+::  - Regime bits (1--(ps-1)), unary run-length encoded.
+::    - Regime scale is 2^2^es, where es is the max exponent size.
+::  - Exponent bits (0--(ps-2)), fixed if available but can be truncated.
+::  - Fraction bits (the rest), remaining bits to total bitwidth.
+::
 ::  - Gustafson & Yonemoto (2017), "Beating Floating Point at its Own Game:
 ::    Posit Arithmetic", Supercomputing Frontiers and Innovations. 4 (2).
 ::    Publishing Center of South Ural State University, Chelyabinsk, Russia.
@@ -36,18 +42,29 @@
       ==
       [%n ~]    :: Not a Real (NaR), unum NaN
   ==
-::
+::  TODO possibly superfluous
+::  8-bit posit tuple
 +$  pb
   $%  s=?         :: sign bit
-      r=[w=@ p=@] :: regime bits, bitwidth first
-      e=[w=@ p=@] :: exponent bits, bitwidth first
-      f=@         :: fraction bits, remaining to total bitwidth
+      r=@         :: regime bits, bitwidth first (1--7 bits)
+      e=@         :: exponent bits, bitwidth first (0 for posit8)
+      f=@         :: fraction bits, remaining to total bitwidth (the rest)
   ==
-::  Type III Unum Posit, 8-bit width ("byte")
+::  16-bit posit tuple
++$  ph
+  $%  s=?         :: sign bit
+      r=@         :: regime bits, bitwidth first (1--15 bits)
+      e=@         :: exponent bits, bitwidth first (1 for posit16)
+      f=@         :: fraction bits, remaining to total bitwidth (the rest)
+  ==
+::  32-bit posit tuple
++$  ps
+  $%  s=?         :: sign bit
+      r=@         :: regime bits, bitwidth first (1--31 bits)
+      e=@         :: exponent bits, bitwidth first (2 for posit32)
+      f=@         :: fraction bits, remaining to total bitwidth (the rest)
+  ==
 ++  rpb
-  ^|
-  |_  $:  rtol=_.1e-5         :: relative tolerance for precision of operations
-      ==
   |%
   ::
   ::    +huge:  @rpb
@@ -83,45 +100,46 @@
   ::    Examples
   ::      :: posit 1.0
   ::      > (sea 0b100.0000)
-  ::      [%p s=%.y r=0 e=0 f=1]
+  ::      [%p s=%.y r=1 e=0 f=0b0]
   ::      :: posit 0.5
-  ::      > (sea 0b11.1000)
-  ::      [%p s=%.y r= e= f=0b0]
+  ::      > (sea 0b10.0000)
+  ::      [%p s=%.y r=1 e= f=0b0]
   ::      :: posit largest possible 8-bit value, 2**24
   ::      > (sea 0b111.1111)
   ::      [%p s=%.y r=0b111.1111 e=0b0 f=0b0]
   ::      :: posit largest possible negative 8-bit value, -2**24+1
   ::  Source
   ++  sea
-    =seaa !:
+    :: =seaa !:
     |=  =@rpb
-    :: ^-  up
+    ^-  up
     |^
     ::  Sign bit at MSB.
-    =/  s=@  (rsh [0 7] (dis 0x80 rpb))
+    =/  s=?  ;;(? (rsh [0 7] rpb))
     ::  Regime bits, unary run-length encoding.
-    =/  k  (get-regime rpb)
-    =/  r=@s  ?:(s.k (sum:si w.k -1) (dif:si --0 w.k))
-    ::  Exponent bits, two if available.
-    =/  rr=@  %+  dis
-                %+  lsh
-                  (add r ?:(s.k --1 --2))
-                (rep 0 (reap (add r ?:(s.k --1 --2)) 0b1))
-              rpb
-    =/  e=@  (rep 0 (scag 2 (slag rr (flop (rip 0 rr)))))
-    ::  Fraction bits (implicit leading 0b1).
-    =/  f=@  (rep 0 (slag (add rr (met 0 e)) (flop (rip 0 rpb))))
-    [s r e f]
+    =+  [r0 k]=(get-regime rpb)
+    =/  r=@s  ?:(r0 (dif:si --0 (sun:si k)) (sun:si (dec k)))
+    ::  Exponent bits, zero in posit8.
+    =/  e=@  0
+    ::  Fraction bits, remaining bits to total bitwidth.
+    =/  f=@  (dis (dec (bex +(+(k)))) rpb)
+    [%p 8 s r e f]
     ::  Retrieve unary run-length encoded regime bits.
     ::  k in Gustafson's notation.
     ++  get-regime
       |=  p=@
-      ^-  [s=? w=@s]
-      =/  ps=(list @)  (flop (rip 0 p))
-      =/  sg  =(0 (snag 0 ps))
-      =/  off  (find ?:(sg ~[1] ~[0]) ps)
-      ?~  off  [sg --7]
-      [sg (sun:si u.off)]
+      ^-  [r0=? k=@]
+      ::  get RLE bit polarity
+      =/  r0=?  ;;(? (rsh [0 6] (dis 0x40 p)))
+      ::  get RLE bit count
+      =|  b=_5
+      =|  k=@
+      :-  r0
+      |-
+      =/  r  ;;(? (rsh [0 b] (dis (bex b) p)))
+      ?:  !=(r0 r)  +(k)
+      ?:  =(0 b)  +(k)
+      $(k +(k), b (dec b))
     --
   ::
   ::    +to-rs:  @pb -> @rs
@@ -130,28 +148,28 @@
   ::  $((1-3s)+f)\times 2^{(1-2s)\times(4r+e+s)}$
   ::
   ::  Source
-  ++  to-rs
-    |=  =@rpb
-    ^-  @rs
-    =/  =pb  (sea rpb)
-    =/  s=@  `@`s.pb
-    =/  r=@  (get-regime r.pb)
-    =/  e=@  (sun:^rs (to-sd:twoc e.pb))
-    =/  f=@  (sun:^rs (to-sd:twoc f.pb))
-    %+  mul:rs
-      %+  add:rs
-        (sub:rs .1 (mul:rs .3 s))
-      f
-    %-  pow-n:rs
-    %+  mul:rs
-      :(sub:rs .1 s s)
-    :(add:rs (mul:rs .4 r) e s)
-  ::
-  ++  to-rpb  !!
-  ::
-  ++  add
-    |=  [a=@rpb b=@rpb]
-    ^-  @rpb
+  :: ++  to-rs
+  ::   |=  =@rpb
+  ::   ^-  @rs
+  ::   =/  =pb  (sea rpb)
+  ::   =/  s=@  `@`s.pb
+  ::   =/  r=@  (get-regime r.pb)
+  ::   =/  e=@  (sun:^rs (to-sd:twoc e.pb))
+  ::   =/  f=@  (sun:^rs (to-sd:twoc f.pb))
+  ::   %+  mul:rs
+  ::     %+  add:rs
+  ::       (sub:rs .1 (mul:rs .3 s))
+  ::     f
+  ::   %-  pow-n:rs
+  ::   %+  mul:rs
+  ::     :(sub:rs .1 s s)
+  ::   :(add:rs (mul:rs .4 r) e s)
+  :: ::
+  :: ++  to-rpb  !!
+  :: ::
+  :: ++  add
+  ::   |=  [a=@rpb b=@rpb]
+  ::   ^-  @rpb
   :: - `++add`, $+$ addition
   :: - `++sub`, $-$ subtraction
   :: - `++mul`, $\times$ multiplication

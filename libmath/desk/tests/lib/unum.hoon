@@ -11,50 +11,66 @@
 ++  test-values-rpb  ^-  tang
   ;:  weld
     ::  0
-    %+  expect
-      `@rpb`0b0
-      zero:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b0
+      !>  zero:rpb:unum
     ::  1
-    %+  expect
-      `@rpb`0b100.0000
-      one:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b100.0000
+      !>  one:rpb:unum
     ::  -1
-    %+  expect
-      `@rpb`0b1100.0000
-      neg-one:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b1100.0000
+      !>  neg-one:rpb:unum
     ::  NaR
-    %+  expect
-      `@rpb`0b1000.0000
-      nar:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b1000.0000
+      !>  nar:rpb:unum
     ::  pi
-    %+  expect
-      `@rpb`0b110.1001
-      pi:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b110.1001
+      !>  pi:rpb:unum
     ::  tau
-    %+  expect
-      `@rpb`0b111.0101
-      tau:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b111.0101
+      !>  tau:rpb:unum
     ::  e
-    %+  expect
-      `@rpb`0b110.0110
-      e:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b110.0110
+      !>  e:rpb:unum
     ::  phi
-    %+  expect
-      `@rpb`0b101.0100
-      phi:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b101.0100
+      !>  phi:rpb:unum
     ::  sqrt(2)
-    %+  expect
-      `@rpb`0b100.1101
-      sqt2:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b100.1101
+      !>  sqt2:rpb:unum
     ::  TODO other constants
     ::  huge
-    %+  expect
-      `@rpb`0b111.1111
-      huge:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b111.1111
+      !>  huge:rpb:unum
+    ::  neg-huge
+    %+  expect-eq
+      !>  `@rpb`0b1111.1111
+      !>  neg-huge:rpb:unum
     ::  tiny
-    %+  expect
-      `@rpb`0b1
-      tiny:rpb:unum
+    %+  expect-eq
+      !>  `@rpb`0b1
+      !>  tiny:rpb:unum
+  ==
+::
+++  test-sea-rpb  ^-  tang
+  ;:  weld
+    ::  0
+    %+  expect-eq
+      !>  [%z 3 ~]
+      !>  (sea:rpb:unum zero:rpb:unum)
+    ::  1
+    %+  expect-eq
+      !>  [%p 3 s=%.y r=--0 e=--0 f=0]
+      !>  (sea:rpb:unum one:rpb:unum)
   ==
 ::
 :: ++  test-abs  ^-  tang

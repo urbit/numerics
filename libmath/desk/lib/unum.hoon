@@ -25,6 +25,25 @@
 ::  - Exponent bits (0--(ps-2)), fixed if available but can be truncated.
 ::  - Fraction bits (the rest), remaining bits to total bitwidth.
 ::
+::  While posits can be written in a general purpose form, we are interested
+::  in standard posit8, posit16, and posit32 representations.  For these, the
+::  following conventions apply:
+::  - posit8:  8 bits total
+::    - Sign bit s (1)
+::    - Regime bits k (1--7), unary run-length encoded (one different to end)
+::    - Exponent bits e (0), fixed
+::    - Fraction bits f (the rest), remaining to total bitwidth (the rest)
+::  - posit16: 16 bits total
+::    - Sign bit s (1)
+::    - Regime bits k (1--15), unary run-length encoded (one different to end)
+::    - Exponent bits e (1), fixed (but may be occluded by a full regime)
+::    - Fraction bits f (the rest), remaining to total bitwidth (the rest)
+::  - posit32: 32 bits total
+::    - Sign bit s (1)
+::    - Regime bits k (1--31), unary run-length encoded (one different to end)
+::    - Exponent bits e (2), fixed (but may be occluded by a full regime)
+::    - Fraction bits f (the rest), remaining to total bitwidth (the rest)
+::
 ::  - Gustafson & Yonemoto (2017), "Beating Floating Point at its Own Game:
 ::    Posit Arithmetic", Supercomputing Frontiers and Innovations. 4 (2).
 ::    Publishing Center of South Ural State University, Chelyabinsk, Russia.
@@ -36,53 +55,44 @@
   $%  $:  %p    :: real-valued posit
           b=@u  :: bitwidth (bloq), ∈ 3 (byte), 4 (half), 5 (single)
           s=?   :: sign, 0 (+) or 1 (-)
-          r=@s  :: regime
-          e=@s  :: exponent
+          r=@s  :: regime (not k bits but result; scaling fixed by posit size)
+          e=@s  :: exponent (fixed by posit size)
           f=@u  :: fraction
       ==
-      [%n ~]    :: Not a Real (NaR), unum NaN
+      [%n b=@u ~]   :: Not a Real (NaR), unum NaN
+      [%z b=@u ~]   :: Zero, unum 0
   ==
-::  TODO possibly superfluous
-::  8-bit posit tuple
-+$  pb
-  $%  s=?         :: sign bit
-      r=@         :: regime bits, bitwidth first (1--7 bits)
-      e=@         :: exponent bits, bitwidth first (0 for posit8)
-      f=@         :: fraction bits, remaining to total bitwidth (the rest)
-  ==
-::  16-bit posit tuple
-+$  ph
-  $%  s=?         :: sign bit
-      r=@         :: regime bits, bitwidth first (1--15 bits)
-      e=@         :: exponent bits, bitwidth first (1 for posit16)
-      f=@         :: fraction bits, remaining to total bitwidth (the rest)
-  ==
-::  32-bit posit tuple
-+$  ps
-  $%  s=?         :: sign bit
-      r=@         :: regime bits, bitwidth first (1--31 bits)
-      e=@         :: exponent bits, bitwidth first (2 for posit32)
-      f=@         :: fraction bits, remaining to total bitwidth (the rest)
-  ==
+::
 ++  rpb
   |%
   ::
-  ::    +huge:  @rpb
+  ::    +zero:  @rpb
   ::
-  ::  Returns the value of the largest representable number.
+  ::  Returns the value of zero.
   ::    Examples
-  ::      > `@ub`huge
-  ::      0b111.1111
+  ::      > `@ub`zero
+  ::      0b0
   ::  Source
-  ++  huge  `@rpb`0x7f         ::  2**24
-  ::    +tiny:  @rpb
+  ++  zero  `@rpb`0x0          ::  0
   ::
-  ::  Returns the value of the smallest representable normal number.
+  ::    +one:  @rpb
+  ::
+  ::  Returns the value of one.
   ::    Examples
-  ::      > `@ub`tiny
-  ::      0b1
+  ::      > `@ub`one
+  ::      0b0
   ::  Source
-  ++  tiny  `@rpb`0x1          ::  2**-24
+  ++  one  `@rpb`0x40          ::  1
+  ::
+  ::    +neg-one:  @rpb
+  ::
+  ::  Returns the value of negative one.
+  ::    Examples
+  ::      > `@ub`neg-one
+  ::      0b1100.0000
+  ::  Source
+  ++  neg-one  `@rpb`0xc0      ::  -1
+  ::
   ::    +nar:  @rpb
   ::
   ::  Returns the value of Not a Real (NaR).
@@ -92,6 +102,79 @@
   ::  Source
   ++  nar  `@rpb`0x80          ::  NaR, Not a Real (NaN)
   ::
+  ::    +pi:  @rpb
+  ::
+  ::  Returns the value of pi.
+  ::    Examples
+  ::      > `@ub`pi
+  ::      0b110.1001
+  ::  Source
+  ++  pi  `@rpb`0x69           ::  π
+  ::
+  ::    +tau:  @rpb
+  ::
+  ::  Returns the value of tau, $2\pi$.
+  ::    Examples
+  ::      > `@ub`tau
+  ::      0b111.0101
+  ::  Source
+  ++  tau  `@rpb`0x75          ::  τ
+  ::
+  ::    +e:  @rpb
+  ::
+  ::  Returns the value of e.
+  ::    Examples
+  ::      > `@ub`e
+  ::      0b110.0110
+  ::  Source
+  ++  e  `@rpb`0x66            ::  e
+  ::
+  ::    +phi:  @rpb
+  ::
+  ::  Returns the value of phi, $\frac{1+\sqrt{5}}{2}$.
+  ::    Examples
+  ::      > `@ub`phi
+  ::      0b101.0100
+  ::  Source
+  ++  phi  `@rpb`0x54          ::  φ
+  ::
+  ::    +sqt2:  @rpb
+  ::
+  ::  Returns the value of sqrt(2).
+  ::    Examples
+  ::      > `@ub`sqt2
+  ::      0b100.1101
+  ::  Source
+  ++  sqt2  `@rpb`0x4d         ::  √2
+  ::
+  ::  TODO other constants
+  ::
+  ::    +huge:  @rpb
+  ::
+  ::  Returns the value of the largest representable number.
+  ::    Examples
+  ::      > `@ub`huge
+  ::      0b111.1111
+  ::  Source
+  ++  huge  `@rpb`0x7f         ::  2**8
+  ::
+  ::    +neghuge:  @rpb
+  ::
+  ::  Returns the value of the largest representable number.
+  ::    Examples
+  ::      > `@ub`neg-huge
+  ::      0b1111.1111
+  ::  Source
+  ++  neg-huge  `@rpb`0xff     ::  -2**8
+  ::    +tiny:  @rpb
+  ::
+  ::  Returns the value of the smallest representable normal number.
+  ::    Examples
+  ::      > `@ub`tiny
+  ::      0b1
+  ::  Source
+  ++  tiny  `@rpb`0x1          ::  2**-8
+  ::
   ::  Operations
   ::
   ::    +sea:  @rpb -> $up
@@ -100,20 +183,21 @@
   ::    Examples
   ::      :: posit 1.0
   ::      > (sea 0b100.0000)
-  ::      [%p s=%.y r=1 e=0 f=0b0]
+  ::      [%p b=3 s=%.y r=--0 e=--0 f=0]
   ::      :: posit 0.5
   ::      > (sea 0b10.0000)
-  ::      [%p s=%.y r=1 e= f=0b0]
+  ::      [%p b=3 s=%.y r=-1 e=--0 f=0]
   ::      :: posit largest possible 8-bit value, 2**24
   ::      > (sea 0b111.1111)
-  ::      [%p s=%.y r=0b111.1111 e=0b0 f=0b0]
+  ::      [%p b=3 s=%.y r=--5 e=--0 f=127]
   ::      :: posit largest possible negative 8-bit value, -2**24+1
   ::  Source
   ++  sea
-    :: =seaa !:
     |=  =@rpb
     ^-  up
     |^
+    ?:  =(0x0 rpb)   [%z 3 ~]
+    ?:  =(0x80 rpb)  [%n 3 ~]
     ::  Sign bit at MSB.
     =/  s=?  ;;(? (rsh [0 7] rpb))
     ::  Regime bits, unary run-length encoding.
@@ -122,8 +206,8 @@
     ::  Exponent bits, zero in posit8.
     =/  e=@  0
     ::  Fraction bits, remaining bits to total bitwidth.
-    =/  f=@  (dis (dec (bex +(+(k)))) rpb)
-    [%p 8 s r e f]
+    =/  f=@  (dis (dec (bex (sub 6 k))) rpb)
+    [%p 3 s r e f]
     ::  Retrieve unary run-length encoded regime bits.
     ::  k in Gustafson's notation.
     ++  get-regime
@@ -136,9 +220,9 @@
       =|  k=@
       :-  r0
       |-
-      =/  r  ;;(? (rsh [0 b] (dis (bex b) p)))
+      =/  r  ;;(? (rsh [0 b] (dis (bex (dec b)) p)))
       ?:  !=(r0 r)  +(k)
-      ?:  =(0 b)  +(k)
+      ?:  =(0 b)    +(+(k))  :: no empty unary terminator
       $(k +(k), b (dec b))
     --
   ::

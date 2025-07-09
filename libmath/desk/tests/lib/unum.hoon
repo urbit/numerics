@@ -117,59 +117,45 @@
       !>  (into:rpb:unum [%p 3 s=%.n r=--6 e=--0 f=0b0])
   ==
 ::
-::  round-trip tests
-
-:: 1.25
-
-:: s = 0
-:: r = 0  <-  k = 1, R_0 = 1
-:: e = 0
-:: f = 01000
-
-:: ((1 - 3*0) + 2**(-5)*(1*2**3)) * 2**((1-2*0)*(1*0+0+0))
-::     1      + (1/32) * 8        * 1
-::     1      + 1/4               * 1
-
-:: ---
-
-:: 0.5
-
-:: s = 0
-:: r = -1 <-  k = 1, R_0 = 0
-:: e = 0
-:: f = 0
-
-:: ((1 - 3*0) + 2**(-5)*(0*2**3)) * 2**((1-2*0)*(1*-1+0+0))
-
-:: ---
-
-:: 1.0
-
-:: s = 0
-:: r = 0  <- k = 1, R_0 = 1
-:: e = 0
-:: f = 0
-
-:: ((1 - 3*0) + 2**(-5)*(0*2**3)) * 2**((1-2*0)*(1*0+0+0))
-
-:: ---
-
-:: -1.0
-
-:: s = 1
-:: r = 0  <- k = 1, R_0 = 1
-:: e = 0
-:: f = 0
-
-:: ((1 - 3*1) + 2**(-5)*(0*2**3)) * 2**((1-2*1)*(1*0+0+1))
-
-:: ---
-
-:: +sea:  @rpb -> $up
-
-:: 1. Read s (1 bit).
-:: 2. Read RLE until different bit (n bits).
-:: 3. Set e to 0.
-:: 4. Get f from remaining bits and formula.
-
+++  test-round-trip-rpb  ^-  tang
+  ;:  weld
+    ::  0
+    %+  expect-eq
+      !>  zero:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum zero:rpb:unum))
+    ::  1
+    %+  expect-eq
+      !>  one:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum one:rpb:unum))
+    ::  -1.0
+    %+  expect-eq
+      !>  neg-one:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum neg-one:rpb:unum))
+    ::  NaR
+    %+  expect-eq
+      !>  nar:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum nar:rpb:unum))
+    ::  pi
+    %+  expect-eq
+      !>  pi:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum pi:rpb:unum))
+    ::  tau
+    %+  expect-eq
+      !>  tau:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum tau:rpb:unum))
+    ::  e
+    %+  expect-eq
+      !>  e:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum e:rpb:unum))
+    ::  phi
+    %+  expect-eq
+      !>  phi:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum phi:rpb:unum))
+    ::  sqrt(2)
+    %+  expect-eq
+      !>  sqt2:rpb:unum
+      !>  (into:rpb:unum (from:rpb:unum sqt2:rpb:unum))
+    :: TODO other constants, huge, neg-huge, tiny, neg-tiny, etc.
+  ==
+::
 --

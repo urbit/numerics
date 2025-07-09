@@ -57,6 +57,7 @@
           s=?   :: sign, 0 (+) or 1 (-)
           r=@s  :: regime (not k bits but result; scaling fixed by posit size)
           e=@s  :: exponent (fixed by posit size)
+          ::  TODO convert into single (2^expsize r+e+s), factor
           f=@u  :: fraction
       ==
       [%n b=@u ~]   :: Not a Real (NaR), unum NaN
@@ -228,7 +229,7 @@
       =|  k=@
       :-  r0
       |-
-      =/  r  ;;(? (rsh [0 b] (dis (bex (dec b)) p)))
+      =/  r  ;;(? (rsh [0 b] (dis (bex b) p)))
       ?:  !=(r0 r)  +(k)
       ?:  =(0 b)    +(+(k))  :: no empty unary terminator
       $(k +(k), b (dec b))
@@ -267,7 +268,11 @@
     ::  f fraction bits
     ?:  (gte +(k) 7)  rpb  :: regime bits are full, no fraction
     %+  con  rpb
-    (rsh [0 (sub (sub 7 +(+(k))) (met 0 f.up))] f.up)
+    =/  sp  (sub 7 +(k))
+    ?:  (gth sp (met 0 f.up))
+      f.up
+    =/  sh  (sub sp (met 0 f.up))
+    (rsh [0 sh] f.up)
   :: ++  to-rs
   ::   |=  =up
   ::   ^-  @rs

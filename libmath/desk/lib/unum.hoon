@@ -15,8 +15,44 @@
 ::  - @rvb, @rvh, @rvs  :: valids
 ::
 ::  The bitwidths are 8-bit Bytes, 16-bit Halfs, and 32-bit Singles.
-::  While we square on quires and valids, the current implementation is
-::  only for posits.
+::
+::  While posits can be written in a general purpose form, we are interested
+::  in standard posit8, posit16, and posit32 representations.  For these, the
+::  following conventions apply:
+::  - posit8:  8 bits total (posit<8,0>)
+::    - Sign bit s (1)
+::    - Regime bits k (1--7), unary run-length encoded (one different to end)
+::    - Exponent bits e (0), fixed
+::    - Fraction bits f (the rest), remaining to total bitwidth
+::  - posit16: 16 bits total (posit<16,1>)
+::    - Sign bit s (1)
+::    - Regime bits k (1--15), unary run-length encoded (one different to end)
+::    - Exponent bits e (1), fixed (but may be occluded by a full regime)
+::    - Fraction bits f (the rest), remaining to total bitwidth
+::  - posit32: 32 bits total (posit<32,2>)
+::    - Sign bit s (1)
+::    - Regime bits k (1--31), unary run-length encoded (one different to end)
+::    - Exponent bits e (2), fixed (but may be occluded by a full regime)
+::    - Fraction bits f (the rest), remaining to total bitwidth
+::
+::  In general, a posit<bw,es> has a bitwidth of bw and a es = useed (or regime
+::  multiplier) of $2^{2^\text{useed}}$.  These two equations are equivalent:
+::
+::  $$(-1)^s \times \text{useed}^k \times 2^e \times (1+f/{2^{fs}})$$
+::  $$(1-3s+f) \times 2^{(-1)^s (k \times 2^\text{useed} + e + s)}
+::
+::  - Cook (2018), "Eight-bit floating point",
+::    https://www.johndcook.com/blog/2018/04/15/eight-bit-floating-point/
+::  - Cook (2018), "All posit<8,0> representable numbers",
+::    https://www.johndcook.com/eightbit.html
+::  - Gustafson & Yonemoto (2017), "Beating Floating Point at its Own Game:
+::    Posit Arithmetic", Supercomputing Frontiers and Innovations. 4 (2).
+::    Publishing Center of South Ural State University, Chelyabinsk, Russia.
+::    http://www.johngustafson.net/pdfs/BeatingFloatingPoint.pdf
+::  - Gustafson (2019), "Posit Arithmetic Lecture 1", CoNGa 2019,
+::    https://posithub.org/conga/2019/docs/13/1430-John-Introductory.pdf
+|%
+::  Representation of a Type III Unum Posit
 ::
 ::  A posit has four fields:
 ::  - Sign bit (1), 0 for positive, 1 for negative.
@@ -24,33 +60,7 @@
 ::    - Regime scale is 2^2^es, where es is the max exponent size.
 ::  - Exponent bits (0--(ps-2)), fixed if available but can be truncated.
 ::  - Fraction bits (the rest), remaining bits to total bitwidth.
-::
-::  While posits can be written in a general purpose form, we are interested
-::  in standard posit8, posit16, and posit32 representations.  For these, the
-::  following conventions apply:
-::  - posit8:  8 bits total
-::    - Sign bit s (1)
-::    - Regime bits k (1--7), unary run-length encoded (one different to end)
-::    - Exponent bits e (0), fixed
-::    - Fraction bits f (the rest), remaining to total bitwidth (the rest)
-::  - posit16: 16 bits total
-::    - Sign bit s (1)
-::    - Regime bits k (1--15), unary run-length encoded (one different to end)
-::    - Exponent bits e (1), fixed (but may be occluded by a full regime)
-::    - Fraction bits f (the rest), remaining to total bitwidth (the rest)
-::  - posit32: 32 bits total
-::    - Sign bit s (1)
-::    - Regime bits k (1--31), unary run-length encoded (one different to end)
-::    - Exponent bits e (2), fixed (but may be occluded by a full regime)
-::    - Fraction bits f (the rest), remaining to total bitwidth (the rest)
-::
-::  - Gustafson & Yonemoto (2017), "Beating Floating Point at its Own Game:
-::    Posit Arithmetic", Supercomputing Frontiers and Innovations. 4 (2).
-::    Publishing Center of South Ural State University, Chelyabinsk, Russia.
-::    http://www.johngustafson.net/pdfs/BeatingFloatingPoint.pdf
-|%
-::  Representation of a Type III Unum Posit
-::  (uq, uv)
+
 +$  up
   $%  $:  %p    :: real-valued posit
           b=@u  :: bitwidth (bloq), ∈ 3 (byte), 4 (half), 5 (single)
@@ -63,6 +73,20 @@
       [%n b=@u ~]   :: Not a Real (NaR), unum NaN
       [%z b=@u ~]   :: Zero, unum 0
   ==
+::
+::  Representation of a Type III Unum Quire
+::
+::  > The other major component of the definition of posit arithmetic is the
+::  quire, the fixed-size set of bits used for scratch operations that are
+::  mathematically exact in the g-layer. A quire can be thought of as a
+::  dedicated register that permits dot products, sums, and other operations to
+::  be performed with rounding error deferred to the very end of the
+::  calculation. All computers use a hidden scratch area for temporary
+::  calculations. In posit arithmetic, the quire data type is accessible to the
+::  programmer, which is what makes possible for posits to follow the rules of
+::  algebra much more closely than floats do.  (Posits4.nb)
++$  uq
+  $%
 ::
 +$  up-new
   $%  $:  %p    :: real-valued posit
@@ -389,6 +413,12 @@
   :: - `++huge`, largest valid number in `bloq` width
   :: - `++tiny`, smallest valid number in `bloq` size
 
+  --
+::  
+++  rqb
+  |%
+  ++  qsize  !!
+  ++  qextra  !!
   --
 ::  Type III Unum Posit, 16-bit width ("half")
 ::  Type III Unum Posit, 32-bit width ("single")

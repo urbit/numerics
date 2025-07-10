@@ -64,9 +64,28 @@
       [%z b=@u ~]   :: Zero, unum 0
   ==
 ::
++$  up-new
+  $%  $:  %p    :: real-valued posit
+          b=@u  :: bitwidth (bloq), ∈ 3 (byte), 4 (half), 5 (single)
+          s=?   :: sign, 0 (+) or 1 (-)
+          e=@s  :: total exponent (to be broken into regime and exponent)
+          f=@u  :: fraction
+      ==
+      [%n b=@u ~]   :: Not a Real (NaR), unum NaN
+      [%z b=@u ~]   :: Zero, unum 0
+  ==
+::
 ++  rpb
   |%
+  ::  mathematics constants to posit8 precision
+  ::    +useed:  @
   ::
+  ::  Returns the value of useed, $2^{2^{es}}$, as used in this posit.
+  ::    Examples
+  ::      > `@ub`useed
+  ::      0b100.0000
+  ::  Source
+  ++  useed  0
   ::    +zero:  @rpb
   ::
   ::  Returns the value of zero.
@@ -75,7 +94,6 @@
   ::      0b0
   ::  Source
   ++  zero  `@rpb`0x0          ::  0
-  ::
   ::    +one:  @rpb
   ::
   ::  Returns the value of one.
@@ -84,7 +102,6 @@
   ::      0b0
   ::  Source
   ++  one  `@rpb`0x40          ::  1
-  ::
   ::    +neg-one:  @rpb
   ::
   ::  Returns the value of negative one.
@@ -93,7 +110,6 @@
   ::      0b1100.0000
   ::  Source
   ++  neg-one  `@rpb`0xc0      ::  -1
-  ::
   ::    +nar:  @rpb
   ::
   ::  Returns the value of Not a Real (NaR).
@@ -102,7 +118,6 @@
   ::      0b1000.0000
   ::  Source
   ++  nar  `@rpb`0x80          ::  NaR, Not a Real (NaN)
-  ::
   ::    +pi:  @rpb
   ::
   ::  Returns the value of pi.
@@ -111,7 +126,6 @@
   ::      0b110.1001
   ::  Source
   ++  pi  `@rpb`0x69           ::  π
-  ::
   ::    +tau:  @rpb
   ::
   ::  Returns the value of tau, $2\pi$.
@@ -120,7 +134,6 @@
   ::      0b111.0101
   ::  Source
   ++  tau  `@rpb`0x75          ::  τ
-  ::
   ::    +e:  @rpb
   ::
   ::  Returns the value of e.
@@ -129,7 +142,6 @@
   ::      0b110.0110
   ::  Source
   ++  e  `@rpb`0x66            ::  e
-  ::
   ::    +phi:  @rpb
   ::
   ::  Returns the value of phi, $\frac{1+\sqrt{5}}{2}$.
@@ -183,6 +195,38 @@
   ::      0b1111.1111
   ::  Source
   ++  neg-tiny  `@rpb`0xff     ::  -2**-6
+  ::    +invsqt2:  @rs
+  ::
+  ::  Returns the value 1/sqrt(2) (OEIS A010503).
+  ::    Examples
+  ::      > invsqt2
+  ::      0b10.1101
+  ::  Source
+  ++  invsqt2  `@rpb`0x2d    ::  1/√2
+  ::    +log2:  @rs
+  ::
+  ::  Returns the value log(2) (OEIS A002162).
+  ::    Examples
+  ::      > log2
+  ::      0b10.1100
+  ::  Source
+  ++  log2  `@rpb`0x2c    ::  log(2)
+  ::    +invlog2:  @rs
+  ::
+  ::  Returns the value 1/log(2).
+  ::    Examples
+  ::      > invlog2
+  ::      0b100.1110
+  ::  Source
+  ++  invlog2  `@rpb`0x4e  ::  1/log(2)
+  ::    +log10:  @rs
+  ::
+  ::  Returns the value log(10) (OEIS A002392).
+  ::    Examples
+  ::      > log10
+  ::      0b110.0010
+  ::  Source
+  ++  log10  `@rpb`0x62    ::  log(10)
   ::
   ::  Operations
   ::
@@ -295,6 +339,7 @@
   :: ++  add
   ::   |=  [a=@rpb b=@rpb]
   ::   ^-  @rpb
+  ::  See the 2022 Posit Standard, section 5, for a full list.
   :: - `++add`, $+$ addition
   :: - `++sub`, $-$ subtraction
   :: - `++mul`, $\times$ multiplication

@@ -86,8 +86,17 @@
 ::  calculations. In posit arithmetic, the quire data type is accessible to the
 ::  programmer, which is what makes possible for posits to follow the rules of
 ::  algebra much more closely than floats do.  (Posits4.nb)
+::
+::  Quires are a fixed-point 2s complement of precision 16n.
+::
 +$  uq
-  $:  p=@ux
+  $%  $:  %q
+          s=?       :: sign, 0 (+) or 1 (-)
+          c=@udF    :: carry guard, 31 bits
+          i=@       :: integer part, 8*n-16 bits
+          f=@       :: fractional part, 8*n-16 bits
+      ==
+      [%n ~]        :: Not a Real (NaR), quire NaN
   ==
 ::
 ++  rpb
@@ -265,7 +274,6 @@
   ++  from
     |=  =@rpb
     ^-  up
-    |^
     ?:  =(0x0 rpb)   [%z 3 ~]
     ?:  =(0x80 rpb)  [%n 3 ~]
     ::  Sign bit at MSB.
@@ -279,28 +287,41 @@
     ::  Fraction bits, remaining bits to total bitwidth.
     =/  f=@  (dis (dec (bex (sub 6 k))) rpb)
     [%p 3 s x f]
-    ::  Retrieve unary run-length encoded regime bits.
-    ::  k in Gustafson's notation.
-    ++  get-regime
-      |=  p=@
-      ^-  [r0=? k=@]
-      ::  get RLE bit polarity
-      =/  r0=?  ;;(? (rsh [0 6] (dis 0x40 p)))
-      ::  get RLE bit count
-      =|  b=_5
-      =|  k=@
-      :-  r0
-      |-
-      =/  r  ;;(? (rsh [0 b] (dis (bex b) p)))
-      ?:  !=(r0 r)  +(k)
-      ?:  =(0 b)    +(+(k))  :: no empty unary terminator
-      $(k +(k), b (dec b))
-    ::  x = r*2^es + e
-    ++  re-to-exp
-      |=  [r=@s e=@]
-      ^-  @s
-      (sum:si (pro:si r (new:si & (bex es))) e)
-    --
+  ::  x = r*2^es + e
+  ++  re-to-exp
+    |=  [r=@s e=@]
+    ^-  @s
+    (sum:si (pro:si r (new:si & (bex es))) e)
+  ::  Retrieve unary run-length encoded regime bits.
+  ::  k in Gustafson's notation.
+  ++  get-regime
+    |=  p=@
+    ^-  [r0=? k=@]
+    ::  get RLE bit polarity
+    =/  r0=?  ;;(? (rsh [0 6] (dis 0x40 p)))
+    ::  get RLE bit count
+    =|  b=_5
+    =|  k=@
+    :-  r0
+    |-
+    =/  r  ;;(? (rsh [0 b] (dis (bex b) p)))
+    ?:  !=(r0 r)  +(k)
+    ?:  =(0 b)    +(+(k))  :: no empty unary terminator
+    $(k +(k), b (dec b))
+  ::
+  ++  separate-bits
+    |=  p=@
+    ^-  [r=@s f=@u]
+    =/  t  (lsh [0 2] p)
+    ?:  ;;(? (rsh [0 7] p))
+      =|  r=@s
+      |-  ^-  [r=@s f=@u]
+      ?:  =(0 (dis 0x80 t))  [r (con 0x80 t)]
+      $(r (sum:si r --1), t (lsh [0 1] t))
+    =/  r=@s  -1
+    |-  ^-  [r=@s f=@u]
+    ?:  !=(0 (dis 0x80 t))  [r (con 0x80 (dis 0x7f t))]
+    $(r (sum:si r -1), t (lsh [0 1] t))
   ::
   ::    +into:  $up -> @rpb
   ::
@@ -375,10 +396,37 @@
   ::   :(add:rs (mul:rs .4 r) e s)
   :: ::
   :: ++  to-rpb  !!
-  :: ::
-  :: ++  add
-  ::   |=  [a=@rpb b=@rpb]
-  ::   ^-  @rpb
+  ::
+  ::
+  ++  add
+    |=  [a=@rpb b=@rpb]
+    ^-  @rpb
+    =/  aup=up  (from a)
+    =/  bup=up  (from b)
+    ::  Check NaR and zero.
+    ?:  |(?=(%n -.aup) ?=(%n -.bup))  `@rpb`0x80  :: NaR
+    ?:  ?=(%z -.aup)                  b  :: zero
+    ?:  ?=(%z -.bup)                  a  :: zero
+    ::  Check signs
+    =/  sf  =(s.aup s.bup)
+    ?>  sf  :: TODO punt
+    :: ?.  sf
+    ::   ::  If not same sign, subtract
+    ::   %+  mix  (lsh [0 7] sf)
+    ::   $(a a, b (mix 0x80 b))
+    =/  s  s.aup
+    ::
+    =+  [ra fa]=(separate-bits a)
+    =+  [rb fb]=(separate-bits b)
+    =/  f16a  (lsh [0 7] fa)
+    =/  sr    +:(old:si (sum:si ra rb))
+    =/  f16b  (rsh [0 sr] fb)
+    =.  f16a  (^add f16a f16b)
+    =/  cf=?  ;;(? (rsh [0 15] (dis 0x8000 f16a)))
+    =?  ra    !cf  (sum:si ra --1)
+    =?  f16a  !cf  (rsh [0 1] f16a)
+    =/  x=@s  (re-to-exp ra 0)
+    (into [%p b.aup s.aup x f16a])
   ::  See the 2022 Posit Standard, section 5, for a full list.
   :: - `++add`, $+$ addition
   :: - `++sub`, $-$ subtraction
@@ -430,11 +478,11 @@
   :: - `++tiny`, smallest valid number in `bloq` size
 
   --
-::  
+::
 ++  rqb
   |%
-  ++  qsize  !!
-  ++  qextra  !!
+  ++  n  8
+  ++  bw  ^~((mul 16 n))
   --
 ::  Type III Unum Posit, 16-bit width ("half")
 ::  Type III Unum Posit, 32-bit width ("single")

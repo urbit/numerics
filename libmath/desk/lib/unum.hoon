@@ -35,11 +35,14 @@
 ::    - Exponent bits e (2), fixed (but may be occluded by a full regime)
 ::    - Fraction bits f (the rest), remaining to total bitwidth
 ::
-::  In general, a posit<bw,es> has a bitwidth of bw and a es = useed (or regime
-::  multiplier) of $2^{2^\text{useed}}$.  These two equations are equivalent:
+::  In general, a posit<bw,es> has a bitwidth of bw and a useed = 2^2^es (or
+::  regime multiplier) of $2^{2^\text{es}}$.  These two equations are
+::  equivalent:
 ::
-::  $$(-1)^s \times \text{useed}^k \times 2^e \times (1+f/{2^{fs}})$$
-::  $$(1-3s+f) \times 2^{(-1)^s (k \times 2^\text{useed} + e + s)}
+::  $$(-1)^s \times \text{useed}^r \times 2^e \times (1+f/{2^{fs}})$$
+::  $$(1-3s+f) \times 2^{(-1)^s (r \times 2^\text{es} + e + s)}
+::
+::  (Note that Gustafson equivocates between r and k in notation.)
 ::
 ::  - Cook (2018), "Eight-bit floating point",
 ::    https://www.johndcook.com/blog/2018/04/15/eight-bit-floating-point/
@@ -60,14 +63,12 @@
 ::    - Regime scale is 2^2^es, where es is the max exponent size.
 ::  - Exponent bits (0--(ps-2)), fixed if available but can be truncated.
 ::  - Fraction bits (the rest), remaining bits to total bitwidth.
-
+::
 +$  up
   $%  $:  %p    :: real-valued posit
           b=@u  :: bitwidth (bloq), ∈ 3 (byte), 4 (half), 5 (single)
           s=?   :: sign, 0 (+) or 1 (-)
-          r=@s  :: regime (not k bits but result; scaling fixed by posit size)
-          e=@s  :: exponent (fixed by posit size)
-          ::  TODO convert into single (2^expsize r+e+s), factor
+          x=@s  :: total exponent (to be broken into regime and exponent)
           f=@u  :: fraction
       ==
       [%n b=@u ~]   :: Not a Real (NaR), unum NaN
@@ -86,22 +87,14 @@
 ::  programmer, which is what makes possible for posits to follow the rules of
 ::  algebra much more closely than floats do.  (Posits4.nb)
 +$  uq
-  $%
-::
-+$  up-new
-  $%  $:  %p    :: real-valued posit
-          b=@u  :: bitwidth (bloq), ∈ 3 (byte), 4 (half), 5 (single)
-          s=?   :: sign, 0 (+) or 1 (-)
-          e=@s  :: total exponent (to be broken into regime and exponent)
-          f=@u  :: fraction
-      ==
-      [%n b=@u ~]   :: Not a Real (NaR), unum NaN
-      [%z b=@u ~]   :: Zero, unum 0
+  $:  p=@ux
   ==
 ::
 ++  rpb
   |%
   ::  mathematics constants to posit8 precision
+  ::  TODO
+  ++  es  0
   ::    +useed:  @
   ::
   ::  Returns the value of useed, $2^{2^{es}}$, as used in this posit.
@@ -109,7 +102,7 @@
   ::      > `@ub`useed
   ::      0b100.0000
   ::  Source
-  ++  useed  0
+  ++  useed  2
   ::    +zero:  @rpb
   ::
   ::  Returns the value of zero.
@@ -282,9 +275,10 @@
     =/  r=@s  ?:(r0 (dif:si --0 (sun:si k)) (sun:si (dec k)))
     ::  Exponent bits, zero in posit8.
     =/  e=@  0
+    =/  x=@s  (re-to-exp r e)
     ::  Fraction bits, remaining bits to total bitwidth.
     =/  f=@  (dis (dec (bex (sub 6 k))) rpb)
-    [%p 3 s r e f]
+    [%p 3 s x f]
     ::  Retrieve unary run-length encoded regime bits.
     ::  k in Gustafson's notation.
     ++  get-regime
@@ -301,6 +295,11 @@
       ?:  !=(r0 r)  +(k)
       ?:  =(0 b)    +(+(k))  :: no empty unary terminator
       $(k +(k), b (dec b))
+    ::  x = r*2^es + e
+    ++  re-to-exp
+      |=  [r=@s e=@]
+      ^-  @s
+      (sum:si (pro:si r (new:si & (bex es))) e)
     --
   ::
   ::    +into:  $up -> @rpb
@@ -312,17 +311,20 @@
   ++  into
     |=  =up
     ^-  @rpb
+    |^
     =|  rpb=@rpbD
     ?:  ?=(%z -.up)  `@rpb`0x0
     ?:  ?=(%n -.up)  `@rpb`0x80
     ?>  ?=(%p -.up)
     ::  s sign bit
     =.  rpb  (lsh [0 7] s.up)
+    ::
+    =+  [r e]=(exp-to-er x.up)
     ::  r regime bits
-    ::  TODO scale regime for other posit sizes 2**es
-    =+  [sg ab]=(old:si r.up)
+    =+  [sg ab]=(old:si r)
     =/  r0  ?:(sg %| %&)
     =/  k   ?:(sg +(ab) ab)
+    ~&  rke+[r k e]
     =.  rpb
       %+  con  rpb
       =/  rs  (fil 0 k r0)
@@ -333,6 +335,7 @@
       %+  con  rpb
       (lsh [0 (sub 7 +(k))] !r0)
     ::  no exponent in posit8
+    ?>  =(0 e)
     ::  f fraction bits
     ?:  (gte +(k) 7)  rpb  :: regime bits are full, no fraction
     %+  con  rpb
@@ -341,6 +344,19 @@
       f.up
     =/  sh  (sub sp (met 0 f.up))
     (rsh [0 sh] f.up)
+    ::  Convert base exponent into regime and exponent.
+    ::  2^(r*2^es + e) = 2^x
+    ::  x = r*2^es+e
+    ++  exp-to-er
+      |=  x=@s
+      ^-  [r=@s e=@]
+      ?:  =(0 es)  [x 0]
+      =/  lg2useed  ^~((new:si %& (rsh [0 1] useed)))
+      :-  (fra:si x lg2useed)
+      =+  [sg ab]=(old:si (rem:si x lg2useed))
+      ?>  sg
+      ab
+    --
   :: ++  to-rs
   ::   |=  =up
   ::   ^-  @rs

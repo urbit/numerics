@@ -73,7 +73,7 @@
       !>  (from:rpb:unum zero:rpb:unum)
     ::  1
     %+  expect-eq
-      !>  [%p 3 s=%.y r=--0 e=--0 f=0]
+      !>  [%p 3 s=%.y x=--0 f=0]
       !>  (from:rpb:unum one:rpb:unum)
   ==
 ::
@@ -86,35 +86,35 @@
     ::  1
     %+  expect-eq
       !>  one:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.y r=--0 e=--0 f=0])
+      !>  (into:rpb:unum [%p 3 s=%.y x=--0 f=0])
     ::  1.25
     %+  expect-eq
       !>  `@rpb`0b100.1000
-      !>  (into:rpb:unum [%p 3 s=%.y r=--0 e=--0 f=0b1000])
+      !>  (into:rpb:unum [%p 3 s=%.y x=--0 f=0b1000])
     ::  0.5
     %+  expect-eq
       !>  `@rpb`0b10.0000
-      !>  (into:rpb:unum [%p 3 s=%.y r=-1 e=--0 f=0])
+      !>  (into:rpb:unum [%p 3 s=%.y x=-1 f=0])
     ::  -1.0
     %+  expect-eq
       !>  neg-one:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.n r=--0 e=--0 f=0])
+      !>  (into:rpb:unum [%p 3 s=%.n x=--0 f=0])
     ::  huge
     %+  expect-eq
       !>  huge:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.y r=--6 e=--0 f=0b0])
+      !>  (into:rpb:unum [%p 3 s=%.y x=--6 f=0b0])
     ::  neg-huge
     %+  expect-eq
       !>  neg-huge:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.n r=-6 e=--0 f=0b0])
+      !>  (into:rpb:unum [%p 3 s=%.n x=-6 f=0b0])
     ::  tiny
     %+  expect-eq
       !>  tiny:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.y r=-6 e=--0 f=0b0])
+      !>  (into:rpb:unum [%p 3 s=%.y x=-6 f=0b0])
     ::  neg-tiny
     %+  expect-eq
       !>  neg-tiny:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.n r=--6 e=--0 f=0b0])
+      !>  (into:rpb:unum [%p 3 s=%.n x=--6 f=0b0])
   ==
 ::
 ++  test-round-trip-rpb  ^-  tang

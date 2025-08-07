@@ -308,7 +308,7 @@
     ?:  !=(r0 r)  +(k)
     ?:  =(0 b)    +(+(k))  :: no empty unary terminator
     $(k +(k), b (dec b))
-  ::
+  ::  https://gitlab.com/burrbull/softposit-rs/-/blob/master/src/p8e0.rs?ref_type=heads#L111
   ++  separate-bits
     |=  p=@
     ^-  [r=@s f=@u]

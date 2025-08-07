@@ -98,7 +98,7 @@
       ==
       [%n ~]        :: Not a Real (NaR), quire NaN
   ==
-::
+::  Type III Unum Posit, 8-bit width ("byte")
 ++  rpb
   |%
   ::  mathematics constants to posit8 precision
@@ -109,7 +109,7 @@
   ::  Returns the value of useed, $2^{2^{es}}$, as used in this posit.
   ::    Examples
   ::      > `@ub`useed
-  ::      0b100.0000
+  ::      0b10
   ::  Source
   ++  useed  2
   ::    +zero:  @rpb
@@ -125,7 +125,7 @@
   ::  Returns the value of one.
   ::    Examples
   ::      > `@ub`one
-  ::      0b0
+  ::      0b100.0000
   ::  Source
   ++  one  `@rpb`0x40          ::  1
   ::    +neg-one:  @rpb
@@ -176,7 +176,6 @@
   ::      0b101.0100
   ::  Source
   ++  phi  `@rpb`0x54          ::  φ
-  ::
   ::    +sqt2:  @rpb
   ::
   ::  Returns the value of sqrt(2).
@@ -196,7 +195,6 @@
   ::      0b111.1111
   ::  Source
   ++  huge  `@rpb`0x7f         ::  2**6
-  ::
   ::    +neghuge:  @rpb
   ::
   ::  Returns the value of the largest representable number.
@@ -221,7 +219,7 @@
   ::      0b1111.1111
   ::  Source
   ++  neg-tiny  `@rpb`0xff     ::  -2**-6
-  ::    +invsqt2:  @rs
+  ::    +invsqt2:  @rpb
   ::
   ::  Returns the value 1/sqrt(2) (OEIS A010503).
   ::    Examples
@@ -229,30 +227,30 @@
   ::      0b10.1101
   ::  Source
   ++  invsqt2  `@rpb`0x2d    ::  1/√2
-  ::    +log2:  @rs
+  ::    +log2:  @rpb
   ::
   ::  Returns the value log(2) (OEIS A002162).
   ::    Examples
   ::      > log2
   ::      0b10.1100
   ::  Source
-  ++  log2  `@rpb`0x2c    ::  log(2)
-  ::    +invlog2:  @rs
+  ++  log2  `@rpb`0x2c       ::  log(2)
+  ::    +invlog2:  @rpb
   ::
   ::  Returns the value 1/log(2).
   ::    Examples
   ::      > invlog2
   ::      0b100.1110
   ::  Source
-  ++  invlog2  `@rpb`0x4e  ::  1/log(2)
-  ::    +log10:  @rs
+  ++  invlog2  `@rpb`0x4e    ::  1/log(2)
+  ::    +log10:  @rpb
   ::
   ::  Returns the value log(10) (OEIS A002392).
   ::    Examples
   ::      > log10
   ::      0b110.0010
   ::  Source
-  ++  log10  `@rpb`0x62    ::  log(10)
+  ++  log10  `@rpb`0x62      ::  log(10)
   ::
   ::  Operations
   ::
@@ -266,14 +264,15 @@
   ::      :: posit 0.5
   ::      > (from 0b10.0000)
   ::      [%p b=3 s=%.y r=-1 e=--0 f=0]
-  ::      :: posit largest possible 8-bit value, 2**24
+  ::      :: posit largest possible 8-bit value, 2**6
   ::      > (from 0b111.1111)
   ::      [%p b=3 s=%.y r=--5 e=--0 f=127]
-  ::      :: posit largest possible negative 8-bit value, -2**24+1
+  ::      :: posit largest possible negative 8-bit value, -2**6+1
   ::  Source
   ++  from
     |=  =@rpb
     ^-  up
+    ?>  (lte (met 0 rpb) 8)
     ?:  =(0x0 rpb)   [%z 3 ~]
     ?:  =(0x80 rpb)  [%n 3 ~]
     ::  Sign bit at MSB.
@@ -409,7 +408,8 @@
     ?:  ?=(%z -.bup)                  a  :: zero
     ::  Check signs
     =/  sf  =(s.aup s.bup)
-    ?>  sf  :: TODO punt
+    :: ?: on sign
+    ?>  sf  :: TODO punt on signs right now
     :: ?.  sf
     ::   ::  If not same sign, subtract
     ::   %+  mix  (lsh [0 7] sf)
@@ -485,5 +485,385 @@
   ++  bw  ^~((mul 16 n))
   --
 ::  Type III Unum Posit, 16-bit width ("half")
+++  rph
+  |%
+  ::  mathematics constants to posit16 precision
+  ::  TODO
+  ++  es  1
+  ::    +useed:  @
+  ::
+  ::  Returns the value of useed, $2^{2^{es}}$, as used in this posit.
+  ::    Examples
+  ::      > `@ub`useed
+  ::      0b100
+  ::  Source
+  ++  useed  4
+  ::    +zero:  @rph
+  ::
+  ::  Returns the value of zero.
+  ::    Examples
+  ::      > `@ub`zero
+  ::      0b0
+  ::  Source
+  ++  zero  `@rph`0x0          ::  0
+  ::    +one:  @rph
+  ::
+  ::  Returns the value of one.
+  ::    Examples
+  ::      > `@ub`one
+  ::      0b100.0000.0000.0000
+  ::  Source
+  ++  one  `@rph`0x4000        ::  1
+  ::    +neg-one:  @rph
+  ::
+  ::  Returns the value of negative one.
+  ::    Examples
+  ::      > `@ub`neg-one
+  ::      0b1100.0000.0000.0000
+  ::  Source
+  ++  neg-one  `@rph`0xc000    ::  -1
+  ::    +nar:  @rph
+  ::
+  ::  Returns the value of Not a Real (NaR).
+  ::    Examples
+  ::      > `@ub`nar
+  ::      0b1000.0000.0000.0000
+  ::  Source
+  ++  nar  `@rph`0x8000        ::  NaR, Not a Real (NaN)
+  ::    +pi:  @rph
+  ::
+  ::  Returns the value of pi.
+  ::    Examples
+  ::      > `@ub`pi
+  ::      0b101.1001.0010.0010
+  ::  Source
+  ++  pi  `@rph`0x5922         ::  π
+  ::    +tau:  @rph
+  ::
+  ::  Returns the value of tau, $2\pi$.
+  ::    Examples
+  ::      > `@ub`tau
+  ::      0b110.0100.1001.0001
+  ::  Source
+  ++  tau  `@rph`0x6491        ::  τ
+  ::    +e:  @rph
+  ::
+  ::  Returns the value of e.
+  ::    Examples
+  ::      > `@ub`e
+  ::      0b101.0101.1011.1111
+  ::  Source
+  ++  e  `@rph`0x55bf          ::  e
+  ::    +phi:  @rph
+  ::
+  ::  Returns the value of phi, $\frac{1+\sqrt{5}}{2}$.
+  ::    Examples
+  ::      > `@ub`phi
+  ::      0b100.1001.1110.0011
+  ::  Source
+  ++  phi  `@rph`0x49e3        ::  φ
+  ::    +sqt2:  @rph
+  ::
+  ::  Returns the value of sqrt(2).
+  ::    Examples
+  ::      > `@ub`sqt2
+  ::      0b100.0110.1010.0001
+  ::  Source
+  ++  sqt2  `@rph`0x46a1       ::  √2
+  ::
+  ::  TODO other constants
+  ::
+  ::    +huge:  @rph
+  ::
+  ::  Returns the value of the largest representable number.
+  ::    Examples
+  ::      > `@ub`huge
+  ::      0b111.1111.1111.1111
+  ::  Source
+  ++  huge  `@rph`0x7fff       ::  2**28
+  ::    +neghuge:  @rph
+  ::
+  ::  Returns the value of the largest representable number.
+  ::    Examples
+  ::      > `@ub`neg-huge
+  ::      0b1000.0000.0000.0001
+  ::  Source
+  ++  neg-huge  `@rph`0x8001   ::  -2**28
+  ::    +tiny:  @rph
+  ::
+  ::  Returns the value of the smallest representable normal number.
+  ::    Examples
+  ::      > `@ub`tiny
+  ::      0b1
+  ::  Source
+  ++  tiny  `@rph`0x1          ::  2**-28
+  ::    +neg-tiny:  @rph
+  ::
+  ::  Returns the value of the smallest representable negative normal number.
+  ::    Examples
+  ::      > `@ub`neg-tiny
+  ::      0b1111.1111.1111.1111
+  ::  Source
+  ++  neg-tiny  `@rph`0xffff   ::  -2**-28
+  ::    +invsqt2:  @rph
+  ::
+  ::  Returns the value 1/sqrt(2) (OEIS A010503).
+  ::    Examples
+  ::      > invsqt2
+  ::      0b11.0110.1010.0001
+  ::  Source
+  ++  invsqt2  `@rph`0x36a1    ::  1/√2
+  ::    +log2:  @rph
+  ::
+  ::  Returns the value log(2) (OEIS A002162).
+  ::    Examples
+  ::      > log2
+  ::      0b11.0110.0010.1110
+  ::  Source
+  ++  log2  `@rph`0x362e       ::  log(2)
+  ::    +invlog2:  @rph
+  ::
+  ::  Returns the value 1/log(2).
+  ::    Examples
+  ::      > invlog2
+  ::      0b100.0111.0001.0101
+  ::  Source
+  ++  invlog2  `@rph`0x4715    ::  1/log(2)
+  ::    +log10:  @rph
+  ::
+  ::  Returns the value log(10) (OEIS A002392).
+  ::    Examples
+  ::      > log10
+  ::      0b101.0010.0110.1100
+  ::  Source
+  ++  log10  `@rphb`0x526c      ::  log(10)
+  ::
+  ::  Operations
+  ::
+  ::    +from:  @rph -> $up
+  ::
+  ::  Returns the +$up representation of a posit atom.
+  ::    Examples
+  ::      :: posit 1.0
+  ::      > (from 0b100.0000.0000.0000)
+  ::      [%p b=3 s=%.y r=--0 e=--0 f=0]
+  ::      :: posit 0.5
+  ::      > (from 0b11.0000.0000.0000)
+  ::      [%p b=3 s=%.y r=-1 e=--0 f=0]
+  ::      :: posit largest possible 8-bit value, 2**28
+  ::      > (from 0b111.1111.1111.1111)
+  ::      [%p b=3 s=%.y r=--5 e=--0 f=127]
+  ::      :: posit largest possible negative 8-bit value, -2**24+1
+  ::  Source
+  ++  from
+    |=  =@rph
+    ^-  up
+    ?>  (^lte (met 0 rph) 16)
+    ?:  =(0x0 rph)   [%z 4 ~]
+    ?:  =(0x80 rph)  [%n 4 ~]
+    ::  Sign bit at MSB.
+    =/  s=?  ;;(? (rsh [0 15] rph))
+    ::  Regime bits, unary run-length encoding.
+    =+  [r0 k]=(get-regime rph)
+    =/  r=@s  ?:(r0 (dif:si --0 (sun:si k)) (sun:si (dec k)))
+    ::  Exponent bits, one or zero in posit16.
+    =/  e=@   ?:  (^lth k 15)
+                :: one bit, get it
+                1
+              :: no possible bits
+              0
+    =/  x=@s  (re-to-exp r e)
+    ::  Fraction bits, remaining bits to total bitwidth.
+    =/  f=@  (dis (dec (bex :(sub 14 k e))) rph)
+    [%p 4 s x f]
+  ::  x = r*2^es + e
+  ++  re-to-exp
+    |=  [r=@s e=@]
+    ^-  @s
+    (sum:si (pro:si r (new:si & (bex es))) e)
+  ::  Retrieve unary run-length encoded regime bits.
+  ::  k in Gustafson's notation.
+  ++  get-regime
+    |=  p=@
+    ^-  [r0=? k=@]
+    ::  get RLE bit polarity
+    =/  r0=?  ;;(? (rsh [0 14] (dis 0x4000 p)))
+    ::  get RLE bit count
+    =|  b=_5
+    =|  k=@
+    :-  r0
+    |-
+    =/  r  ;;(? (rsh [0 b] (dis (bex b) p)))
+    ?:  !=(r0 r)  +(k)
+    ?:  =(0 b)    +(+(k))  :: no empty unary terminator
+    $(k +(k), b (dec b))
+  ::  https://gitlab.com/burrbull/softposit-rs/-/blob/master/src/p8e0.rs?ref_type=heads#L111
+  ++  separate-bits
+    |=  p=@
+    ^-  [r=@s f=@u]
+    =/  t  (lsh [0 2] p)
+    ?:  ;;(? (rsh [0 15] p))
+      =|  r=@s
+      |-  ^-  [r=@s f=@u]
+      ?:  =(0 (dis 0x80 t))  [r (con 0x80 t)]
+      $(r (sum:si r --1), t (lsh [0 1] t))
+    =/  r=@s  -1
+    |-  ^-  [r=@s f=@u]
+    ?:  !=(0 (dis 0x8000 t))  [r (con 0x8000 (dis 0x7fff t))]
+    $(r (sum:si r -1), t (lsh [0 1] t))
+  ::
+  ::    +into:  $up -> @rpb
+  ::
+  ::  Returns the closest @rpb equivalent to a posit tuple.
+  ::  $((1-3s)+f)\times 2^{(1-2s)\times(2^0r+e+s)}$
+  ::
+  ::  Source
+  ++  into
+    |=  =up
+    ^-  @rpb
+    |^
+    =|  rpb=@rpbD
+    ?:  ?=(%z -.up)  `@rpb`0x0
+    ?:  ?=(%n -.up)  `@rpb`0x80
+    ?>  ?=(%p -.up)
+    ::  s sign bit
+    =.  rpb  (lsh [0 7] s.up)
+    ::
+    =+  [r e]=(exp-to-er x.up)
+    ::  r regime bits
+    =+  [sg ab]=(old:si r)
+    =/  r0  ?:(sg %| %&)
+    =/  k   ?:(sg +(ab) ab)
+    ~&  rke+[r k e]
+    =.  rpb
+      %+  con  rpb
+      =/  rs  (fil 0 k r0)
+      (lsh [0 (sub 7 k)] rs)
+    ?:  (^gte k 7)  rpb  :: regime bits are full, no fraction
+    ::  regime terminator
+    =.  rpb
+      %+  con  rpb
+      (lsh [0 (sub 7 +(k))] !r0)
+    ::  no exponent in posit8
+    ?>  =(0 e)
+    ::  f fraction bits
+    ?:  (^gte +(k) 7)  rpb  :: regime bits are full, no fraction
+    %+  con  rpb
+    =/  sp  (sub 7 +(k))
+    ?:  (^gth sp (met 0 f.up))
+      f.up
+    =/  sh  (sub sp (met 0 f.up))
+    (rsh [0 sh] f.up)
+    ::  Convert base exponent into regime and exponent.
+    ::  2^(r*2^es + e) = 2^x
+    ::  x = r*2^es+e
+    ++  exp-to-er
+      |=  x=@s
+      ^-  [r=@s e=@]
+      ?:  =(0 es)  [x 0]
+      =/  lg2useed  ^~((new:si %& (rsh [0 1] useed)))
+      :-  (fra:si x lg2useed)
+      =+  [sg ab]=(old:si (rem:si x lg2useed))
+      ?>  sg
+      ab
+    --
+  ::
+  ++  add  !!
+  ::
+  :: Logical functions:
+  ::
+  ::    +lth:  @rph -> ?
+  ::
+  ::  Returns the comparison of two floating-point atoms, less than.
+  ::    Examples
+  ::      > (lth .1 .2)
+  ::      %.y
+  ::      > (lth .2 .1)
+  ::      %.n
+  ::      > (lth .1 .1)
+  ::      %.n
+  ::  Source
+  ++  lth
+    |=  [a=@rph b=@rph]
+    ^-  ?
+    =/  aup=up  (from a)
+    =/  bup=up  (from b)
+    ::  Check NaR.
+    ?:  |(?=(%n -.aup) ?=(%n -.bup))    %.n  :: NaR
+    ::  Check zero.
+    ?:  &(?=(%z -.aup) ?=(%z -.bup))
+      %.n
+    ?:  &(?=(%z -.aup) ?=(%p -.bup))
+      s.bup
+    ?:  &(?=(%p -.aup) ?=(%z -.bup))
+      !s.aup
+    ::  Check signs
+    ?>  ?=(%p -.aup)
+    ?>  ?=(%p -.bup)
+    ?:  !=(s.aup s.bup)
+      ::  XXX keep in mind that signs are loobeans so flip logic
+      (^gth s.aup s.bup)
+    ::  Check equality.
+    ?:  =(a b)  %.n
+    ::  Scale by regime and exponent
+    =/  af  (pro:si (sun:si f.aup) (sun:si (bex x.aup)))
+    =/  bf  (pro:si (sun:si f.bup) (sun:si (bex x.bup)))
+    =/  res  (cmp:si af bf)
+    .=(-1 res)
+  ::    +lte:  @rph -> ?
+  ::
+  ::  Returns the comparison of two floating-point atoms, less than or equal.
+  ::    Examples
+  ::    TODO
+  ::    Source
+  ++  lte  |=([a=@rph b=@rph] ^-(? ?:(=(a b) %.y (lth a b))))
+  ::    +gth:  @rph -> ?
+  ::
+  ::  Returns the comparison of two floating-point atoms, greater than.
+  ::    Examples
+  ::    TODO
+  ::    Source
+  ++  gth  |=([a=@rph b=@rph] ^-(? (lth b a)))
+  ::    +gte:  @rph -> ?
+  ::
+  ::  Returns the comparison of two floating-point atoms, greater than or equal.
+  ::    Examples
+  ::    TODO
+  ::    Source
+  ++  gte  |=([a=@rph b=@rph] ^-(? ?:(=(a b) %.y (lth b a))))
+  ::    +equ:  @rph -> ?
+  ::
+  ::  Returns the comparison of two floating-point atoms, equal.
+  ::    Examples
+  ::    TODO
+  ::    Source
+  ++  equ
+    |=  [a=@rph b=@rph]
+    ^-  ?
+    =/  aup=up  (from a)
+    =/  bup=up  (from b)
+    ::  Check NaR.
+    ?:  |(?=(%n -.aup) ?=(%n -.bup))    %.n  :: NaR
+    ::  Check equality.
+    =(a b)
+  ::    +neq:  @rph -> ?
+  ::
+  ::  Returns the comparison of two floating-point atoms, not equal.
+  ::    Examples
+  ::    TODO
+  ::    Source
+  ++  neq
+    |=  [a=@rph b=@rph]
+    ^-  ?
+    =/  aup=up  (from a)
+    =/  bup=up  (from b)
+    ::  Check NaR.
+    ?:  |(?=(%n -.aup) ?=(%n -.bup))    %.n  :: NaR
+    ::  Check inequality.
+    !=(a b)
+  ::    +is-close:  @rph -> ?
+  ::    +all-close:  @rph -> ?
+  ::    +is-int:  @rph -> ?
+  --
 ::  Type III Unum Posit, 32-bit width ("single")
 --

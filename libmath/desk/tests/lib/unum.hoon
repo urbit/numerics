@@ -158,4 +158,45 @@
     :: TODO other constants, huge, neg-huge, tiny, neg-tiny, etc.
   ==
 ::
+::  posit16 tests
+++  test-values-rph  ^-  tang
+  ;:  weld
+    ::  0
+    %+  expect-eq
+      !>  `@rph`0b0
+      !>  zero:rph:unum
+    ::  1
+    %+  expect-eq
+      !>  `@rph`0b1000.0000.0000.0000
+      !>  one:rph:unum
+    ::  -1
+    %+  expect-eq
+      !>  `@rph`0b11000.0000.0000.0000
+      !>  neg-one:rph:unum
+    ::  NaR
+    %+  expect-eq
+      !>  `@rph`0b10000.0000.0000.0000
+      !>  nar:rph:unum
+    ::  pi
+    %+  expect-eq
+      !>  `@rph`0b110.1001.0001.1111
+      !>  pi:rph:unum
+    ::  tau
+    %+  expect-eq
+      !>  `@rph`0b111.0101.1001.1001
+      !>  tau:rph:unum
+    ::  e
+    %+  expect-eq
+      !>  `@rph`0b110.0110.0110.0110
+      !>  e:rph:unum
+    ::  phi
+    %+  expect-eq
+      !>  `@rph`0b101.0100.1010.1001
+      !>  phi:rph:unum
+    ::  sqrt(2)
+    %+  expect-eq
+      !>  `@rph`0b100.1101.0111.1011
+      !>  sqt2:rph:unum
+    :: TODO other constants, huge, neg-huge, tiny, neg-tiny, etc.
+  ==
 --

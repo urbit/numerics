@@ -34,7 +34,7 @@
           %uint
         1
         ::
-          %real
+          %i754
         ?+    bloq.meta  !!
             %7  .~~~1
             %6  .~1
@@ -47,7 +47,7 @@
       |=  [=meta:ls]
       ^-  @
       ?+    kind.meta  !!
-          %real
+          %i754
         ?+    bloq.meta  !!
             %7  ^~((~(div rq:math [rnd rtol]) pi:rq:math .~~~2))
             %6  ^~((~(div rd:math [rnd rtol]) pi:rd:math .~2))
@@ -181,7 +181,7 @@
       ^-  $-([@ @] @)
       =,  meta
       ?+    `^kind`kind  ~|(kind !!)
-          %real
+          %i754
         ?+    `^bloq`bloq  !!
             %7
           ?+  fun  !!

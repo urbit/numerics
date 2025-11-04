@@ -2,7 +2,9 @@
 
 **Status ~2025.4.15:  Lagoon and /lib/math releasing with 410K; other development on pause.**
 
-Status ~2024.5.28:  Lagoon releases with IEEE 754 reals in 410K; Saloon releases with corresponding functionality in 409K; Maroon is in progress for tinygrad.
+Status ~2024.5.28:  Lagoon releases with IEEE 754 floating-point reals in 410K; Saloon releases with corresponding functionality in a future kelvin; Maroon is in progress for tinygrad.
+
+Status ~2025.11.4:  Converting everything to use `%i754` as the floating-point type instead of `%real` (was legacy in Maroon).
 
 ![An evocative scene of a mysterious futuristic castle in the style of Flash Gordon](./img/hero-scene.jpg)
 

@@ -101,7 +101,7 @@
 /* add - axpy = 1*x+y
 */
   u3_noun
-  u3qi_la_add_real(u3_noun x_data,
+  u3qi_la_add_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq
@@ -159,7 +159,7 @@
 /* sub - axpy = -1*y+x
 */
   u3_noun
-  u3qi_la_sub_real(u3_noun x_data,
+  u3qi_la_sub_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq
@@ -219,7 +219,7 @@
    elementwise multiplication
 */
   u3_noun
-  u3qi_la_mul_real(u3_noun x_data,
+  u3qi_la_mul_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -285,7 +285,7 @@
    elementwise division
 */
   u3_noun
-  u3qi_la_div_real(u3_noun x_data,
+  u3qi_la_div_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -351,7 +351,7 @@
    remainder after division
 */
   u3_noun
-  u3qi_la_mod_real(u3_noun x_data,
+  u3qi_la_mod_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -459,7 +459,7 @@
 /* cumsum - x[0] + x[1] + ... x[n]
 */
   u3_noun
-  u3qi_la_cumsum_real(u3_noun x_data,
+  u3qi_la_cumsum_i754(u3_noun x_data,
                       u3_noun shape,
                       u3_noun bloq)
   {
@@ -533,7 +533,7 @@
 /* argmin - argmin(x)
 */
   u3_noun
-  u3qi_la_argmin_real(u3_noun x_data,
+  u3qi_la_argmin_i754(u3_noun x_data,
                       u3_noun shape,
                       u3_noun bloq)
   {
@@ -606,7 +606,7 @@
 /* argmax - argmax(x)
 */
   u3_noun
-  u3qi_la_argmax_real(u3_noun x_data,
+  u3qi_la_argmax_i754(u3_noun x_data,
                       u3_noun shape,
                       u3_noun bloq)
   {
@@ -680,7 +680,7 @@
    entire nd-array busted out as a linear list
 */
   u3_noun
-  u3qi_la_ravel_real(u3_noun x_data,
+  u3qi_la_ravel_i754(u3_noun x_data,
                      u3_noun shape,
                      u3_noun bloq)
   {
@@ -743,7 +743,7 @@
 /* min - min(x,y)
 */
   u3_noun
-  u3qi_la_min_real(u3_noun x_data,
+  u3qi_la_min_i754(u3_noun x_data,
                    u3_noun shape,
                    u3_noun bloq)
   {
@@ -821,7 +821,7 @@
 /* max - max(x,y)
 */
   u3_noun
-  u3qi_la_max_real(u3_noun x_data,
+  u3qi_la_max_i754(u3_noun x_data,
                    u3_noun shape,
                    u3_noun bloq)
   {
@@ -899,7 +899,7 @@
 /* abs - |x|
 */
   u3_noun
-  u3qi_la_abs_real(u3_noun x_data,
+  u3qi_la_abs_i754(u3_noun x_data,
                    u3_noun shape,
                    u3_noun bloq)
   {
@@ -958,7 +958,7 @@
 /* gth - x > y
 */
   u3_noun
-  u3qi_la_gth_real(u3_noun x_data,
+  u3qi_la_gth_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1031,7 +1031,7 @@
 /* gte - x > y
 */
   u3_noun
-  u3qi_la_gte_real(u3_noun x_data,
+  u3qi_la_gte_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1104,7 +1104,7 @@
 /* lth - x > y
 */
   u3_noun
-  u3qi_la_lth_real(u3_noun x_data,
+  u3qi_la_lth_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1177,7 +1177,7 @@
 /* lte - x > y
 */
   u3_noun
-  u3qi_la_lte_real(u3_noun x_data,
+  u3qi_la_lte_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1250,7 +1250,7 @@
 /* adds - axpy = 1*x+[n]
 */
   u3_noun
-  u3qi_la_adds_real(u3_noun x_data,
+  u3qi_la_adds_i754(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1332,7 +1332,7 @@
 /* subs - axpy = -1*[n]+x
 */
   u3_noun
-  u3qi_la_subs_real(u3_noun x_data,
+  u3qi_la_subs_i754(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1415,7 +1415,7 @@
    elementwise multiplication
 */
   u3_noun
-  u3qi_la_muls_real(u3_noun x_data,
+  u3qi_la_muls_i754(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1478,7 +1478,7 @@
    elementwise division
 */
   u3_noun
-  u3qi_la_divs_real(u3_noun x_data,
+  u3qi_la_divs_i754(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1549,7 +1549,7 @@
    remainder after scalar division
 */
   u3_noun
-  u3qi_la_mods_real(u3_noun x_data,
+  u3qi_la_mods_i754(u3_noun x_data,
                     u3_noun n,
                     u3_noun shape,
                     u3_noun bloq)
@@ -1666,7 +1666,7 @@
 /* dot - ?dot = x · y
 */
   u3_noun
-  u3qi_la_dot_real(u3_noun x_data,
+  u3qi_la_dot_i754(u3_noun x_data,
                    u3_noun y_data,
                    u3_noun shape,
                    u3_noun bloq)
@@ -1830,7 +1830,7 @@
 /* linspace - [a a+(b-a)/n ... b]
 */
   u3_noun
-  u3qi_la_linspace_real(u3_noun a,
+  u3qi_la_linspace_i754(u3_noun a,
                         u3_noun b,
                         u3_noun n,
                         u3_noun bloq)
@@ -1925,7 +1925,7 @@
 /* range - [a a+d ... b]
 */
   u3_noun
-  u3qi_la_range_real(u3_noun a,
+  u3qi_la_range_i754(u3_noun a,
                      u3_noun b,
                      u3_noun d,
                      u3_noun bloq)
@@ -2019,20 +2019,20 @@
 /* trace - tr(x)
 */
   u3_noun
-  u3qi_la_trace_real(u3_noun x_data,
+  u3qi_la_trace_i754(u3_noun x_data,
                      u3_noun shape,
                      u3_noun bloq)
   {
     u3_noun d_data = u3qi_la_diag(x_data, shape, bloq);
     c3_d len_x0 = _get_dims(shape)[0];
-    u3_noun r_data = u3qi_la_dot_real(d_data, d_data, u3nt(len_x0, 0x1, u3_nul), u3k(bloq));
+    u3_noun r_data = u3qi_la_dot_i754(d_data, d_data, u3nt(len_x0, 0x1, u3_nul), u3k(bloq));
     return r_data;
   }
 
 /* mmul
 */
   u3_noun
-  u3qi_la_mmul_real(u3_noun x_data,
+  u3qi_la_mmul_i754(u3_noun x_data,
                     u3_noun y_data,
                     u3_noun x_shape,
                     u3_noun y_shape,
@@ -2114,7 +2114,7 @@
     u3a_free(y_bytes);
     u3a_free(r_bytes);
 
-    return u3nc(u3nq(u3nt(M_, P_, u3_nul), u3k(bloq), c3__real, u3_nul), r_data);
+    return u3nc(u3nq(u3nt(M_, P_, u3_nul), u3k(bloq), c3__i754, u3_nul), r_data);
   }
 
   u3_noun
@@ -2160,9 +2160,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_add_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_add_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2215,9 +2215,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_sub_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_sub_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2270,9 +2270,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_mul_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_mul_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2325,9 +2325,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_div_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_div_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2380,9 +2380,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_mod_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_mod_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2420,9 +2420,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_cumsum_real(x_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_cumsum_i754(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2458,8 +2458,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_argmin_real(x_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_argmin_i754(x_data, x_shape, x_bloq);
             // bare atom (@ index)
             return r_data;
 
@@ -2495,8 +2495,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_ravel_real(x_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_ravel_i754(x_data, x_shape, x_bloq);
             // (list @)
             return r_data;
 
@@ -2533,8 +2533,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_argmax_real(x_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_argmax_i754(x_data, x_shape, x_bloq);
             // bare atom (@ index)
             return r_data;
 
@@ -2571,8 +2571,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_min_real(x_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_min_i754(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2608,8 +2608,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_max_real(x_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_max_i754(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2645,8 +2645,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_abs_real(x_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_abs_i754(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2698,8 +2698,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_gth_real(x_data, y_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_gth_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2751,8 +2751,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_gte_real(x_data, y_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_gte_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2804,8 +2804,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_lth_real(x_data, y_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_lth_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2857,8 +2857,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_lte_real(x_data, y_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_lte_i754(x_data, y_data, x_shape, x_bloq);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -2892,9 +2892,9 @@
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
-        case c3__real:
+        case c3__i754:
           _set_rounding(rnd);
-          u3_noun r_data = u3qi_la_adds_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_adds_i754(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -2927,9 +2927,9 @@
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
-        case c3__real:
+        case c3__i754:
           _set_rounding(rnd);
-          u3_noun r_data = u3qi_la_subs_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_subs_i754(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -2962,9 +2962,9 @@
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
-        case c3__real:
+        case c3__i754:
           _set_rounding(rnd);
-          u3_noun r_data = u3qi_la_muls_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_muls_i754(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -2997,9 +2997,9 @@
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
-        case c3__real:
+        case c3__i754:
           _set_rounding(rnd);
-          u3_noun r_data = u3qi_la_divs_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_divs_i754(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -3032,9 +3032,9 @@
       x_fxp = u3t(u3t(u3t(x_meta)));  // 15
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
-        case c3__real:
+        case c3__i754:
           _set_rounding(rnd);
-          u3_noun r_data = u3qi_la_mods_real(x_data, n, x_shape, x_bloq);
+          u3_noun r_data = u3qi_la_mods_i754(x_data, n, x_shape, x_bloq);
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
         default:
@@ -3086,9 +3086,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_dot_real(x_data, y_data, x_shape, x_bloq);
+            u3_noun r_data = u3qi_la_dot_i754(x_data, y_data, x_shape, x_bloq);
             c3_d len_x0 = _get_dims(x_shape)[0];
             return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
@@ -3157,9 +3157,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_linspace_real(a, b, n, x_bloq);
+            u3_noun r_data = u3qi_la_linspace_i754(a, b, n, x_bloq);
             x_shape = u3nt(u3x_atom(n), 0x1, u3_nul);
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
@@ -3197,9 +3197,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_range_real(a, b, d, x_bloq);
+            u3_noun r_data = u3qi_la_range_i754(a, b, d, x_bloq);
             c3_d a_, b_, d_;
             c3_ds n_;
             switch (x_bloq) {
@@ -3300,8 +3300,8 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real: ;
-            u3_noun r_data = u3qi_la_trace_real(x_data, x_shape, x_bloq);
+          case c3__i754: ;
+            u3_noun r_data = u3qi_la_trace_i754(x_data, x_shape, x_bloq);
             return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_fxp)), r_data);
 
           default:
@@ -3349,9 +3349,9 @@
         return u3m_bail(c3__exit);
       } else {
         switch (x_kind) {
-          case c3__real:
+          case c3__i754:
             _set_rounding(rnd);
-            u3_noun r_data = u3qi_la_mmul_real(x_data, y_data, x_shape, y_shape, x_bloq);
+            u3_noun r_data = u3qi_la_mmul_i754(x_data, y_data, x_shape, y_shape, x_bloq);
             // result is already [meta data]
             return r_data;
 

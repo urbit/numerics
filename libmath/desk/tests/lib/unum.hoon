@@ -75,6 +75,30 @@
     %+  expect-eq
       !>  [%p 3 s=%.y x=--0 f=0]
       !>  (from:rpb:unum one:rpb:unum)
+    ::  NaR
+    %+  expect-eq
+      !>  [%n 3 ~]
+      !>  (from:rpb:unum nar:rpb:unum)
+    ::  tau
+    %+  expect-eq
+      !>  [%p 3 s=%.y x=2 f=0b101]
+      !>  (from:rpb:unum tau:rpb:unum)
+    ::  huge
+    %+  expect-eq
+      !>  [%p 3 s=%.y x=--6 f=0b0]
+      !>  (from:rpb:unum huge:rpb:unum)
+    ::  neg-huge
+    %+  expect-eq
+      !>  [%p 3 s=%.n x=-6 f=0b0]
+      !>  (from:rpb:unum neg-huge:rpb:unum)
+    ::  tiny
+    %+  expect-eq
+      !>  [%p 3 s=%.y x=-6 f=0b0]
+      !>  (from:rpb:unum tiny:rpb:unum)
+    ::  neg-tiny
+    %+  expect-eq
+      !>  [%p 3 s=%.n x=--6 f=0b0]
+      !>  (from:rpb:unum neg-tiny:rpb:unum)
   ==
 ::
 ++  test-into-rpb  ^-  tang

@@ -776,11 +776,11 @@
   ::
   ::  Returns the comparison of two floating-point atoms, less than.
   ::    Examples
-  ::      > (lth .1 .2)
-  ::      %.y
-  ::      > (lth .2 .1)
+  ::      > (lth one zero)
   ::      %.n
-  ::      > (lth .1 .1)
+  ::      > (lth zero one)
+  ::      %.y
+  ::      > (lth one one)
   ::      %.n
   ::  Source
   ++  lth
@@ -814,28 +814,46 @@
   ::
   ::  Returns the comparison of two floating-point atoms, less than or equal.
   ::    Examples
-  ::    TODO
+  ::    > (lte one one)
+  ::    %.y
+  ::    > (lte one zero)
+  ::    %.n
+  ::    > (lte zero one)
+  ::    %.y
   ::    Source
   ++  lte  |=([a=@rph b=@rph] ^-(? ?:(=(a b) %.y (lth a b))))
   ::    +gth:  @rph -> ?
   ::
   ::  Returns the comparison of two floating-point atoms, greater than.
   ::    Examples
-  ::    TODO
+  ::    > (gth one zero)
+  ::    %.y
+  ::    > (gth zero one)
+  ::    %.n
+  ::    > (gth one one)
+  ::    %.n
   ::    Source
   ++  gth  |=([a=@rph b=@rph] ^-(? (lth b a)))
   ::    +gte:  @rph -> ?
   ::
   ::  Returns the comparison of two floating-point atoms, greater than or equal.
   ::    Examples
-  ::    TODO
+  ::    > (gte one one)
+  ::    %.y
+  ::    > (gte one zero)
+  ::    %.y
+  ::    > (gte one one)
+  ::    %.y
   ::    Source
   ++  gte  |=([a=@rph b=@rph] ^-(? ?:(=(a b) %.y (lth b a))))
   ::    +equ:  @rph -> ?
   ::
   ::  Returns the comparison of two floating-point atoms, equal.
   ::    Examples
-  ::    TODO
+  ::    > (equ one one)
+  ::    %.y
+  ::    > (equ one zero)
+  ::    %.n
   ::    Source
   ++  equ
     |=  [a=@rph b=@rph]
@@ -850,7 +868,10 @@
   ::
   ::  Returns the comparison of two floating-point atoms, not equal.
   ::    Examples
-  ::    TODO
+  ::    > (neq one one)
+  ::    %.n
+  ::    > (neq one zero)
+  ::    %.y
   ::    Source
   ++  neq
     |=  [a=@rph b=@rph]

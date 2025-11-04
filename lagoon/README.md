@@ -3,8 +3,8 @@
 **Current Status**
 
 - `/lib/math` is distributed via the [`%yard` desk](https://github.com/urbit/yard).
-- We are preparing a release of Lagoon `%real` with SoftBLAS-powered jets for release with Urbit 410K.
-- We are preparing a release of Saloon `%real` without jets for release with Urbit 409K.
+- Lagoon `%i754` with SoftBLAS-powered jets was released with Urbit 410K.
+- We are preparing a release of Saloon `%i754` without jets for release with Urbit at a future kelvin.
 - We are working on an implementation of [tinygrad](https://tinygrad.org/) for Maroon.
 
 - [ ] some notion of cursor in an array would be really helpful
@@ -15,7 +15,7 @@ We envision four libraries and associated jet code living in this repository:
 
 - `/lib/math` offers basic special function support for floating-point atoms.
 - Lagoon (Linear AlGebra in hOON) offers BLAS-like operations (like NumPy's pure matrix operations).
-  - Lagoon `%real`s are slated to ship with [410 K](https://github.com/urbit/UIPs/pull/45).
+  - Lagoon `%i754`s are slated to ship with [410 K](https://github.com/urbit/UIPs/pull/45).
   - [SoftBLAS](https://github.com/urbit/SoftBLAS) provides a reproducible software-defined floating-point implementation of parts of BLAS and LAPACK suitable for jetting Lagoon.
   - `/lib/fixed` provides operations for fixed-precision operations.
 - Saloon (Scientific ALgorithms in hOON) offers transcendental functions (like NumPy's transcendental functions, optimizers, etc.).
@@ -23,7 +23,7 @@ We envision four libraries and associated jet code living in this repository:
 
 ##  Type System
 
-- `%real` IEEE 754 float (currently supported)
+- `%i754` IEEE 754 float (currently supported)
 - `%cplx` IEEE 754 float/BLAS packed complex (planned)
 - `%uint` unsigned integers (currently supported)
 - `%int2` signed twos-complement integers (planned)
@@ -52,9 +52,9 @@ We envision four libraries and associated jet code living in this repository:
 [0b11 17 16]
 ```
 
-##  Lagoon 410K `%real` Release
+##  Lagoon 410K `%i754` Release
 
-The 410 K release candidate for Lagoon provides `%real`-valued array operations equivalent to `@rh`, `@rs`, `@rd`, and `@rq` operations in vanilla Hoon.  (Other types have been removed for this release but will be re/introduced in a subsequent release.)  The following arms are provided:
+The 410 K release candidate for Lagoon provides `%i754`-valued array operations equivalent to `@rh`, `@rs`, `@rd`, and `@rq` operations in vanilla Hoon.  (Other types have been removed for this release but will be re/introduced in a subsequent release.)  The following arms are provided:
 
 - `++print`
 - `++slog`
@@ -153,10 +153,10 @@ Nonobvious points to note:
 
 1. The comparison gates for Lagoon flip back to boolean rather than loobean results.  Furthermore, they result in numerical ones (e.g. `0x3f80.0000` for `@rs`) rather than simple `0x1`s.  This is because we want sparse matrices to remain sparse when we eventually support them, and because we want multiplication times the result of a logical operation to set or clear fields appropriately without needing to change the `kind`.  (No solution appears to be completely satisfactory.)
 2. `++submatrix` and `++stack` are not jetted yet.  These are both dicey jets to get right due to multiple offsets.  Fortunately, once we have them correct they should work for all `kind`s since they only depend on `bloq` size not `kind`.
-3. The rounding mode for `%real` may be set for the core using the `++lake` gate.  This returns a copy of the Lagoon `++la` core with rounding mode changed to one of `?(%n %u %d %z)`.
+3. The rounding mode for `%i754` may be set for the core using the `++lake` gate.  This returns a copy of the Lagoon `++la` core with rounding mode changed to one of `?(%n %u %d %z)`.
 ```hoon
-> (cumsum:(lake:la %u) (en-ray:(lake:la %u) [~[7 1] 5 %real ~] ~[.1 .5 .-5 .2 .3 .-20 .-1]))
-[meta=[shape=~[1 1] bloq=5 kind=%real fxp=~] data=0x1.c170.0000]
+> (cumsum:(lake:la %u) (en-ray:(lake:la %u) [~[7 1] 5 %i754 ~] ~[.1 .5 .-5 .2 .3 .-20 .-1]))
+[meta=[shape=~[1 1] bloq=5 kind=%i754 fxp=~] data=0x1.c170.0000]
 ```
 
 ---

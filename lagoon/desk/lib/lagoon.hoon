@@ -212,7 +212,6 @@
   ++  get-item-number  ::  convert n-dimensional index to scalar index
     |=  [sap=(list @) dex=(list @)]
     ^-  @
-    =/  sap  (flop shape)
     =/  cof  1
     =/  ret  0
     =.  sap  (flop sap)

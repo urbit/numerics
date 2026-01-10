@@ -1,1 +1,1 @@
-numerics/lagoon/desk/lib/twoc.hoon
+../../../libmath/desk/lib/twoc.hoon

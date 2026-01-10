@@ -8,7 +8,7 @@
 ::  then to test each operation on each kind of ray.
 ::
 ::  +$  kind              ::  $kind:  type of array scalars
-::    $?  %real           ::  IEEE 754 float
+::    $?  %i754           ::  IEEE 754 float
 ::        %uint           ::  unsigned integer
 ::        %int2           ::  2s-complement integer
 ::        %cplx           ::  BLAS-compatible packed floats

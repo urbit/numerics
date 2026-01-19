@@ -29,6 +29,26 @@
       [%palm [": " ~ ~ ~] [leaf+"actual" "{<actual>}"]]
   ==
 ::
+++  expect-near-rh
+  |=  [expected=@rh actual=@rh]  ^-  tang
+  ::  Half precision: compare with ~1e-2 tolerance
+  =/  diff  `@rh`(dis (sub:^rh expected actual) 0x7fff)
+  ?:  (lth:^rh diff `@rh`0x2e66)           ::  ~0.01
+    ~
+  :~  [%palm [": " ~ ~ ~] [leaf+"expected" "{<expected>}"]]
+      [%palm [": " ~ ~ ~] [leaf+"actual" "{<actual>}"]]
+      [%palm [": " ~ ~ ~] [leaf+"diff" "{<diff>}"]]
+  ==
+::
+++  expect-near-rq
+  |=  [expected=@rq actual=@rq]  ^-  tang
+  =/  diff  `@rq`(dis (sub:^rq expected actual) 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
+  ?:  (lth:^rq diff .~~~1e-20)
+    ~
+  :~  [%palm [": " ~ ~ ~] [leaf+"expected" "{<expected>}"]]
+      [%palm [": " ~ ~ ~] [leaf+"actual" "{<actual>}"]]
+  ==
+::
 ::  ============================================================
 ::  SINGLE PRECISION (@rs) TESTS
 ::  ============================================================
@@ -190,6 +210,150 @@
   ==
 ::
 ::  ============================================================
+::  HALF PRECISION (@rh) TESTS
+::  ============================================================
+::
+::  Note: @rh uses hex literals. Common values:
+::  0x0000 = 0.0,  0x3c00 = 1.0,  0x4000 = 2.0
+::  0x4200 = 3.0,  0x4400 = 4.0,  0x4900 = 10.0
+::  0x3800 = 0.5,  0xbc00 = -1.0
+::
+++  test-rh-sin  ^-  tang
+  ;:  weld
+    ::  sin(0) = 0
+    %+  expect-near-rh  `@rh`0x0  (sin:rh `@rh`0x0)
+    ::  sin(1) ~ 0.8415
+    %+  expect-near-rh  `@rh`0x3abb  (sin:rh `@rh`0x3c00)
+    ::  sin(2) ~ 0.9093
+    %+  expect-near-rh  `@rh`0x3b46  (sin:rh `@rh`0x4000)
+  ==
+::
+++  test-rh-cos  ^-  tang
+  ;:  weld
+    ::  cos(0) = 1
+    %+  expect-near-rh  `@rh`0x3c00  (cos:rh `@rh`0x0)
+    ::  cos(1) ~ 0.5403
+    %+  expect-near-rh  `@rh`0x3854  (cos:rh `@rh`0x3c00)
+  ==
+::
+++  test-rh-exp  ^-  tang
+  ;:  weld
+    ::  exp(0) = 1
+    %+  expect-near-rh  `@rh`0x3c00  (exp:rh `@rh`0x0)
+    ::  exp(1) ~ 2.718
+    %+  expect-near-rh  `@rh`0x4170  (exp:rh `@rh`0x3c00)
+    ::  exp(2) ~ 7.389
+    %+  expect-near-rh  `@rh`0x4763  (exp:rh `@rh`0x4000)
+  ==
+::
+++  test-rh-log  ^-  tang
+  ;:  weld
+    ::  log(1) = 0
+    %+  expect-near-rh  `@rh`0x0  (log:rh `@rh`0x3c00)
+    ::  log(2) ~ 0.6931
+    %+  expect-near-rh  `@rh`0x398c  (log:rh `@rh`0x4000)
+    ::  log(10) ~ 2.303
+    %+  expect-near-rh  `@rh`0x409b  (log:rh `@rh`0x4900)
+  ==
+::
+++  test-rh-sqrt  ^-  tang
+  ;:  weld
+    ::  sqrt(1) = 1
+    %+  expect-near-rh  `@rh`0x3c00  (sqt:rh `@rh`0x3c00)
+    ::  sqrt(2) ~ 1.4142
+    %+  expect-near-rh  `@rh`0x3da8  (sqt:rh `@rh`0x4000)
+    ::  sqrt(4) = 2
+    %+  expect-near-rh  `@rh`0x4000  (sqt:rh `@rh`0x4400)
+    ::  sqrt(9) = 3
+    %+  expect-near-rh  `@rh`0x4200  (sqt:rh `@rh`0x4880)
+  ==
+::
+++  test-rh-atan  ^-  tang
+  ;:  weld
+    ::  atan(0) = 0
+    %+  expect-near-rh  `@rh`0x0  (atan:rh `@rh`0x0)
+    ::  atan(1) ~ 0.7854 (pi/4)
+    %+  expect-near-rh  `@rh`0x3a48  (atan:rh `@rh`0x3c00)
+  ==
+::
+++  test-rh-pow-n  ^-  tang
+  ;:  weld
+    ::  2^0 = 1
+    %+  expect-near-rh  `@rh`0x3c00  (pow-n:rh `@rh`0x4000 `@rh`0x0)
+    ::  2^3 = 8
+    %+  expect-near-rh  `@rh`0x4800  (pow-n:rh `@rh`0x4000 `@rh`0x4200)
+    ::  3^3 = 27
+    %+  expect-near-rh  `@rh`0x4ec0  (pow-n:rh `@rh`0x4200 `@rh`0x4200)
+  ==
+::
+++  test-rh-cheb  ^-  tang
+  ::  Chebyshev polynomials: T_0=1, T_1=x, T_2=2x^2-1, T_3=4x^3-3x
+  ::  At x=0.5: T_0=1, T_1=0.5, T_2=-0.5, T_3=-1
+  ;:  weld
+    %+  expect-near-rh  `@rh`0x3c00  ((cheb:rh 0) `@rh`0x3800)  ::  T_0(0.5) = 1
+    %+  expect-near-rh  `@rh`0x3800  ((cheb:rh 1) `@rh`0x3800)  ::  T_1(0.5) = 0.5
+    %+  expect-near-rh  `@rh`0xb800  ((cheb:rh 2) `@rh`0x3800)  ::  T_2(0.5) = -0.5
+    %+  expect-near-rh  `@rh`0xbc00  ((cheb:rh 3) `@rh`0x3800)  ::  T_3(0.5) = -1
+  ==
+::
+::  ============================================================
+::  QUAD PRECISION (@rq) TESTS
+::  ============================================================
+::
+++  test-rq-sin  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~0  (sin:rq .~~~0)
+    %+  expect-near-rq  .~~~0.8414709848078965  (sin:rq .~~~1)
+    %+  expect-near-rq  .~~~0.9092974268256817  (sin:rq .~~~2)
+  ==
+::
+++  test-rq-cos  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~1  (cos:rq .~~~0)
+    %+  expect-near-rq  .~~~0.5403023058681398  (cos:rq .~~~1)
+  ==
+::
+++  test-rq-exp  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~1  (exp:rq .~~~0)
+    %+  expect-near-rq  .~~~2.718281828459045  (exp:rq .~~~1)
+  ==
+::
+++  test-rq-log  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~0  (log:rq .~~~1)
+    %+  expect-near-rq  .~~~0.6931471805599453  (log:rq .~~~2)
+    %+  expect-near-rq  .~~~2.302585092994046  (log:rq .~~~10)
+  ==
+::
+++  test-rq-sqrt  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~1  (sqt:rq .~~~1)
+    %+  expect-near-rq  .~~~1.4142135623730951  (sqt:rq .~~~2)
+    %+  expect-near-rq  .~~~2  (sqt:rq .~~~4)
+  ==
+::
+++  test-rq-atan  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~0  (atan:rq .~~~0)
+    %+  expect-near-rq  .~~~0.7853981633974483  (atan:rq .~~~1)  ::  pi/4
+  ==
+::
+++  test-rq-pow-n  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~8  (pow-n:rq .~~~2 .~~~3)
+    %+  expect-near-rq  .~~~27  (pow-n:rq .~~~3 .~~~3)
+  ==
+::
+++  test-rq-cheb  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~1  ((cheb:rq 0) .~~~0.5)
+    %+  expect-near-rq  .~~~0.5  ((cheb:rq 1) .~~~0.5)
+    %+  expect-near-rq  .~~~-0.5  ((cheb:rq 2) .~~~0.5)
+    %+  expect-near-rq  .~~~-1  ((cheb:rq 3) .~~~0.5)
+  ==
+::
+::  ============================================================
 ::  IDENTITY TESTS - verify mathematical relationships
 ::  ============================================================
 ::
@@ -225,4 +389,83 @@
   =/  x  .0.5
   =/  result  (atan:rs (tan:rs x))
   (expect-near-rs x result)
+::
+::  @rd identity tests
+::
+++  test-rd-sin-cos-identity  ^-  tang
+  ::  sin^2(x) + cos^2(x) = 1
+  =/  x  .~1.234
+  =/  s  (sin:rd x)
+  =/  c  (cos:rd x)
+  =/  sum  (add:^rd (mul:^rd s s) (mul:^rd c c))
+  (expect-near-rd .~1 sum)
+::
+++  test-rd-exp-log-identity  ^-  tang
+  ::  exp(log(x)) = x for x > 0
+  =/  x  .~2.5
+  =/  result  (exp:rd (log:rd x))
+  (expect-near-rd x result)
+::
+++  test-rd-sqrt-square-identity  ^-  tang
+  ::  sqrt(x)^2 = x for x >= 0
+  =/  x  .~7.5
+  =/  s  (sqt:rd x)
+  =/  result  (mul:^rd s s)
+  (expect-near-rd x result)
+::
+::  @rh identity tests (wider tolerance due to half precision)
+::
+++  test-rh-sin-cos-identity  ^-  tang
+  ::  sin^2(x) + cos^2(x) = 1
+  ::  x = 1.25 (0x3d00)
+  =/  x  `@rh`0x3d00
+  =/  one  `@rh`0x3c00
+  =/  s  (sin:rh x)
+  =/  c  (cos:rh x)
+  =/  sum  (add:^rh (mul:^rh s s) (mul:^rh c c))
+  (expect-near-rh one sum)
+::
+++  test-rh-exp-log-identity  ^-  tang
+  ::  exp(log(x)) = x for x > 0
+  ::  x = 2.5 (0x4100)
+  =/  x  `@rh`0x4100
+  =/  result  (exp:rh (log:rh x))
+  (expect-near-rh x result)
+::
+++  test-rh-sqrt-square-identity  ^-  tang
+  ::  sqrt(x)^2 = x for x >= 0
+  ::  x = 4.0 (0x4400)
+  =/  x  `@rh`0x4400
+  =/  s  (sqt:rh x)
+  =/  result  (mul:^rh s s)
+  (expect-near-rh x result)
+::
+::  @rq identity tests
+::
+++  test-rq-sin-cos-identity  ^-  tang
+  ::  sin^2(x) + cos^2(x) = 1
+  =/  x  .~~~1.234
+  =/  s  (sin:rq x)
+  =/  c  (cos:rq x)
+  =/  sum  (add:^rq (mul:^rq s s) (mul:^rq c c))
+  (expect-near-rq .~~~1 sum)
+::
+++  test-rq-exp-log-identity  ^-  tang
+  ::  exp(log(x)) = x for x > 0
+  =/  x  .~~~2.5
+  =/  result  (exp:rq (log:rq x))
+  (expect-near-rq x result)
+::
+++  test-rq-sqrt-square-identity  ^-  tang
+  ::  sqrt(x)^2 = x for x >= 0
+  =/  x  .~~~7.5
+  =/  s  (sqt:rq x)
+  =/  result  (mul:^rq s s)
+  (expect-near-rq x result)
+::
+++  test-rq-atan-tan-identity  ^-  tang
+  ::  atan(tan(x)) = x for |x| < pi/2
+  =/  x  .~~~0.5
+  =/  result  (atan:rq (tan:rq x))
+  (expect-near-rq x result)
 --

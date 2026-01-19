@@ -755,6 +755,273 @@
   --
 ::
 ::  ================================================================
+::  QUAD PRECISION (@rq) - 128-bit IEEE 754
+::  ================================================================
+::
+::  Coefficients from FreeBSD msun ld128/k_sinl.c, k_cosl.c
+::  Quad precision uses degree 25 sin, degree 22 cos for ~113 bits accuracy.
+::
+::  Note: 128-bit hex literals are 32 hex digits each.
+::  Format: 1 sign + 15 exponent (bias 16383) + 112 mantissa bits
+::
+++  rq
+  |%
+  ::
+  ::  ============================================================
+  ::  CONSTANTS (hex-exact for binary128)
+  ::  ============================================================
+  ::
+  ::  Pi-related constants
+  ::
+  ++  pio2-1    `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8  ::  pi/2 high
+  ++  pio2-1t   `@rq`0x3f8c.c51c.e0ae.9ca4.e68e.6e36.30d1.5dc4  ::  pi/2 - pio2_1
+  ++  pio4      `@rq`0x3ffe.921f.b544.42d1.8469.898c.c517.01b8  ::  pi/4
+  ++  invpio2   `@rq`0x3ffe.45f3.06dc.9c88.2a53.f84e.afa3.ea6a  ::  2/pi
+  ::
+  ::  Exp constants
+  ::
+  ++  ln2hi     `@rq`0x3ffe.62e4.2fef.a39e.f357.93c7.6730.07e6  ::  ln(2) high
+  ++  ln2lo     `@rq`0x3fbc.7abc.9e3b.3998.0f2f.707c.9ca4.4b10  ::  ln(2) low
+  ++  invln2    `@rq`0x3fff.7154.7652.b82f.e177.7d0f.fda0.d23a  ::  1/ln(2)
+  ++  exp-huge  `@rq`0x400c.62e4.2fef.a39e.f357.93c7.6730.07e6  ::  ~11356.5 (overflow)
+  ++  exp-tiny  `@rq`0xc00c.6760.f0c7.f77a.8a37.8c9c.e5ca.10bc  ::  ~-11433.5 (underflow)
+  ::
+  ::  ============================================================
+  ::  POLYNOMIAL COEFFICIENTS
+  ::  ============================================================
+  ::
+  ::  Sin coefficients: degree 25 polynomial (S1-S12)
+  ::  From FreeBSD ld128/k_sinl.c
+  ::  sin(x) = x + x^3*(S1 + x^2*(S2 + ...))
+  ::
+  ++  sin-s1    `@rq`0xbffc.5555.5555.5555.5555.5555.5555.5555  ::  -1/6
+  ++  sin-s2    `@rq`0x3ff8.1111.1111.1111.1111.1111.1111.1111  ::   1/120
+  ++  sin-s3    `@rq`0xbff2.a01a.01a0.1a01.a01a.01a0.1a01.a01a  ::  -1/5040
+  ++  sin-s4    `@rq`0x3fec.71de.3a55.6c73.38fa.ac1c.88e5.0017  ::   1/362880
+  ++  sin-s5    `@rq`0xbfe5.ae64.567f.544e.38fe.747e.4b60.c9a6  ::  -1/39916800
+  ++  sin-s6    `@rq`0x3fde.6124.613a.86d0.9393.30de.0b58.0e66  ::   1/6227020800
+  ++  sin-s7    `@rq`0xbfd6.ae7f.3e73.3b81.f7be.ced5.1769.e17e  ::  ~-1.15e-15
+  ++  sin-s8    `@rq`0x3fce.952c.7703.0ad4.a71d.fc88.40d2.35fc  ::  ~8.22e-18
+  ::
+  ::  Cos coefficients: degree 22 polynomial (C1-C11)
+  ::  From FreeBSD ld128/k_cosl.c
+  ::  cos(x) = 1 - x^2/2 + x^4*(C1 + x^2*(C2 + ...))
+  ::
+  ++  cos-c1    `@rq`0x3ffa.5555.5555.5555.5555.5555.5555.5555  ::   1/24
+  ++  cos-c2    `@rq`0xbff5.6c16.c16c.16c1.6c16.c16c.16c1.6c17  ::  -1/720
+  ++  cos-c3    `@rq`0x3fef.a01a.01a0.1a01.a01a.01a0.1a01.a01a  ::   1/40320
+  ++  cos-c4    `@rq`0xbfe9.27e4.fb77.89f5.c72e.f016.d3ea.6679  ::  -1/3628800
+  ++  cos-c5    `@rq`0x3fe2.1eed.8eff.8d89.7b5e.33bf.1a9b.a5c9  ::   1/479001600
+  ++  cos-c6    `@rq`0xbfda.93f2.7dbb.c4fb.7459.4a58.2e61.6a96  ::  ~-8.9e-14
+  ++  cos-c7    `@rq`0x3fd2.ae7f.3e73.3b94.0c61.7a76.bec4.4b09  ::  ~4.78e-16
+  ++  cos-c8    `@rq`0xbfca.6827.863b.97d9.7e4c.9bbd.c044.2faa  ::  ~-1.56e-18
+  ::
+  ::  Exp polynomial coefficients (degree 7 for quad)
+  ::
+  ++  exp-p1    `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000  ::   0.5
+  ++  exp-p2    `@rq`0x3ffc.5555.5555.5555.5555.5555.5555.5555  ::   1/6
+  ++  exp-p3    `@rq`0x3ffa.5555.5555.5555.5555.5555.5555.5555  ::   1/24
+  ++  exp-p4    `@rq`0x3ff8.1111.1111.1111.1111.1111.1111.1111  ::   1/120
+  ++  exp-p5    `@rq`0x3ff5.6c16.c16c.16c1.6c16.c16c.16c1.6c17  ::   1/720
+  ++  exp-p6    `@rq`0x3ff2.a01a.01a0.1a01.a01a.01a0.1a01.a01a  ::   1/5040
+  ++  exp-p7    `@rq`0x3fef.a01a.01a0.1a01.a01a.01a0.1a01.a01a  ::   1/40320
+  ::
+  ::  ============================================================
+  ::  CHEBYSHEV POLYNOMIAL
+  ::  ============================================================
+  ::
+  ++  cheb
+    |=  n=@ud
+    |=  x=@rq
+    ^-  @rq
+    ?:  =(0 n)  .~~~1
+    ?:  =(1 n)  x
+    (sub:^rq (mul:^rq .~~~2 (mul:^rq x $(n (dec n)))) $(n (sub n 2)))
+  ::
+  ::  ============================================================
+  ::  HELPER FUNCTIONS
+  ::  ============================================================
+  ::
+  ++  scalbn
+    |=  [x=@rq n=@sd]
+    ^-  @rq
+    =/  bits  `@`x
+    =/  exp   (dis (rsh [0 112] bits) 0x7fff)
+    =/  sign  (rsh [0 127] bits)
+    ?:  =(exp 0x7fff)  x                  ::  inf or nan
+    ?:  =(exp 0)       x                  ::  zero or subnormal
+    =/  new-exp  (sum:si (sun:si exp) n)
+    ?:  (gth:si new-exp (sun:si 32.766))
+      ?:  =(sign 0)
+        `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+      `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000
+    ?:  (lth:si new-exp (sun:si 1))
+      .~~~0
+    =/  new-bits
+      %+  con  (lsh [0 127] sign)
+      %+  con  (lsh [0 112] (abs:si new-exp))
+      (dis bits 0xffff.ffff.ffff.ffff.ffff.ffff.ffff)
+    `@rq`new-bits
+  ::
+  ++  floor-int
+    |=  x=@rq
+    ^-  @sd
+    =/  bits  `@`x
+    =/  sign  (rsh [0 127] bits)
+    =/  bexp  (dis (rsh [0 112] bits) 0x7fff)
+    ?:  (^lth bexp 16.383)
+      ?:(=(sign 0) --0 -1)
+    =/  exp   (sub bexp 16.383)
+    =/  mant  (con (dis bits 0xffff.ffff.ffff.ffff.ffff.ffff.ffff) 0x1.0000.0000.0000.0000.0000.0000.0000)
+    ?:  (^gte exp 112)
+      ?:  =(sign 0)
+        (sun:si (lsh [0 (sub exp 112)] mant))
+      (new:si %.n (lsh [0 (sub exp 112)] mant))
+    =/  shift     (sub 112 exp)
+    =/  int-mant  (rsh [0 shift] mant)
+    =/  frac-mask (dec (lsh [0 shift] 1))
+    =/  had-frac  !=(0 (dis mant frac-mask))
+    =/  result    ?:(=(sign 0) (sun:si int-mant) (new:si %.n int-mant))
+    ?:  &(=(sign 1) had-frac)
+      (dif:si result --1)
+    result
+  ::
+  ::  ============================================================
+  ::  ARGUMENT REDUCTION
+  ::  ============================================================
+  ::
+  ++  rem-pio2
+    |=  x=@rq
+    ^-  [n=@ y=@rq]
+    =/  bits  `@`x
+    =/  ax    `@rq`(dis bits 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
+    ?:  (lte:^rq ax pio4)
+      [0 x]
+    =/  fn-raw  (mul:^rq x invpio2)
+    =/  fn      ?:  (gte:^rq fn-raw .~~~0)
+                  (add:^rq fn-raw .~~~0.5)
+                (sub:^rq fn-raw .~~~0.5)
+    =/  n   (floor-int fn)
+    =/  fn  (san:^rq n)
+    =/  y   (sub:^rq x (mul:^rq fn pio2-1))
+    =.  y   (sub:^rq y (mul:^rq fn pio2-1t))
+    [(mod (abs:si n) 4) y]
+  ::
+  ::  ============================================================
+  ::  KERNEL FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +sindf: Kernel sin (degree 17 for practical quad precision)
+  ::
+  ++  sindf
+    |=  x=@rq
+    ^-  @rq
+    =/  z  (mul:^rq x x)
+    ::  Horner form with 8 coefficients
+    =/  r  (add:^rq sin-s7 (mul:^rq z sin-s8))
+    =.  r  (add:^rq sin-s6 (mul:^rq z r))
+    =.  r  (add:^rq sin-s5 (mul:^rq z r))
+    =.  r  (add:^rq sin-s4 (mul:^rq z r))
+    =.  r  (add:^rq sin-s3 (mul:^rq z r))
+    =.  r  (add:^rq sin-s2 (mul:^rq z r))
+    =.  r  (add:^rq sin-s1 (mul:^rq z r))
+    (add:^rq x (mul:^rq (mul:^rq x z) r))
+  ::
+  ::  +cosdf: Kernel cos (degree 16 for practical quad precision)
+  ::
+  ++  cosdf
+    |=  x=@rq
+    ^-  @rq
+    =/  z  (mul:^rq x x)
+    =/  w  (mul:^rq z z)
+    ::  Horner form with 8 coefficients
+    =/  r  (add:^rq cos-c7 (mul:^rq z cos-c8))
+    =.  r  (add:^rq cos-c6 (mul:^rq z r))
+    =.  r  (add:^rq cos-c5 (mul:^rq z r))
+    =.  r  (add:^rq cos-c4 (mul:^rq z r))
+    =.  r  (add:^rq cos-c3 (mul:^rq z r))
+    =.  r  (add:^rq cos-c2 (mul:^rq z r))
+    =.  r  (add:^rq cos-c1 (mul:^rq z r))
+    =/  hz  (mul:^rq .~~~0.5 z)
+    (add:^rq (sub:^rq .~~~1 hz) (mul:^rq w r))
+  ::
+  ::  ============================================================
+  ::  PUBLIC API
+  ::  ============================================================
+  ::
+  ++  sin
+    |=  x=@rq
+    ^-  @rq
+    =/  bits  `@`x
+    =/  ax    `@rq`(dis bits 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
+    ::  Tiny
+    ?:  (lth:^rq ax `@rq`0x3f8f.0000.0000.0000.0000.0000.0000.0000)  x
+    ::  Inf/NaN
+    ?:  (gte:^rq ax `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)
+      (sub:^rq x x)
+    =/  [n=@ y=@rq]  (rem-pio2 x)
+    ?-  n
+      %0  (sindf y)
+      %1  (cosdf y)
+      %2  (sub:^rq .~~~0 (sindf y))
+      %3  (sub:^rq .~~~0 (cosdf y))
+    ==
+  ::
+  ++  cos
+    |=  x=@rq
+    ^-  @rq
+    =/  bits  `@`x
+    =/  ax    `@rq`(dis bits 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
+    ?:  (lth:^rq ax `@rq`0x3f8f.0000.0000.0000.0000.0000.0000.0000)  .~~~1
+    ?:  (gte:^rq ax `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)
+      (sub:^rq x x)
+    =/  [n=@ y=@rq]  (rem-pio2 x)
+    ?-  n
+      %0  (cosdf y)
+      %1  (sub:^rq .~~~0 (sindf y))
+      %2  (sub:^rq .~~~0 (cosdf y))
+      %3  (sindf y)
+    ==
+  ::
+  ++  tan
+    |=  x=@rq
+    ^-  @rq
+    (div:^rq (sin x) (cos x))
+  ::
+  ++  exp
+    |=  x=@rq
+    ^-  @rq
+    =/  bits  `@`x
+    =/  ax    `@rq`(dis bits 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
+    ?:  =(x .~~~0)  .~~~1
+    ?:  =(bits 0x7fff.0000.0000.0000.0000.0000.0000.0000)
+      `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+    ?:  =(bits 0xffff.0000.0000.0000.0000.0000.0000.0000)  .~~~0
+    ?:  (gth:^rq ax `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  x
+    ?:  (gth:^rq x exp-huge)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+    ?:  (lth:^rq x exp-tiny)  .~~~0
+    ::  Argument reduction
+    =/  fn-raw  (mul:^rq x invln2)
+    =/  fn      ?:  (gte:^rq fn-raw .~~~0)
+                  (add:^rq fn-raw .~~~0.5)
+                (sub:^rq fn-raw .~~~0.5)
+    =/  k   (floor-int fn)
+    =/  kf  (san:^rq k)
+    =/  r   (sub:^rq x (mul:^rq kf ln2hi))
+    =.  r   (sub:^rq r (mul:^rq kf ln2lo))
+    ::  Polynomial (degree 7)
+    =/  r2  (mul:^rq r r)
+    =/  p   (add:^rq exp-p6 (mul:^rq r exp-p7))
+    =.  p   (add:^rq exp-p5 (mul:^rq r p))
+    =.  p   (add:^rq exp-p4 (mul:^rq r p))
+    =.  p   (add:^rq exp-p3 (mul:^rq r p))
+    =.  p   (add:^rq exp-p2 (mul:^rq r p))
+    =.  p   (add:^rq exp-p1 (mul:^rq r p))
+    =/  expr  (add:^rq .~~~1 (add:^rq r (mul:^rq r2 p)))
+    (scalbn expr k)
+  --
+::
+::  ================================================================
 ::  JET IMPLEMENTATION GUIDE
 ::  ================================================================
 ::

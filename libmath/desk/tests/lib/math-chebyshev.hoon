@@ -468,4 +468,152 @@
   =/  x  .~~~0.5
   =/  result  (atan:rq (tan:rq x))
   (expect-near-rq x result)
+::
+::  ============================================================
+::  HYPERBOLIC FUNCTION TESTS
+::  ============================================================
+::
+++  test-rs-sinh  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .0  (sinh:rs .0)
+    %+  expect-near-rs  .1.1752012  (sinh:rs .1)       ::  sinh(1)
+    %+  expect-near-rs  .3.6268604  (sinh:rs .2)       ::  sinh(2)
+  ==
+::
+++  test-rs-cosh  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .1  (cosh:rs .0)
+    %+  expect-near-rs  .1.5430806  (cosh:rs .1)       ::  cosh(1)
+    %+  expect-near-rs  .3.7621956  (cosh:rs .2)       ::  cosh(2)
+  ==
+::
+++  test-rs-tanh  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .0  (tanh:rs .0)
+    %+  expect-near-rs  .0.7615942  (tanh:rs .1)       ::  tanh(1)
+    %+  expect-near-rs  .0.9640276  (tanh:rs .2)       ::  tanh(2)
+  ==
+::
+++  test-rs-asinh  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .0  (asinh:rs .0)
+    %+  expect-near-rs  .0.88137358  (asinh:rs .1)     ::  asinh(1)
+    %+  expect-near-rs  .1.4436355  (asinh:rs .2)      ::  asinh(2)
+  ==
+::
+++  test-rs-acosh  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .0  (acosh:rs .1)
+    %+  expect-near-rs  .1.3169579  (acosh:rs .2)      ::  acosh(2)
+    %+  expect-near-rs  .1.7627472  (acosh:rs .3)      ::  acosh(3)
+  ==
+::
+++  test-rs-atanh  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .0  (atanh:rs .0)
+    %+  expect-near-rs  .0.5493061  (atanh:rs .0.5)    ::  atanh(0.5)
+  ==
+::
+++  test-rd-sinh  ^-  tang
+  ;:  weld
+    %+  expect-near-rd  .~0  (sinh:rd .~0)
+    %+  expect-near-rd  .~1.1752011936438014  (sinh:rd .~1)
+  ==
+::
+++  test-rd-cosh  ^-  tang
+  ;:  weld
+    %+  expect-near-rd  .~1  (cosh:rd .~0)
+    %+  expect-near-rd  .~1.5430806348152437  (cosh:rd .~1)
+  ==
+::
+++  test-rd-tanh  ^-  tang
+  ;:  weld
+    %+  expect-near-rd  .~0  (tanh:rd .~0)
+    %+  expect-near-rd  .~0.7615941559557649  (tanh:rd .~1)
+  ==
+::
+++  test-rq-sinh  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~0  (sinh:rq .~~~0)
+    %+  expect-near-rq  .~~~1.1752011936438014  (sinh:rq .~~~1)
+  ==
+::
+++  test-rq-cosh  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~1  (cosh:rq .~~~0)
+    %+  expect-near-rq  .~~~1.5430806348152437  (cosh:rq .~~~1)
+  ==
+::
+++  test-rq-tanh  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~0  (tanh:rq .~~~0)
+    %+  expect-near-rq  .~~~0.7615941559557649  (tanh:rq .~~~1)
+  ==
+::
+::  Hyperbolic identities
+::
+++  test-rs-cosh-sinh-identity  ^-  tang
+  ::  cosh^2(x) - sinh^2(x) = 1
+  =/  x  .1.5
+  =/  sh  (sinh:rs x)
+  =/  ch  (cosh:rs x)
+  =/  result  (sub:^rs (mul:^rs ch ch) (mul:^rs sh sh))
+  (expect-near-rs .1 result)
+::
+++  test-rd-cosh-sinh-identity  ^-  tang
+  ::  cosh^2(x) - sinh^2(x) = 1
+  =/  x  .~1.5
+  =/  sh  (sinh:rd x)
+  =/  ch  (cosh:rd x)
+  =/  result  (sub:^rd (mul:^rd ch ch) (mul:^rd sh sh))
+  (expect-near-rd .~1 result)
+::
+++  test-rs-asinh-sinh-identity  ^-  tang
+  ::  asinh(sinh(x)) = x
+  =/  x  .1.5
+  =/  result  (asinh:rs (sinh:rs x))
+  (expect-near-rs x result)
+::
+++  test-rs-acosh-cosh-identity  ^-  tang
+  ::  acosh(cosh(x)) = |x| for x > 0
+  =/  x  .1.5
+  =/  result  (acosh:rs (cosh:rs x))
+  (expect-near-rs x result)
+::
+++  test-rs-atanh-tanh-identity  ^-  tang
+  ::  atanh(tanh(x)) = x for small x
+  =/  x  .0.5
+  =/  result  (atanh:rs (tanh:rs x))
+  (expect-near-rs x result)
+::
+::  ============================================================
+::  SPECIAL FUNCTION TESTS
+::  ============================================================
+::
+++  test-rs-erf  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .0  (erf:rs .0)
+    %+  expect-near-rs  .0.8427008  (erf:rs .1)        ::  erf(1)
+    %+  expect-near-rs  .0.9953223  (erf:rs .2)        ::  erf(2)
+    %+  expect-near-rs  .-0.8427008  (erf:rs .-1)      ::  erf(-1)
+  ==
+::
+++  test-rd-erf  ^-  tang
+  ;:  weld
+    %+  expect-near-rd  .~0  (erf:rd .~0)
+    %+  expect-near-rd  .~0.8427007929497149  (erf:rd .~1)
+  ==
+::
+++  test-rq-erf  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~0  (erf:rq .~~~0)
+    %+  expect-near-rq  .~~~0.8427007929497149  (erf:rq .~~~1)
+  ==
+::
+++  test-rs-erf-symmetry  ^-  tang
+  ::  erf(-x) = -erf(x)
+  =/  x  .1.5
+  =/  ep  (erf:rs x)
+  =/  em  (erf:rs (sub:^rs .0 x))
+  (expect-near-rs (sub:^rs .0 ep) em)
 --

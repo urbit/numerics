@@ -340,6 +340,111 @@
     ?:  &(?=(^ ni) =(n (san:^rh (need ni))))
       (pow-n x n)
     (exp (mul:^rh n (log x)))
+  ::
+  ::  ============================================================
+  ::  HYPERBOLIC FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +sinh: Hyperbolic sine
+  ::  sinh(x) = (exp(x) - exp(-x)) / 2
+  ::
+  ++  sinh
+    |=  x=@rh
+    ^-  @rh
+    =/  half  `@rh`0x3800                          ::  0.5
+    =/  ep    (exp x)
+    =/  em    (exp (sub:^rh `@rh`0x0 x))
+    (mul:^rh half (sub:^rh ep em))
+  ::
+  ::  +cosh: Hyperbolic cosine
+  ::  cosh(x) = (exp(x) + exp(-x)) / 2
+  ::
+  ++  cosh
+    |=  x=@rh
+    ^-  @rh
+    =/  half  `@rh`0x3800                          ::  0.5
+    =/  ep    (exp x)
+    =/  em    (exp (sub:^rh `@rh`0x0 x))
+    (mul:^rh half (add:^rh ep em))
+  ::
+  ::  +tanh: Hyperbolic tangent
+  ::  tanh(x) = sinh(x) / cosh(x)
+  ::
+  ++  tanh
+    |=  x=@rh
+    ^-  @rh
+    =/  e2x  (exp (mul:^rh `@rh`0x4000 x))         ::  exp(2x)
+    =/  one  `@rh`0x3c00
+    ::  tanh(x) = (e^2x - 1) / (e^2x + 1)
+    (div:^rh (sub:^rh e2x one) (add:^rh e2x one))
+  ::
+  ::  +asinh: Inverse hyperbolic sine
+  ::  asinh(x) = ln(x + sqrt(x^2 + 1))
+  ::
+  ++  asinh
+    |=  x=@rh
+    ^-  @rh
+    =/  one  `@rh`0x3c00
+    (log (add:^rh x (sqt (add:^rh (mul:^rh x x) one))))
+  ::
+  ::  +acosh: Inverse hyperbolic cosine
+  ::  acosh(x) = ln(x + sqrt(x^2 - 1)), x >= 1
+  ::
+  ++  acosh
+    |=  x=@rh
+    ^-  @rh
+    =/  one  `@rh`0x3c00
+    ?:  (lth:^rh x one)  (sub:^rh x x)             ::  NaN for x < 1
+    (log (add:^rh x (sqt (sub:^rh (mul:^rh x x) one))))
+  ::
+  ::  +atanh: Inverse hyperbolic tangent
+  ::  atanh(x) = 0.5 * ln((1+x)/(1-x)), |x| < 1
+  ::
+  ++  atanh
+    |=  x=@rh
+    ^-  @rh
+    =/  one   `@rh`0x3c00
+    =/  half  `@rh`0x3800
+    =/  ax    `@rh`(dis `@`x 0x7fff)
+    ?:  (gte:^rh ax one)  (sub:^rh x x)            ::  NaN for |x| >= 1
+    (mul:^rh half (log (div:^rh (add:^rh one x) (sub:^rh one x))))
+  ::
+  ::  ============================================================
+  ::  SPECIAL FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +erf: Error function (Horner approximation)
+  ::  Uses Abramowitz & Stegun approximation 7.1.26
+  ::
+  ++  erf
+    |=  x=@rh
+    ^-  @rh
+    =/  bits  `@`x
+    =/  sign  (rsh [0 15] bits)
+    =/  ax    `@rh`(dis bits 0x7fff)
+    =/  one   `@rh`0x3c00
+    ::  Coefficients (simplified for half precision)
+    =/  a1    `@rh`0x3528                          ::  ~0.254829592
+    =/  a2    `@rh`0xaccc                          ::  ~-0.284496736
+    =/  a3    `@rh`0x3b85                          ::  ~1.421413741
+    =/  a4    `@rh`0xbbc8                          ::  ~-1.453152027
+    =/  a5    `@rh`0x3a51                          ::  ~1.061405429
+    =/  p     `@rh`0x352b                          ::  ~0.3275911
+    ::
+    =/  t     (div:^rh one (add:^rh one (mul:^rh p ax)))
+    =/  t2    (mul:^rh t t)
+    =/  t3    (mul:^rh t2 t)
+    =/  t4    (mul:^rh t3 t)
+    =/  t5    (mul:^rh t4 t)
+    ::
+    =/  poly  %+  add:^rh  (mul:^rh a1 t)
+              %+  add:^rh  (mul:^rh a2 t2)
+              %+  add:^rh  (mul:^rh a3 t3)
+              %+  add:^rh  (mul:^rh a4 t4)
+              (mul:^rh a5 t5)
+    ::
+    =/  result  (sub:^rh one (mul:^rh poly (exp (sub:^rh `@rh`0x0 (mul:^rh ax ax)))))
+    ?:(=(sign 0) result (sub:^rh `@rh`0x0 result))
   --
 ::
 ::  ================================================================
@@ -925,6 +1030,102 @@
       (pow-n x n)
     ::  General case: x^n = exp(n * log(x))
     (exp (mul:^rs n (log x)))
+  ::
+  ::  ============================================================
+  ::  HYPERBOLIC FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +sinh: Hyperbolic sine
+  ::  sinh(x) = (exp(x) - exp(-x)) / 2
+  ::
+  ++  sinh
+    |=  x=@rs
+    ^-  @rs
+    =/  ep  (exp x)
+    =/  em  (exp (sub:^rs .0 x))
+    (mul:^rs .0.5 (sub:^rs ep em))
+  ::
+  ::  +cosh: Hyperbolic cosine
+  ::  cosh(x) = (exp(x) + exp(-x)) / 2
+  ::
+  ++  cosh
+    |=  x=@rs
+    ^-  @rs
+    =/  ep  (exp x)
+    =/  em  (exp (sub:^rs .0 x))
+    (mul:^rs .0.5 (add:^rs ep em))
+  ::
+  ::  +tanh: Hyperbolic tangent
+  ::  tanh(x) = (e^2x - 1) / (e^2x + 1)
+  ::
+  ++  tanh
+    |=  x=@rs
+    ^-  @rs
+    =/  e2x  (exp (mul:^rs .2 x))
+    (div:^rs (sub:^rs e2x .1) (add:^rs e2x .1))
+  ::
+  ::  +asinh: Inverse hyperbolic sine
+  ::  asinh(x) = ln(x + sqrt(x^2 + 1))
+  ::
+  ++  asinh
+    |=  x=@rs
+    ^-  @rs
+    (log (add:^rs x (sqt (add:^rs (mul:^rs x x) .1))))
+  ::
+  ::  +acosh: Inverse hyperbolic cosine
+  ::  acosh(x) = ln(x + sqrt(x^2 - 1)), x >= 1
+  ::
+  ++  acosh
+    |=  x=@rs
+    ^-  @rs
+    ?:  (lth:^rs x .1)  (sub:^rs x x)              ::  NaN for x < 1
+    (log (add:^rs x (sqt (sub:^rs (mul:^rs x x) .1))))
+  ::
+  ::  +atanh: Inverse hyperbolic tangent
+  ::  atanh(x) = 0.5 * ln((1+x)/(1-x)), |x| < 1
+  ::
+  ++  atanh
+    |=  x=@rs
+    ^-  @rs
+    =/  ax  (abs x)
+    ?:  (gte:^rs ax .1)  (sub:^rs x x)             ::  NaN for |x| >= 1
+    (mul:^rs .0.5 (log (div:^rs (add:^rs .1 x) (sub:^rs .1 x))))
+  ::
+  ::  ============================================================
+  ::  SPECIAL FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +erf: Error function
+  ::  Uses Abramowitz & Stegun approximation 7.1.26 (max error ~1.5e-7)
+  ::
+  ++  erf
+    |=  x=@rs
+    ^-  @rs
+    =/  bits  `@`x
+    =/  sign  (rsh [0 31] bits)
+    =/  ax    (abs x)
+    ::  Coefficients from A&S
+    =/  a1    .0.254829592
+    =/  a2    .-0.284496736
+    =/  a3    .1.421413741
+    =/  a4    .-1.453152027
+    =/  a5    .1.061405429
+    =/  p     .0.3275911
+    ::
+    =/  t   (div:^rs .1 (add:^rs .1 (mul:^rs p ax)))
+    =/  t2  (mul:^rs t t)
+    =/  t3  (mul:^rs t2 t)
+    =/  t4  (mul:^rs t3 t)
+    =/  t5  (mul:^rs t4 t)
+    ::
+    =/  poly  %+  add:^rs  (mul:^rs a1 t)
+              %+  add:^rs  (mul:^rs a2 t2)
+              %+  add:^rs  (mul:^rs a3 t3)
+              %+  add:^rs  (mul:^rs a4 t4)
+              (mul:^rs a5 t5)
+    ::
+    =/  result  (sub:^rs .1 (mul:^rs poly (exp (sub:^rs .0 (mul:^rs ax ax)))))
+    ?:(=(sign 0) result (sub:^rs .0 result))
   --
 ::
 ::  ================================================================
@@ -1398,6 +1599,102 @@
     ?:  &(?=(^ ni) =(n (san:^rd (need ni))))
       (pow-n x n)
     (exp (mul:^rd n (log x)))
+  ::
+  ::  ============================================================
+  ::  HYPERBOLIC FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +sinh: Hyperbolic sine
+  ::  sinh(x) = (exp(x) - exp(-x)) / 2
+  ::
+  ++  sinh
+    |=  x=@rd
+    ^-  @rd
+    =/  ep  (exp x)
+    =/  em  (exp (sub:^rd .~0 x))
+    (mul:^rd .~0.5 (sub:^rd ep em))
+  ::
+  ::  +cosh: Hyperbolic cosine
+  ::  cosh(x) = (exp(x) + exp(-x)) / 2
+  ::
+  ++  cosh
+    |=  x=@rd
+    ^-  @rd
+    =/  ep  (exp x)
+    =/  em  (exp (sub:^rd .~0 x))
+    (mul:^rd .~0.5 (add:^rd ep em))
+  ::
+  ::  +tanh: Hyperbolic tangent
+  ::  tanh(x) = (e^2x - 1) / (e^2x + 1)
+  ::
+  ++  tanh
+    |=  x=@rd
+    ^-  @rd
+    =/  e2x  (exp (mul:^rd .~2 x))
+    (div:^rd (sub:^rd e2x .~1) (add:^rd e2x .~1))
+  ::
+  ::  +asinh: Inverse hyperbolic sine
+  ::  asinh(x) = ln(x + sqrt(x^2 + 1))
+  ::
+  ++  asinh
+    |=  x=@rd
+    ^-  @rd
+    (log (add:^rd x (sqt (add:^rd (mul:^rd x x) .~1))))
+  ::
+  ::  +acosh: Inverse hyperbolic cosine
+  ::  acosh(x) = ln(x + sqrt(x^2 - 1)), x >= 1
+  ::
+  ++  acosh
+    |=  x=@rd
+    ^-  @rd
+    ?:  (lth:^rd x .~1)  (sub:^rd x x)             ::  NaN for x < 1
+    (log (add:^rd x (sqt (sub:^rd (mul:^rd x x) .~1))))
+  ::
+  ::  +atanh: Inverse hyperbolic tangent
+  ::  atanh(x) = 0.5 * ln((1+x)/(1-x)), |x| < 1
+  ::
+  ++  atanh
+    |=  x=@rd
+    ^-  @rd
+    =/  ax  (abs x)
+    ?:  (gte:^rd ax .~1)  (sub:^rd x x)            ::  NaN for |x| >= 1
+    (mul:^rd .~0.5 (log (div:^rd (add:^rd .~1 x) (sub:^rd .~1 x))))
+  ::
+  ::  ============================================================
+  ::  SPECIAL FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +erf: Error function
+  ::  Uses Abramowitz & Stegun approximation 7.1.26
+  ::
+  ++  erf
+    |=  x=@rd
+    ^-  @rd
+    =/  bits  `@`x
+    =/  sign  (rsh [0 63] bits)
+    =/  ax    (abs x)
+    ::  Coefficients from A&S (double precision)
+    =/  a1    .~0.254829592
+    =/  a2    .~-0.284496736
+    =/  a3    .~1.421413741
+    =/  a4    .~-1.453152027
+    =/  a5    .~1.061405429
+    =/  p     .~0.3275911
+    ::
+    =/  t   (div:^rd .~1 (add:^rd .~1 (mul:^rd p ax)))
+    =/  t2  (mul:^rd t t)
+    =/  t3  (mul:^rd t2 t)
+    =/  t4  (mul:^rd t3 t)
+    =/  t5  (mul:^rd t4 t)
+    ::
+    =/  poly  %+  add:^rd  (mul:^rd a1 t)
+              %+  add:^rd  (mul:^rd a2 t2)
+              %+  add:^rd  (mul:^rd a3 t3)
+              %+  add:^rd  (mul:^rd a4 t4)
+              (mul:^rd a5 t5)
+    ::
+    =/  result  (sub:^rd .~1 (mul:^rd poly (exp (sub:^rd .~0 (mul:^rd ax ax)))))
+    ?:(=(sign 0) result (sub:^rd .~0 result))
   --
 ::
 ::  ================================================================
@@ -1881,6 +2178,102 @@
     ?:  &(?=(^ ni) =(n (san:^rq (need ni))))
       (pow-n x n)
     (exp (mul:^rq n (log x)))
+  ::
+  ::  ============================================================
+  ::  HYPERBOLIC FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +sinh: Hyperbolic sine
+  ::  sinh(x) = (exp(x) - exp(-x)) / 2
+  ::
+  ++  sinh
+    |=  x=@rq
+    ^-  @rq
+    =/  ep  (exp x)
+    =/  em  (exp (sub:^rq .~~~0 x))
+    (mul:^rq .~~~0.5 (sub:^rq ep em))
+  ::
+  ::  +cosh: Hyperbolic cosine
+  ::  cosh(x) = (exp(x) + exp(-x)) / 2
+  ::
+  ++  cosh
+    |=  x=@rq
+    ^-  @rq
+    =/  ep  (exp x)
+    =/  em  (exp (sub:^rq .~~~0 x))
+    (mul:^rq .~~~0.5 (add:^rq ep em))
+  ::
+  ::  +tanh: Hyperbolic tangent
+  ::  tanh(x) = (e^2x - 1) / (e^2x + 1)
+  ::
+  ++  tanh
+    |=  x=@rq
+    ^-  @rq
+    =/  e2x  (exp (mul:^rq .~~~2 x))
+    (div:^rq (sub:^rq e2x .~~~1) (add:^rq e2x .~~~1))
+  ::
+  ::  +asinh: Inverse hyperbolic sine
+  ::  asinh(x) = ln(x + sqrt(x^2 + 1))
+  ::
+  ++  asinh
+    |=  x=@rq
+    ^-  @rq
+    (log (add:^rq x (sqt (add:^rq (mul:^rq x x) .~~~1))))
+  ::
+  ::  +acosh: Inverse hyperbolic cosine
+  ::  acosh(x) = ln(x + sqrt(x^2 - 1)), x >= 1
+  ::
+  ++  acosh
+    |=  x=@rq
+    ^-  @rq
+    ?:  (lth:^rq x .~~~1)  (sub:^rq x x)           ::  NaN for x < 1
+    (log (add:^rq x (sqt (sub:^rq (mul:^rq x x) .~~~1))))
+  ::
+  ::  +atanh: Inverse hyperbolic tangent
+  ::  atanh(x) = 0.5 * ln((1+x)/(1-x)), |x| < 1
+  ::
+  ++  atanh
+    |=  x=@rq
+    ^-  @rq
+    =/  ax  (abs x)
+    ?:  (gte:^rq ax .~~~1)  (sub:^rq x x)          ::  NaN for |x| >= 1
+    (mul:^rq .~~~0.5 (log (div:^rq (add:^rq .~~~1 x) (sub:^rq .~~~1 x))))
+  ::
+  ::  ============================================================
+  ::  SPECIAL FUNCTIONS
+  ::  ============================================================
+  ::
+  ::  +erf: Error function
+  ::  Uses Abramowitz & Stegun approximation 7.1.26
+  ::
+  ++  erf
+    |=  x=@rq
+    ^-  @rq
+    =/  bits  `@`x
+    =/  sign  (rsh [0 127] bits)
+    =/  ax    (abs x)
+    ::  Coefficients from A&S (quad precision)
+    =/  a1    .~~~0.254829592
+    =/  a2    .~~~-0.284496736
+    =/  a3    .~~~1.421413741
+    =/  a4    .~~~-1.453152027
+    =/  a5    .~~~1.061405429
+    =/  p     .~~~0.3275911
+    ::
+    =/  t   (div:^rq .~~~1 (add:^rq .~~~1 (mul:^rq p ax)))
+    =/  t2  (mul:^rq t t)
+    =/  t3  (mul:^rq t2 t)
+    =/  t4  (mul:^rq t3 t)
+    =/  t5  (mul:^rq t4 t)
+    ::
+    =/  poly  %+  add:^rq  (mul:^rq a1 t)
+              %+  add:^rq  (mul:^rq a2 t2)
+              %+  add:^rq  (mul:^rq a3 t3)
+              %+  add:^rq  (mul:^rq a4 t4)
+              (mul:^rq a5 t5)
+    ::
+    =/  result  (sub:^rq .~~~1 (mul:^rq poly (exp (sub:^rq .~~~0 (mul:^rq ax ax)))))
+    ?:(=(sign 0) result (sub:^rq .~~~0 result))
   --
 ::
 ::  ================================================================

@@ -485,6 +485,270 @@
     ::  Scale by 2^k
     ::
     (scalbn expr k)
+  ::
+  ::  +log: Natural logarithm
+  ::
+  ::  Algorithm (from FreeBSD e_logf.c):
+  ::    1. Handle special cases (0, negative, inf, nan)
+  ::    2. Reduce: x = 2^k * m where 1 <= m < 2
+  ::    3. Further reduce: s = (m-1)/(m+1), so m = (1+s)/(1-s)
+  ::    4. Compute log(m) = 2*s + 2*s^3*(Lg1 + s^2*(Lg2 + s^2*(Lg3 + s^2*Lg4)))
+  ::    5. Return k*ln2 + log(m)
+  ::
+  ++  log
+    |=  x=@rs
+    ^-  @rs
+    =/  bits  `@`x
+    ::  Special cases
+    ?:  =(x .0)  `@rs`0xff80.0000              ::  log(0) = -inf
+    ?:  =(bits 0x7f80.0000)  `@rs`0x7f80.0000  ::  log(+inf) = +inf
+    ?:  (gth:^rs `@rs`(dis bits 0x7fff.ffff) `@rs`0x7f80.0000)  x  ::  nan
+    ?:  !=(0 (rsh [0 31] bits))  (sub:^rs x x)  ::  log(negative) = nan
+    ::
+    ::  Extract exponent and mantissa
+    ::  x = 2^k * m where 1 <= m < 2
+    ::
+    =/  exp-bits  (dis (rsh [0 23] bits) 0xff)
+    =/  mant-bits  (dis bits 0x7f.ffff)
+    ::  Handle subnormals (simplified: treat as very small)
+    ?:  =(exp-bits 0)  `@rs`0xff80.0000
+    ::  k = exponent - bias
+    =/  k  (sub exp-bits 127)
+    ::  m = 1.mantissa (reconstruct normalized mantissa)
+    =/  m  `@rs`(con 0x3f80.0000 mant-bits)
+    ::
+    ::  Compute s = (m-1)/(m+1)
+    ::
+    =/  f   (sub:^rs m .1)
+    =/  s   (div:^rs f (add:^rs .2 f))
+    =/  s2  (mul:^rs s s)
+    =/  s4  (mul:^rs s2 s2)
+    ::
+    ::  Polynomial: R = Lg2 + s2*(Lg4)  [even terms]
+    ::              + Lg1 + s2*(Lg3)     [odd terms]
+    ::  Coefficients from FreeBSD e_logf.c
+    ::
+    =/  lg1  `@rs`0x3f2a.aaaa                  ::  0.66666662693
+    =/  lg2  `@rs`0x3ecc.ce13                  ::  0.40000972152
+    =/  lg3  `@rs`0x3e91.e9ee                  ::  0.28498786688
+    =/  lg4  `@rs`0x3e78.9e26                  ::  0.24279078841
+    ::
+    =/  t1  (mul:^rs s4 (add:^rs lg2 (mul:^rs s4 lg4)))
+    =/  t2  (mul:^rs s2 (add:^rs lg1 (mul:^rs s4 lg3)))
+    =/  r   (add:^rs t1 t2)
+    ::
+    ::  log(m) = 2*s + 2*s^3*R = 2*s*(1 + s^2*R)
+    ::
+    =/  log-m  (mul:^rs (mul:^rs .2 s) (add:^rs .1 (mul:^rs s2 r)))
+    ::
+    ::  Result = k*ln2 + log(m)
+    ::
+    =/  kf  (san:^rs (sun:si k))
+    (add:^rs (mul:^rs kf ln2hi) log-m)
+  ::
+  ::  +log-2: Base-2 logarithm
+  ::
+  ++  log-2
+    |=  x=@rs
+    ^-  @rs
+    (mul:^rs (log x) invln2)
+  ::
+  ::  +log-10: Base-10 logarithm
+  ::
+  ++  log-10
+    |=  x=@rs
+    ^-  @rs
+    =/  invlog10  `@rs`0x3ede.5bd9              ::  1/log(10) = 0.43429448
+    (mul:^rs (log x) invlog10)
+  ::
+  ::  +sqt: Square root (Newton-Raphson with fixed iterations)
+  ::
+  ::  Algorithm:
+  ::    1. Handle special cases
+  ::    2. Initial guess from bit manipulation
+  ::    3. Fixed 4 Newton-Raphson iterations: g = (g + x/g) / 2
+  ::
+  ++  sqt
+    |=  x=@rs
+    ^-  @rs
+    =/  bits  `@`x
+    ::  Special cases
+    ?:  =(x .0)  .0
+    ?:  =(bits 0x7f80.0000)  `@rs`0x7f80.0000  ::  sqrt(+inf) = +inf
+    ?:  (gth:^rs `@rs`(dis bits 0x7fff.ffff) `@rs`0x7f80.0000)  x  ::  nan
+    ?:  !=(0 (rsh [0 31] bits))  (sub:^rs x x)  ::  sqrt(negative) = nan
+    ::
+    ::  Initial guess: use bit manipulation for good starting point
+    ::  g0 = bits/2 + 0x1fc00000 (magic constant for float sqrt)
+    ::
+    =/  g0  `@rs`(add (rsh [0 1] bits) 0x1fc0.0000)
+    ::
+    ::  Newton-Raphson: g = (g + x/g) / 2
+    ::  Fixed 4 iterations for single precision
+    ::
+    =/  g  g0
+    =.  g  (mul:^rs .0.5 (add:^rs g (div:^rs x g)))  ::  iter 1
+    =.  g  (mul:^rs .0.5 (add:^rs g (div:^rs x g)))  ::  iter 2
+    =.  g  (mul:^rs .0.5 (add:^rs g (div:^rs x g)))  ::  iter 3
+    =.  g  (mul:^rs .0.5 (add:^rs g (div:^rs x g)))  ::  iter 4
+    g
+  ::
+  ++  sqrt  sqt
+  ::
+  ::  +atan: Inverse tangent
+  ::
+  ::  Algorithm (from FreeBSD s_atanf.c):
+  ::    1. Reduce to [0, 0.4375] using atan(x) = pi/2 - atan(1/x) for |x| > 1
+  ::       and atan(x) = atan(c) + atan((x-c)/(1+x*c)) for thresholds
+  ::    2. Polynomial approximation in reduced range
+  ::
+  ++  atan
+    |=  x=@rs
+    ^-  @rs
+    =/  bits  `@`x
+    =/  sign  (rsh [0 31] bits)
+    =/  ax    `@rs`(dis bits 0x7fff.ffff)
+    ::
+    ::  Special cases
+    ?:  (gte:^rs ax `@rs`0x7f80.0000)           ::  inf or nan
+      ?:  =(bits 0x7f80.0000)                   ::  +inf
+        `@rs`0x3fc9.0fdb                        ::  pi/2
+      ?:  =(bits 0xff80.0000)                   ::  -inf
+        `@rs`0xbfc9.0fdb                        ::  -pi/2
+      x                                          ::  nan
+    ::
+    ::  Polynomial coefficients from FreeBSD s_atanf.c
+    ::
+    =/  at0  `@rs`0x3eaa.aaaa                   ::   0.33333334
+    =/  at1  `@rs`0xbe4c.cccc                   ::  -0.20000000
+    =/  at2  `@rs`0x3e12.4925                   ::   0.14285715
+    =/  at3  `@rs`0xbdc3.b8a4                   ::  -0.11111089
+    ::
+    ::  Reduction thresholds
+    ::
+    =/  lo-thresh  `@rs`0x3ee0.0000             ::  0.4375
+    =/  hi-thresh  `@rs`0x401c.0000             ::  2.4375
+    ::
+    ::  atan constants for reduction
+    ::
+    =/  pio2    `@rs`0x3fc9.0fdb                ::  pi/2
+    =/  pio4    `@rs`0x3f49.0fdb                ::  pi/4
+    ::
+    ::  Core polynomial evaluation for |x| <= 0.4375
+    ::
+    =/  eval-poly
+      |=  z=@rs
+      ^-  @rs
+      =/  w   (mul:^rs z z)
+      =/  s1  (add:^rs at2 (mul:^rs w at3))
+      =/  s2  (add:^rs at0 (mul:^rs w at1))
+      =/  r   (add:^rs s2 (mul:^rs (mul:^rs w w) s1))
+      (sub:^rs z (mul:^rs z (mul:^rs w r)))
+    ::
+    =/  result=@rs
+      ?:  (lte:^rs ax lo-thresh)
+        ::  Small: use polynomial directly
+        (eval-poly ax)
+      ?:  (lte:^rs ax .1)
+        ::  Medium-small: atan(x) = atan(0.5) + atan((x-0.5)/(1+x*0.5))
+        =/  atan-half  `@rs`0x3eed.6338         ::  atan(0.5) = 0.46364760
+        =/  t  (div:^rs (sub:^rs ax .0.5) (add:^rs .1 (mul:^rs ax .0.5)))
+        (add:^rs atan-half (eval-poly t))
+      ?:  (lte:^rs ax hi-thresh)
+        ::  Medium: atan(x) = pi/4 + atan((x-1)/(1+x))
+        =/  t  (div:^rs (sub:^rs ax .1) (add:^rs .1 ax))
+        (add:^rs pio4 (eval-poly t))
+      ::  Large: atan(x) = pi/2 - atan(1/x)
+      =/  t  (div:^rs .1 ax)
+      (sub:^rs pio2 (eval-poly t))
+    ::
+    ::  Apply sign
+    ?:(=(sign 0) result (sub:^rs .0 result))
+  ::
+  ::  +asin: Inverse sine
+  ::
+  ++  asin
+    |=  x=@rs
+    ^-  @rs
+    =/  bits  `@`x
+    =/  ax    `@rs`(dis bits 0x7fff.ffff)
+    ?:  (gth:^rs ax .1)  (sub:^rs x x)          ::  |x| > 1: nan
+    ?:  =(ax .1)                                 ::  |x| = 1: +/- pi/2
+      ?:  =(0 (rsh [0 31] bits))
+        `@rs`0x3fc9.0fdb                        ::  pi/2
+      `@rs`0xbfc9.0fdb                          ::  -pi/2
+    ::  asin(x) = atan(x / sqrt(1 - x^2))
+    (atan (div:^rs x (sqt (sub:^rs .1 (mul:^rs x x)))))
+  ::
+  ::  +acos: Inverse cosine
+  ::
+  ++  acos
+    |=  x=@rs
+    ^-  @rs
+    =/  bits  `@`x
+    =/  ax    `@rs`(dis bits 0x7fff.ffff)
+    =/  pi    `@rs`0x4049.0fdb                  ::  pi
+    ?:  (gth:^rs ax .1)  (sub:^rs x x)          ::  |x| > 1: nan
+    ?:  =(x .1)   .0                             ::  acos(1) = 0
+    ?:  =(x .-1)  pi                             ::  acos(-1) = pi
+    ::  acos(x) = atan(sqrt(1 - x^2) / x) with quadrant adjustment
+    =/  s  (sqt (sub:^rs .1 (mul:^rs x x)))
+    ?:  (gte:^rs x .0)
+      (atan (div:^rs s x))
+    (add:^rs pi (atan (div:^rs s x)))
+  ::
+  ::  +atan2: Two-argument inverse tangent
+  ::
+  ++  atan2
+    |=  [y=@rs x=@rs]
+    ^-  @rs
+    =/  pi    `@rs`0x4049.0fdb                  ::  pi
+    =/  pio2  `@rs`0x3fc9.0fdb                  ::  pi/2
+    ?:  (gth:^rs x .0)
+      (atan (div:^rs y x))
+    ?:  &((lth:^rs x .0) (gte:^rs y .0))
+      (add:^rs (atan (div:^rs y x)) pi)
+    ?:  &((lth:^rs x .0) (lth:^rs y .0))
+      (sub:^rs (atan (div:^rs y x)) pi)
+    ?:  &(=(x .0) (gth:^rs y .0))
+      pio2
+    ?:  &(=(x .0) (lth:^rs y .0))
+      (sub:^rs .0 pio2)
+    .0                                           ::  undefined (0,0)
+  ::
+  ::  +pow-n: Integer power (fixed iteration)
+  ::
+  ++  pow-n
+    |=  [x=@rs n=@rs]
+    ^-  @rs
+    ?:  =(n .0)  .1
+    ::  Convert n to integer (must be positive integer)
+    =/  ni  (abs:si (need (toi:^rs n)))
+    =/  neg  (lth:^rs n .0)
+    ::  Binary exponentiation (fixed max 32 iterations for 32-bit range)
+    =/  result  .1
+    =/  base    x
+    =/  i       0
+    |-
+    ?:  |(=(ni 0) (gth i 31))
+      ?:(neg (div:^rs .1 result) result)
+    =/  new-result
+      ?:  =(1 (dis ni 1))
+        (mul:^rs result base)
+      result
+    $(ni (rsh [0 1] ni), base (mul:^rs base base), result new-result, i +(i))
+  ::
+  ::  +pow: General power function
+  ::
+  ++  pow
+    |=  [x=@rs n=@rs]
+    ^-  @rs
+    ::  Special case: integer exponent
+    =/  ni  (toi:^rs n)
+    ?:  &(?=(^ ni) =(n (san:^rs (need ni))))
+      (pow-n x n)
+    ::  General case: x^n = exp(n * log(x))
+    (exp (mul:^rs n (log x)))
   --
 ::
 ::  ================================================================
@@ -752,6 +1016,212 @@
     =.  p   (add:^rd exp-p1 (mul:^rd r p))
     =/  expr  (add:^rd .~1 (add:^rd r (mul:^rd r2 p)))
     (scalbn expr k)
+  ::
+  ::  +log: Natural logarithm (double precision)
+  ::
+  ++  log
+    |=  x=@rd
+    ^-  @rd
+    =/  bits  `@`x
+    ::  Special cases
+    ?:  =(x .~0)  `@rd`0xfff0.0000.0000.0000              ::  log(0) = -inf
+    ?:  =(bits 0x7ff0.0000.0000.0000)  `@rd`0x7ff0.0000.0000.0000
+    ?:  (gth:^rd `@rd`(dis bits 0x7fff.ffff.ffff.ffff) `@rd`0x7ff0.0000.0000.0000)  x
+    ?:  !=(0 (rsh [0 63] bits))  (sub:^rd x x)
+    ::
+    ::  Extract exponent and mantissa
+    ::
+    =/  exp-bits  (dis (rsh [0 52] bits) 0x7ff)
+    =/  mant-bits  (dis bits 0xf.ffff.ffff.ffff)
+    ?:  =(exp-bits 0)  `@rd`0xfff0.0000.0000.0000
+    =/  k  (sub exp-bits 1.023)
+    =/  m  `@rd`(con 0x3ff0.0000.0000.0000 mant-bits)
+    ::
+    ::  s = (m-1)/(m+1)
+    ::
+    =/  f   (sub:^rd m .~1)
+    =/  s   (div:^rd f (add:^rd .~2 f))
+    =/  s2  (mul:^rd s s)
+    =/  s4  (mul:^rd s2 s2)
+    ::
+    ::  Lg1-Lg7 from FreeBSD e_log.c (hex-exact)
+    ::
+    =/  lg1  `@rd`0x3fe5.5555.5555.5593  ::  0.6666666666666735130
+    =/  lg2  `@rd`0x3fd9.9999.9997.fa04  ::  0.3999999999940941908
+    =/  lg3  `@rd`0x3fd2.4924.9422.9359  ::  0.2857142874366239149
+    =/  lg4  `@rd`0x3fcc.71c5.1d8e.78af  ::  0.2222219843214978396
+    =/  lg5  `@rd`0x3fc7.4664.96cb.03de  ::  0.1818357216161805012
+    =/  lg6  `@rd`0x3fc3.9a09.d078.c69f  ::  0.1531383769920937332
+    =/  lg7  `@rd`0x3fc2.f112.df3e.5244  ::  0.1479819860511658591
+    ::
+    =/  t1  (mul:^rd s4 (add:^rd lg2 (mul:^rd s4 (add:^rd lg4 (mul:^rd s4 lg6)))))
+    =/  t2  (mul:^rd s2 (add:^rd lg1 (mul:^rd s4 (add:^rd lg3 (mul:^rd s4 (add:^rd lg5 (mul:^rd s4 lg7)))))))
+    =/  r   (add:^rd t1 t2)
+    =/  log-m  (mul:^rd (mul:^rd .~2 s) (add:^rd .~1 (mul:^rd s2 r)))
+    =/  kf  (san:^rd (sun:si k))
+    (add:^rd (mul:^rd kf ln2hi) log-m)
+  ::
+  ++  log-2
+    |=  x=@rd
+    ^-  @rd
+    (mul:^rd (log x) invln2)
+  ::
+  ++  log-10
+    |=  x=@rd
+    ^-  @rd
+    =/  invlog10  `@rd`0x3fdb.cb7b.1526.e50e  ::  0.43429448190325176
+    (mul:^rd (log x) invlog10)
+  ::
+  ::  +sqt: Square root (Newton-Raphson, 6 iterations for double)
+  ::
+  ++  sqt
+    |=  x=@rd
+    ^-  @rd
+    =/  bits  `@`x
+    ?:  =(x .~0)  .~0
+    ?:  =(bits 0x7ff0.0000.0000.0000)  `@rd`0x7ff0.0000.0000.0000
+    ?:  (gth:^rd `@rd`(dis bits 0x7fff.ffff.ffff.ffff) `@rd`0x7ff0.0000.0000.0000)  x
+    ?:  !=(0 (rsh [0 63] bits))  (sub:^rd x x)
+    ::  Initial guess
+    =/  g0  `@rd`(add (rsh [0 1] bits) 0x1ff0.0000.0000.0000)
+    =/  g  g0
+    =.  g  (mul:^rd .~0.5 (add:^rd g (div:^rd x g)))
+    =.  g  (mul:^rd .~0.5 (add:^rd g (div:^rd x g)))
+    =.  g  (mul:^rd .~0.5 (add:^rd g (div:^rd x g)))
+    =.  g  (mul:^rd .~0.5 (add:^rd g (div:^rd x g)))
+    =.  g  (mul:^rd .~0.5 (add:^rd g (div:^rd x g)))
+    =.  g  (mul:^rd .~0.5 (add:^rd g (div:^rd x g)))
+    g
+  ::
+  ++  sqrt  sqt
+  ::
+  ::  +atan: Inverse tangent (double precision)
+  ::
+  ++  atan
+    |=  x=@rd
+    ^-  @rd
+    =/  bits  `@`x
+    =/  sign  (rsh [0 63] bits)
+    =/  ax    `@rd`(dis bits 0x7fff.ffff.ffff.ffff)
+    ::
+    ?:  (gte:^rd ax `@rd`0x7ff0.0000.0000.0000)
+      ?:  =(bits 0x7ff0.0000.0000.0000)  `@rd`0x3ff9.21fb.5444.2d18  ::  pi/2
+      ?:  =(bits 0xfff0.0000.0000.0000)  `@rd`0xbff9.21fb.5444.2d18
+      x
+    ::
+    ::  Coefficients from FreeBSD s_atan.c
+    ::
+    =/  at0   `@rd`0x3fd5.5555.5555.550d  ::   0.33333333333329318027
+    =/  at1   `@rd`0xbfc9.9999.9998.ebc4  ::  -0.19999999998764832476
+    =/  at2   `@rd`0x3fc2.4924.9200.83ff  ::   0.14285714272503466371
+    =/  at3   `@rd`0xbfbc.71c6.fe23.1671  ::  -0.11111104054623557880
+    =/  at4   `@rd`0x3fb7.45cd.c54c.206e  ::   0.09090887133436506962
+    =/  at5   `@rd`0xbfb3.b0f2.af74.9a6d  ::  -0.07691876205044829950
+    =/  at6   `@rd`0x3fb1.0d66.a0d0.3d51  ::   0.06661073137387531207
+    =/  at7   `@rd`0xbfad.de2d.52de.fd9a  ::  -0.05833570133790573485
+    =/  at8   `@rd`0x3fa9.7b4b.2476.0deb  ::   0.04976877994615936017
+    =/  at9   `@rd`0xbfa2.b444.2c6a.6c2f  ::  -0.03653157274421691527
+    =/  at10  `@rd`0x3f90.ad3a.e322.da11  ::   0.01628582015365782362
+    ::
+    =/  pio2  `@rd`0x3ff9.21fb.5444.2d18  ::  pi/2
+    =/  pio4  `@rd`0x3fe9.21fb.5444.2d18  ::  pi/4
+    ::
+    =/  eval-poly
+      |=  z=@rd
+      ^-  @rd
+      =/  w   (mul:^rd z z)
+      =/  w2  (mul:^rd w w)
+      =/  s1  (add:^rd at0 (mul:^rd w (add:^rd at1 (mul:^rd w (add:^rd at2 (mul:^rd w (add:^rd at3 (mul:^rd w at4))))))))
+      =/  s2  (add:^rd at5 (mul:^rd w (add:^rd at6 (mul:^rd w (add:^rd at7 (mul:^rd w (add:^rd at8 (mul:^rd w (add:^rd at9 (mul:^rd w at10))))))))))
+      =/  r   (add:^rd s1 (mul:^rd w2 (mul:^rd w s2)))
+      (sub:^rd z (mul:^rd z (mul:^rd w r)))
+    ::
+    =/  lo-thresh  `@rd`0x3fdc.0000.0000.0000  ::  0.4375
+    =/  hi-thresh  `@rd`0x4003.8000.0000.0000  ::  2.4375
+    ::
+    =/  result=@rd
+      ?:  (lte:^rd ax lo-thresh)
+        (eval-poly ax)
+      ?:  (lte:^rd ax .~1)
+        =/  atan-half  `@rd`0x3fdd.ac67.0561.bb4f
+        =/  t  (div:^rd (sub:^rd ax .~0.5) (add:^rd .~1 (mul:^rd ax .~0.5)))
+        (add:^rd atan-half (eval-poly t))
+      ?:  (lte:^rd ax hi-thresh)
+        =/  t  (div:^rd (sub:^rd ax .~1) (add:^rd .~1 ax))
+        (add:^rd pio4 (eval-poly t))
+      =/  t  (div:^rd .~1 ax)
+      (sub:^rd pio2 (eval-poly t))
+    ::
+    ?:(=(sign 0) result (sub:^rd .~0 result))
+  ::
+  ++  asin
+    |=  x=@rd
+    ^-  @rd
+    =/  bits  `@`x
+    =/  ax    `@rd`(dis bits 0x7fff.ffff.ffff.ffff)
+    ?:  (gth:^rd ax .~1)  (sub:^rd x x)
+    ?:  =(ax .~1)
+      ?:  =(0 (rsh [0 63] bits))
+        `@rd`0x3ff9.21fb.5444.2d18
+      `@rd`0xbff9.21fb.5444.2d18
+    (atan (div:^rd x (sqt (sub:^rd .~1 (mul:^rd x x)))))
+  ::
+  ++  acos
+    |=  x=@rd
+    ^-  @rd
+    =/  bits  `@`x
+    =/  ax    `@rd`(dis bits 0x7fff.ffff.ffff.ffff)
+    =/  pi    `@rd`0x4009.21fb.5444.2d18
+    ?:  (gth:^rd ax .~1)  (sub:^rd x x)
+    ?:  =(x .~1)   .~0
+    ?:  =(x .~-1)  pi
+    =/  s  (sqt (sub:^rd .~1 (mul:^rd x x)))
+    ?:  (gte:^rd x .~0)
+      (atan (div:^rd s x))
+    (add:^rd pi (atan (div:^rd s x)))
+  ::
+  ++  atan2
+    |=  [y=@rd x=@rd]
+    ^-  @rd
+    =/  pi    `@rd`0x4009.21fb.5444.2d18
+    =/  pio2  `@rd`0x3ff9.21fb.5444.2d18
+    ?:  (gth:^rd x .~0)
+      (atan (div:^rd y x))
+    ?:  &((lth:^rd x .~0) (gte:^rd y .~0))
+      (add:^rd (atan (div:^rd y x)) pi)
+    ?:  &((lth:^rd x .~0) (lth:^rd y .~0))
+      (sub:^rd (atan (div:^rd y x)) pi)
+    ?:  &(=(x .~0) (gth:^rd y .~0))
+      pio2
+    ?:  &(=(x .~0) (lth:^rd y .~0))
+      (sub:^rd .~0 pio2)
+    .~0
+  ::
+  ++  pow-n
+    |=  [x=@rd n=@rd]
+    ^-  @rd
+    ?:  =(n .~0)  .~1
+    =/  ni  (abs:si (need (toi:^rd n)))
+    =/  neg  (lth:^rd n .~0)
+    =/  result  .~1
+    =/  base    x
+    =/  i       0
+    |-
+    ?:  |(=(ni 0) (gth i 63))
+      ?:(neg (div:^rd .~1 result) result)
+    =/  new-result
+      ?:  =(1 (dis ni 1))
+        (mul:^rd result base)
+      result
+    $(ni (rsh [0 1] ni), base (mul:^rd base base), result new-result, i +(i))
+  ::
+  ++  pow
+    |=  [x=@rd n=@rd]
+    ^-  @rd
+    =/  ni  (toi:^rd n)
+    ?:  &(?=(^ ni) =(n (san:^rd (need ni))))
+      (pow-n x n)
+    (exp (mul:^rd n (log x)))
   --
 ::
 ::  ================================================================

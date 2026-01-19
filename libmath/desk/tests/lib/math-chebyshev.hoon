@@ -616,4 +616,118 @@
   =/  ep  (erf:rs x)
   =/  em  (erf:rs (sub:^rs .0 x))
   (expect-near-rs (sub:^rs .0 ep) em)
+::
+::  ============================================================
+::  GAMMA FUNCTION TESTS
+::  ============================================================
+::
+++  test-rs-gamma  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .1  (gamma:rs .1)              ::  Γ(1) = 1
+    %+  expect-near-rs  .1  (gamma:rs .2)              ::  Γ(2) = 1! = 1
+    %+  expect-near-rs  .2  (gamma:rs .3)              ::  Γ(3) = 2! = 2
+    %+  expect-near-rs  .6  (gamma:rs .4)              ::  Γ(4) = 3! = 6
+    %+  expect-near-rs  .24  (gamma:rs .5)             ::  Γ(5) = 4! = 24
+    %+  expect-near-rs  .1.7724539  (gamma:rs .1.5)    ::  Γ(1.5) = √π/2
+  ==
+::
+++  test-rd-gamma  ^-  tang
+  ;:  weld
+    %+  expect-near-rd  .~1  (gamma:rd .~1)
+    %+  expect-near-rd  .~1  (gamma:rd .~2)
+    %+  expect-near-rd  .~2  (gamma:rd .~3)
+    %+  expect-near-rd  .~6  (gamma:rd .~4)
+    %+  expect-near-rd  .~24  (gamma:rd .~5)
+    %+  expect-near-rd  .~1.7724538509055159  (gamma:rd .~1.5)
+  ==
+::
+++  test-rq-gamma  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~1  (gamma:rq .~~~1)
+    %+  expect-near-rq  .~~~1  (gamma:rq .~~~2)
+    %+  expect-near-rq  .~~~2  (gamma:rq .~~~3)
+    %+  expect-near-rq  .~~~6  (gamma:rq .~~~4)
+    %+  expect-near-rq  .~~~1.7724538509055159  (gamma:rq .~~~1.5)
+  ==
+::
+++  test-rs-gamma-factorial-identity  ^-  tang
+  ::  Γ(n+1) = n * Γ(n)
+  =/  n  .3.5
+  =/  gn    (gamma:rs n)
+  =/  gnp1  (gamma:rs (add:^rs n .1))
+  (expect-near-rs gnp1 (mul:^rs n gn))
+::
+::  ============================================================
+::  BESSEL FUNCTION TESTS
+::  ============================================================
+::
+++  test-rs-j0  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .1  (j0:rs .0)                 ::  J0(0) = 1
+    %+  expect-near-rs  .0.7651977  (j0:rs .1)         ::  J0(1)
+    %+  expect-near-rs  .0.22389078  (j0:rs .2)        ::  J0(2)
+    %+  expect-near-rs  .-0.26005195  (j0:rs .3)       ::  J0(3)
+  ==
+::
+++  test-rs-j1  ^-  tang
+  ;:  weld
+    %+  expect-near-rs  .0  (j1:rs .0)                 ::  J1(0) = 0
+    %+  expect-near-rs  .0.44005059  (j1:rs .1)        ::  J1(1)
+    %+  expect-near-rs  .0.5767248  (j1:rs .2)         ::  J1(2)
+    %+  expect-near-rs  .0.33905896  (j1:rs .3)        ::  J1(3)
+  ==
+::
+++  test-rd-j0  ^-  tang
+  ;:  weld
+    %+  expect-near-rd  .~1  (j0:rd .~0)
+    %+  expect-near-rd  .~0.7651976865579666  (j0:rd .~1)
+    %+  expect-near-rd  .~0.22389077914123567  (j0:rd .~2)
+  ==
+::
+++  test-rd-j1  ^-  tang
+  ;:  weld
+    %+  expect-near-rd  .~0  (j1:rd .~0)
+    %+  expect-near-rd  .~0.44005058574493355  (j1:rd .~1)
+    %+  expect-near-rd  .~0.5767248077568734  (j1:rd .~2)
+  ==
+::
+++  test-rq-j0  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~1  (j0:rq .~~~0)
+    %+  expect-near-rq  .~~~0.7651976865579666  (j0:rq .~~~1)
+  ==
+::
+++  test-rq-j1  ^-  tang
+  ;:  weld
+    %+  expect-near-rq  .~~~0  (j1:rq .~~~0)
+    %+  expect-near-rq  .~~~0.44005058574493355  (j1:rq .~~~1)
+  ==
+::
+++  test-rs-j0-j1-identity  ^-  tang
+  ::  J1(x) = -J0'(x), approximated by (J0(x-h) - J0(x+h))/(2h)
+  ::  Using small x for stability
+  =/  x   .1
+  =/  h   .0.001
+  =/  j0m (j0:rs (sub:^rs x h))
+  =/  j0p (j0:rs (add:^rs x h))
+  =/  deriv (div:^rs (sub:^rs j0m j0p) (mul:^rs .2 h))
+  =/  j1x (j1:rs x)
+  ::  Derivative should approximately equal J1
+  (expect-near-rs deriv j1x)
+::
+++  test-rs-y0  ^-  tang
+  ;:  weld
+    ::  Y0(1) ~ 0.0882569642
+    %+  expect-near-rs  .0.088256965  (y0:rs .1)
+    ::  Y0(2) ~ 0.5103756726
+    %+  expect-near-rs  .0.5103757  (y0:rs .2)
+  ==
+::
+++  test-rs-y1  ^-  tang
+  ;:  weld
+    ::  Y1(1) ~ -0.7812128213
+    %+  expect-near-rs  .-0.78121282  (y1:rs .1)
+    ::  Y1(2) ~ -0.1070324315
+    %+  expect-near-rs  .-0.10703243  (y1:rs .2)
+  ==
 --

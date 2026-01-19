@@ -445,6 +445,100 @@
     ::
     =/  result  (sub:^rh one (mul:^rh poly (exp (sub:^rh `@rh`0x0 (mul:^rh ax ax)))))
     ?:(=(sign 0) result (sub:^rh `@rh`0x0 result))
+  ::
+  ::  +gamma: Gamma function (simplified Lanczos for half precision)
+  ::  Γ(n) = (n-1)! for positive integers
+  ::
+  ++  gamma
+    |=  x=@rh
+    ^-  @rh
+    =/  one   `@rh`0x3c00
+    =/  half  `@rh`0x3800
+    =/  two   `@rh`0x4000
+    ::  Handle special cases
+    ?:  (lte:^rh x `@rh`0x0)  (sub:^rh x x)        ::  NaN for x <= 0
+    ?:  =(x one)  one                              ::  Γ(1) = 1
+    ?:  =(x two)  one                              ::  Γ(2) = 1
+    ::  For x > 2, use Γ(x) = (x-1) * Γ(x-1)
+    ::  For 0 < x < 1, use reflection or direct
+    ::  Simplified: use exp-log for small half precision
+    ::  Γ(x) ≈ sqrt(2π/x) * (x/e + 1/(12ex))^x (Stirling)
+    =/  pi    `@rh`0x4248                          ::  π ≈ 3.14159
+    =/  e     `@rh`0x4170                          ::  e ≈ 2.718
+    =/  twopi (mul:^rh two pi)
+    ::  Stirling: Γ(x) ≈ sqrt(2π/x) * (x/e)^x
+    =/  base  (div:^rh x e)
+    =/  term1 (sqt (div:^rh twopi x))
+    =/  term2 (pow base x)
+    (mul:^rh term1 term2)
+  ::
+  ::  +lgamma: Log-gamma function
+  ::
+  ++  lgamma
+    |=  x=@rh
+    ^-  @rh
+    (log (gamma x))
+  ::
+  ::  +j0: Bessel function of first kind, order 0
+  ::  Polynomial approximation for |x| <= 8
+  ::
+  ++  j0
+    |=  x=@rh
+    ^-  @rh
+    =/  ax  `@rh`(dis `@`x 0x7fff)
+    =/  one  `@rh`0x3c00
+    ::  For small x: J0(x) ≈ 1 - x²/4 + x⁴/64
+    =/  x2  (mul:^rh ax ax)
+    =/  x4  (mul:^rh x2 x2)
+    =/  c1  `@rh`0xb800                            ::  -0.25
+    =/  c2  `@rh`0x2c00                            ::  0.015625 (1/64)
+    (add:^rh one (add:^rh (mul:^rh c1 x2) (mul:^rh c2 x4)))
+  ::
+  ::  +j1: Bessel function of first kind, order 1
+  ::  Polynomial approximation for |x| <= 8
+  ::
+  ++  j1
+    |=  x=@rh
+    ^-  @rh
+    =/  bits  `@`x
+    =/  sign  (rsh [0 15] bits)
+    =/  ax    `@rh`(dis bits 0x7fff)
+    ::  For small x: J1(x) ≈ x/2 - x³/16 + x⁵/384
+    =/  half  `@rh`0x3800
+    =/  x2    (mul:^rh ax ax)
+    =/  x3    (mul:^rh x2 ax)
+    =/  c1    `@rh`0xac00                          ::  -0.0625 (1/16)
+    =/  term1 (mul:^rh half ax)
+    =/  term2 (mul:^rh c1 x3)
+    =/  result (add:^rh term1 term2)
+    ?:(=(sign 0) result (sub:^rh `@rh`0x0 result))
+  ::
+  ::  +y0: Bessel function of second kind, order 0
+  ::
+  ++  y0
+    |=  x=@rh
+    ^-  @rh
+    ?:  (lte:^rh x `@rh`0x0)  (sub:^rh x x)        ::  NaN for x <= 0
+    =/  twoopi  `@rh`0x3a22                        ::  2/π ≈ 0.6366
+    =/  euler   `@rh`0x394a                        ::  γ ≈ 0.5772
+    ::  Y0(x) ≈ (2/π) * (ln(x/2) + γ) * J0(x) for small x
+    =/  half    `@rh`0x3800
+    =/  lnterm  (add:^rh (log (mul:^rh half x)) euler)
+    (mul:^rh twoopi (mul:^rh lnterm (j0 x)))
+  ::
+  ::  +y1: Bessel function of second kind, order 1
+  ::
+  ++  y1
+    |=  x=@rh
+    ^-  @rh
+    ?:  (lte:^rh x `@rh`0x0)  (sub:^rh x x)        ::  NaN for x <= 0
+    =/  twoopi  `@rh`0x3a22                        ::  2/π
+    =/  one     `@rh`0x3c00
+    ::  Y1(x) ≈ (2/π) * (J1(x)*ln(x) - 1/x) for small x
+    =/  j1x  (j1 x)
+    =/  lnx  (log x)
+    =/  invx (div:^rh one x)
+    (mul:^rh twoopi (sub:^rh (mul:^rh j1x lnx) invx))
   --
 ::
 ::  ================================================================
@@ -1126,6 +1220,166 @@
     ::
     =/  result  (sub:^rs .1 (mul:^rs poly (exp (sub:^rs .0 (mul:^rs ax ax)))))
     ?:(=(sign 0) result (sub:^rs .0 result))
+  ::
+  ::  +gamma: Gamma function using Lanczos approximation
+  ::  Γ(z) = sqrt(2π) * (z + g + 0.5)^(z+0.5) * e^-(z+g+0.5) * A(z)
+  ::
+  ++  gamma
+    |=  x=@rs
+    ^-  @rs
+    ::  Handle special cases
+    ?:  (lte:^rs x .0)  (sub:^rs x x)              ::  NaN for x <= 0
+    ?:  =(x .1)  .1                                ::  Γ(1) = 1
+    ?:  =(x .2)  .1                                ::  Γ(2) = 1
+    ::  Lanczos coefficients (g=5, n=7)
+    =/  g      .5
+    =/  c0     .1.000000000190015
+    =/  c1     .76.18009172947146
+    =/  c2     .-86.50532032941677
+    =/  c3     .24.01409824083091
+    =/  c4     .-1.231739572450155
+    =/  c5     .0.001208650973866179
+    =/  c6     .-0.000005395239384953
+    ::
+    =/  xm1    (sub:^rs x .1)
+    =/  sum    c0
+    =.  sum    (add:^rs sum (div:^rs c1 (add:^rs xm1 .1)))
+    =.  sum    (add:^rs sum (div:^rs c2 (add:^rs xm1 .2)))
+    =.  sum    (add:^rs sum (div:^rs c3 (add:^rs xm1 .3)))
+    =.  sum    (add:^rs sum (div:^rs c4 (add:^rs xm1 .4)))
+    =.  sum    (add:^rs sum (div:^rs c5 (add:^rs xm1 .5)))
+    =.  sum    (add:^rs sum (div:^rs c6 (add:^rs xm1 .6)))
+    ::
+    =/  sqrt2pi  .2.5066282746310002
+    =/  t        (add:^rs xm1 (add:^rs g .0.5))
+    =/  term1    (mul:^rs sqrt2pi sum)
+    =/  term2    (pow t (add:^rs xm1 .0.5))
+    =/  term3    (exp (sub:^rs .0 t))
+    (mul:^rs term1 (mul:^rs term2 term3))
+  ::
+  ::  +lgamma: Log-gamma function
+  ::
+  ++  lgamma
+    |=  x=@rs
+    ^-  @rs
+    (log (gamma x))
+  ::
+  ::  +j0: Bessel function of first kind, order 0
+  ::  Uses polynomial approximation from Abramowitz & Stegun
+  ::
+  ++  j0
+    |=  x=@rs
+    ^-  @rs
+    =/  ax  (abs x)
+    ?:  (lth:^rs ax .8)
+      ::  Polynomial for |x| < 8
+      =/  x2   (mul:^rs ax ax)
+      =/  x4   (mul:^rs x2 x2)
+      =/  x6   (mul:^rs x4 x2)
+      =/  x8   (mul:^rs x4 x4)
+      ::  J0(x) ≈ 1 - x²/4 + x⁴/64 - x⁶/2304 + x⁸/147456
+      =/  c1   .-0.25
+      =/  c2   .0.015625
+      =/  c3   .-0.000434028
+      =/  c4   .0.0000067817
+      %+  add:^rs  .1
+      %+  add:^rs  (mul:^rs c1 x2)
+      %+  add:^rs  (mul:^rs c2 x4)
+      %+  add:^rs  (mul:^rs c3 x6)
+      (mul:^rs c4 x8)
+    ::  Asymptotic for |x| >= 8
+    =/  z     (div:^rs .8 ax)
+    =/  z2    (mul:^rs z z)
+    =/  p0    .1
+    =/  q0    .-0.125
+    =/  p     (add:^rs p0 (mul:^rs z2 .-0.00021))
+    =/  q     (add:^rs q0 (mul:^rs z2 .0.00066))
+    =/  xx    (sub:^rs ax .0.785398163)
+    =/  amp   (div:^rs .0.79788456 (sqt ax))
+    (mul:^rs amp (sub:^rs (mul:^rs p (cos xx)) (mul:^rs (mul:^rs z q) (sin xx))))
+  ::
+  ::  +j1: Bessel function of first kind, order 1
+  ::
+  ++  j1
+    |=  x=@rs
+    ^-  @rs
+    =/  bits  `@`x
+    =/  sign  (rsh [0 31] bits)
+    =/  ax    (abs x)
+    =/  result=@rs
+      ?:  (lth:^rs ax .8)
+        ::  Polynomial for |x| < 8
+        =/  x2   (mul:^rs ax ax)
+        =/  x3   (mul:^rs x2 ax)
+        =/  x5   (mul:^rs x3 x2)
+        =/  x7   (mul:^rs x5 x2)
+        ::  J1(x) ≈ x/2 - x³/16 + x⁵/384 - x⁷/18432
+        =/  c0   .0.5
+        =/  c1   .-0.0625
+        =/  c2   .0.00260417
+        =/  c3   .-0.0000543
+        %+  add:^rs  (mul:^rs c0 ax)
+        %+  add:^rs  (mul:^rs c1 x3)
+        %+  add:^rs  (mul:^rs c2 x5)
+        (mul:^rs c3 x7)
+      ::  Asymptotic for |x| >= 8
+      =/  z     (div:^rs .8 ax)
+      =/  z2    (mul:^rs z z)
+      =/  p1    .1
+      =/  q1    .0.375
+      =/  p     (add:^rs p1 (mul:^rs z2 .0.00084))
+      =/  q     (add:^rs q1 (mul:^rs z2 .-0.00195))
+      =/  xx    (sub:^rs ax .2.35619449)
+      =/  amp   (div:^rs .0.79788456 (sqt ax))
+      (mul:^rs amp (sub:^rs (mul:^rs p (cos xx)) (mul:^rs (mul:^rs z q) (sin xx))))
+    ?:(=(sign 0) result (sub:^rs .0 result))
+  ::
+  ::  +y0: Bessel function of second kind, order 0
+  ::
+  ++  y0
+    |=  x=@rs
+    ^-  @rs
+    ?:  (lte:^rs x .0)  (sub:^rs x x)              ::  NaN for x <= 0
+    =/  twoopi  .0.6366197723675814
+    =/  euler   .0.5772156649015329
+    ?:  (lth:^rs x .8)
+      ::  Y0(x) ≈ (2/π) * (J0(x) * ln(x/2) + (x²/4 - ...))
+      =/  j0x  (j0 x)
+      =/  lnhx (log (mul:^rs .0.5 x))
+      (add:^rs (mul:^rs twoopi (mul:^rs j0x lnhx)) (mul:^rs .0.36746691 (mul:^rs x x)))
+    ::  Asymptotic for x >= 8
+    =/  z     (div:^rs .8 x)
+    =/  z2    (mul:^rs z z)
+    =/  p0    .1
+    =/  q0    .-0.125
+    =/  p     (add:^rs p0 (mul:^rs z2 .-0.00021))
+    =/  q     (add:^rs q0 (mul:^rs z2 .0.00066))
+    =/  xx    (sub:^rs x .0.785398163)
+    =/  amp   (div:^rs .0.79788456 (sqt x))
+    (mul:^rs amp (add:^rs (mul:^rs p (sin xx)) (mul:^rs (mul:^rs z q) (cos xx))))
+  ::
+  ::  +y1: Bessel function of second kind, order 1
+  ::
+  ++  y1
+    |=  x=@rs
+    ^-  @rs
+    ?:  (lte:^rs x .0)  (sub:^rs x x)              ::  NaN for x <= 0
+    =/  twoopi  .0.6366197723675814
+    ?:  (lth:^rs x .8)
+      =/  j1x  (j1 x)
+      =/  lnx  (log x)
+      =/  invx (div:^rs .1 x)
+      (mul:^rs twoopi (sub:^rs (mul:^rs j1x lnx) invx))
+    ::  Asymptotic for x >= 8
+    =/  z     (div:^rs .8 x)
+    =/  z2    (mul:^rs z z)
+    =/  p1    .1
+    =/  q1    .0.375
+    =/  p     (add:^rs p1 (mul:^rs z2 .0.00084))
+    =/  q     (add:^rs q1 (mul:^rs z2 .-0.00195))
+    =/  xx    (sub:^rs x .2.35619449)
+    =/  amp   (div:^rs .0.79788456 (sqt x))
+    (mul:^rs amp (add:^rs (mul:^rs p (sin xx)) (mul:^rs (mul:^rs z q) (cos xx))))
   --
 ::
 ::  ================================================================
@@ -1695,6 +1949,167 @@
     ::
     =/  result  (sub:^rd .~1 (mul:^rd poly (exp (sub:^rd .~0 (mul:^rd ax ax)))))
     ?:(=(sign 0) result (sub:^rd .~0 result))
+  ::
+  ::  +gamma: Gamma function using Lanczos approximation
+  ::
+  ++  gamma
+    |=  x=@rd
+    ^-  @rd
+    ?:  (lte:^rd x .~0)  (sub:^rd x x)
+    ?:  =(x .~1)  .~1
+    ?:  =(x .~2)  .~1
+    ::  Lanczos coefficients (g=7, n=9) for double precision
+    =/  g       .~7
+    =/  c0      .~0.99999999999980993
+    =/  c1      .~676.5203681218851
+    =/  c2      .~-1259.1392167224028
+    =/  c3      .~771.32342877765313
+    =/  c4      .~-176.61502916214059
+    =/  c5      .~12.507343278686905
+    =/  c6      .~-0.13857109526572012
+    =/  c7      .~0.0000099843695780195716
+    =/  c8      .~0.00000015056327351493116
+    ::
+    =/  xm1     (sub:^rd x .~1)
+    =/  sum     c0
+    =.  sum     (add:^rd sum (div:^rd c1 (add:^rd xm1 .~1)))
+    =.  sum     (add:^rd sum (div:^rd c2 (add:^rd xm1 .~2)))
+    =.  sum     (add:^rd sum (div:^rd c3 (add:^rd xm1 .~3)))
+    =.  sum     (add:^rd sum (div:^rd c4 (add:^rd xm1 .~4)))
+    =.  sum     (add:^rd sum (div:^rd c5 (add:^rd xm1 .~5)))
+    =.  sum     (add:^rd sum (div:^rd c6 (add:^rd xm1 .~6)))
+    =.  sum     (add:^rd sum (div:^rd c7 (add:^rd xm1 .~7)))
+    =.  sum     (add:^rd sum (div:^rd c8 (add:^rd xm1 .~8)))
+    ::
+    =/  sqrt2pi  .~2.5066282746310002
+    =/  t        (add:^rd xm1 (add:^rd g .~0.5))
+    =/  term1    (mul:^rd sqrt2pi sum)
+    =/  term2    (pow t (add:^rd xm1 .~0.5))
+    =/  term3    (exp (sub:^rd .~0 t))
+    (mul:^rd term1 (mul:^rd term2 term3))
+  ::
+  ::  +lgamma: Log-gamma function
+  ::
+  ++  lgamma
+    |=  x=@rd
+    ^-  @rd
+    (log (gamma x))
+  ::
+  ::  +j0: Bessel function of first kind, order 0
+  ::
+  ++  j0
+    |=  x=@rd
+    ^-  @rd
+    =/  ax  (abs x)
+    ?:  (lth:^rd ax .~8)
+      =/  x2   (mul:^rd ax ax)
+      =/  x4   (mul:^rd x2 x2)
+      =/  x6   (mul:^rd x4 x2)
+      =/  x8   (mul:^rd x4 x4)
+      =/  x10  (mul:^rd x8 x2)
+      =/  c1   .~-0.25
+      =/  c2   .~0.015625
+      =/  c3   .~-0.00043402777777777775
+      =/  c4   .~0.0000067816840277777775
+      =/  c5   .~-0.00000006781684027777778
+      %+  add:^rd  .~1
+      %+  add:^rd  (mul:^rd c1 x2)
+      %+  add:^rd  (mul:^rd c2 x4)
+      %+  add:^rd  (mul:^rd c3 x6)
+      %+  add:^rd  (mul:^rd c4 x8)
+      (mul:^rd c5 x10)
+    =/  z      (div:^rd .~8 ax)
+    =/  z2     (mul:^rd z z)
+    =/  p0     .~1
+    =/  p2     .~-0.00021
+    =/  q0     .~-0.125
+    =/  q2     .~0.00066
+    =/  p      (add:^rd p0 (mul:^rd z2 p2))
+    =/  q      (add:^rd q0 (mul:^rd z2 q2))
+    =/  xx     (sub:^rd ax .~0.7853981633974483)
+    =/  amp    (div:^rd .~0.7978845608028654 (sqt ax))
+    (mul:^rd amp (sub:^rd (mul:^rd p (cos xx)) (mul:^rd (mul:^rd z q) (sin xx))))
+  ::
+  ::  +j1: Bessel function of first kind, order 1
+  ::
+  ++  j1
+    |=  x=@rd
+    ^-  @rd
+    =/  bits   `@`x
+    =/  sign   (rsh [0 63] bits)
+    =/  ax     (abs x)
+    =/  result=@rd
+      ?:  (lth:^rd ax .~8)
+        =/  x2   (mul:^rd ax ax)
+        =/  x3   (mul:^rd x2 ax)
+        =/  x5   (mul:^rd x3 x2)
+        =/  x7   (mul:^rd x5 x2)
+        =/  x9   (mul:^rd x7 x2)
+        =/  c0   .~0.5
+        =/  c1   .~-0.0625
+        =/  c2   .~0.00260416666666666667
+        =/  c3   .~-0.0000542534722222222
+        =/  c4   .~0.000000677168402777778
+        %+  add:^rd  (mul:^rd c0 ax)
+        %+  add:^rd  (mul:^rd c1 x3)
+        %+  add:^rd  (mul:^rd c2 x5)
+        %+  add:^rd  (mul:^rd c3 x7)
+        (mul:^rd c4 x9)
+      =/  z      (div:^rd .~8 ax)
+      =/  z2     (mul:^rd z z)
+      =/  p1     .~1
+      =/  p3     .~0.00084
+      =/  q1     .~0.375
+      =/  q3     .~-0.00195
+      =/  p      (add:^rd p1 (mul:^rd z2 p3))
+      =/  q      (add:^rd q1 (mul:^rd z2 q3))
+      =/  xx     (sub:^rd ax .~2.356194490192345)
+      =/  amp    (div:^rd .~0.7978845608028654 (sqt ax))
+      (mul:^rd amp (sub:^rd (mul:^rd p (cos xx)) (mul:^rd (mul:^rd z q) (sin xx))))
+    ?:(=(sign 0) result (sub:^rd .~0 result))
+  ::
+  ::  +y0: Bessel function of second kind, order 0
+  ::
+  ++  y0
+    |=  x=@rd
+    ^-  @rd
+    ?:  (lte:^rd x .~0)  (sub:^rd x x)
+    =/  twoopi  .~0.6366197723675814
+    ?:  (lth:^rd x .~8)
+      =/  j0x   (j0 x)
+      =/  lnhx  (log (mul:^rd .~0.5 x))
+      (add:^rd (mul:^rd twoopi (mul:^rd j0x lnhx)) (mul:^rd .~0.36746691 (mul:^rd x x)))
+    =/  z      (div:^rd .~8 x)
+    =/  z2     (mul:^rd z z)
+    =/  p0     .~1
+    =/  q0     .~-0.125
+    =/  p      (add:^rd p0 (mul:^rd z2 .~-0.00021))
+    =/  q      (add:^rd q0 (mul:^rd z2 .~0.00066))
+    =/  xx     (sub:^rd x .~0.7853981633974483)
+    =/  amp    (div:^rd .~0.7978845608028654 (sqt x))
+    (mul:^rd amp (add:^rd (mul:^rd p (sin xx)) (mul:^rd (mul:^rd z q) (cos xx))))
+  ::
+  ::  +y1: Bessel function of second kind, order 1
+  ::
+  ++  y1
+    |=  x=@rd
+    ^-  @rd
+    ?:  (lte:^rd x .~0)  (sub:^rd x x)
+    =/  twoopi  .~0.6366197723675814
+    ?:  (lth:^rd x .~8)
+      =/  j1x   (j1 x)
+      =/  lnx   (log x)
+      =/  invx  (div:^rd .~1 x)
+      (mul:^rd twoopi (sub:^rd (mul:^rd j1x lnx) invx))
+    =/  z      (div:^rd .~8 x)
+    =/  z2     (mul:^rd z z)
+    =/  p1     .~1
+    =/  q1     .~0.375
+    =/  p      (add:^rd p1 (mul:^rd z2 .~0.00084))
+    =/  q      (add:^rd q1 (mul:^rd z2 .~-0.00195))
+    =/  xx     (sub:^rd x .~2.356194490192345)
+    =/  amp    (div:^rd .~0.7978845608028654 (sqt x))
+    (mul:^rd amp (add:^rd (mul:^rd p (sin xx)) (mul:^rd (mul:^rd z q) (cos xx))))
   --
 ::
 ::  ================================================================
@@ -2274,6 +2689,173 @@
     ::
     =/  result  (sub:^rq .~~~1 (mul:^rq poly (exp (sub:^rq .~~~0 (mul:^rq ax ax)))))
     ?:(=(sign 0) result (sub:^rq .~~~0 result))
+  ::
+  ::  +gamma: Gamma function using Lanczos approximation
+  ::
+  ++  gamma
+    |=  x=@rq
+    ^-  @rq
+    ?:  (lte:^rq x .~~~0)  (sub:^rq x x)
+    ?:  =(x .~~~1)  .~~~1
+    ?:  =(x .~~~2)  .~~~1
+    ::  Lanczos coefficients (g=7, n=9)
+    =/  g       .~~~7
+    =/  c0      .~~~0.99999999999980993
+    =/  c1      .~~~676.5203681218851
+    =/  c2      .~~~-1259.1392167224028
+    =/  c3      .~~~771.32342877765313
+    =/  c4      .~~~-176.61502916214059
+    =/  c5      .~~~12.507343278686905
+    =/  c6      .~~~-0.13857109526572012
+    =/  c7      .~~~0.0000099843695780195716
+    =/  c8      .~~~0.00000015056327351493116
+    ::
+    =/  xm1     (sub:^rq x .~~~1)
+    =/  sum     c0
+    =.  sum     (add:^rq sum (div:^rq c1 (add:^rq xm1 .~~~1)))
+    =.  sum     (add:^rq sum (div:^rq c2 (add:^rq xm1 .~~~2)))
+    =.  sum     (add:^rq sum (div:^rq c3 (add:^rq xm1 .~~~3)))
+    =.  sum     (add:^rq sum (div:^rq c4 (add:^rq xm1 .~~~4)))
+    =.  sum     (add:^rq sum (div:^rq c5 (add:^rq xm1 .~~~5)))
+    =.  sum     (add:^rq sum (div:^rq c6 (add:^rq xm1 .~~~6)))
+    =.  sum     (add:^rq sum (div:^rq c7 (add:^rq xm1 .~~~7)))
+    =.  sum     (add:^rq sum (div:^rq c8 (add:^rq xm1 .~~~8)))
+    ::
+    =/  sqrt2pi  .~~~2.5066282746310002
+    =/  t        (add:^rq xm1 (add:^rq g .~~~0.5))
+    =/  term1    (mul:^rq sqrt2pi sum)
+    =/  term2    (pow t (add:^rq xm1 .~~~0.5))
+    =/  term3    (exp (sub:^rq .~~~0 t))
+    (mul:^rq term1 (mul:^rq term2 term3))
+  ::
+  ::  +lgamma: Log-gamma function
+  ::
+  ++  lgamma
+    |=  x=@rq
+    ^-  @rq
+    (log (gamma x))
+  ::
+  ::  +j0: Bessel function of first kind, order 0
+  ::
+  ++  j0
+    |=  x=@rq
+    ^-  @rq
+    =/  ax  (abs x)
+    ?:  (lth:^rq ax .~~~8)
+      =/  x2    (mul:^rq ax ax)
+      =/  x4    (mul:^rq x2 x2)
+      =/  x6    (mul:^rq x4 x2)
+      =/  x8    (mul:^rq x4 x4)
+      =/  x10   (mul:^rq x8 x2)
+      =/  x12   (mul:^rq x6 x6)
+      =/  c1    .~~~-0.25
+      =/  c2    .~~~0.015625
+      =/  c3    .~~~-0.00043402777777777775
+      =/  c4    .~~~0.0000067816840277777775
+      =/  c5    .~~~-0.00000006781684027777778
+      =/  c6    .~~~0.0000000004709502797067901
+      %+  add:^rq  .~~~1
+      %+  add:^rq  (mul:^rq c1 x2)
+      %+  add:^rq  (mul:^rq c2 x4)
+      %+  add:^rq  (mul:^rq c3 x6)
+      %+  add:^rq  (mul:^rq c4 x8)
+      %+  add:^rq  (mul:^rq c5 x10)
+      (mul:^rq c6 x12)
+    =/  z      (div:^rq .~~~8 ax)
+    =/  z2     (mul:^rq z z)
+    =/  p0     .~~~1
+    =/  p2     .~~~-0.00021
+    =/  q0     .~~~-0.125
+    =/  q2     .~~~0.00066
+    =/  p      (add:^rq p0 (mul:^rq z2 p2))
+    =/  q      (add:^rq q0 (mul:^rq z2 q2))
+    =/  xx     (sub:^rq ax .~~~0.7853981633974483)
+    =/  amp    (div:^rq .~~~0.7978845608028654 (sqt ax))
+    (mul:^rq amp (sub:^rq (mul:^rq p (cos xx)) (mul:^rq (mul:^rq z q) (sin xx))))
+  ::
+  ::  +j1: Bessel function of first kind, order 1
+  ::
+  ++  j1
+    |=  x=@rq
+    ^-  @rq
+    =/  bits   `@`x
+    =/  sign   (rsh [0 127] bits)
+    =/  ax     (abs x)
+    =/  result=@rq
+      ?:  (lth:^rq ax .~~~8)
+        =/  x2   (mul:^rq ax ax)
+        =/  x3   (mul:^rq x2 ax)
+        =/  x5   (mul:^rq x3 x2)
+        =/  x7   (mul:^rq x5 x2)
+        =/  x9   (mul:^rq x7 x2)
+        =/  x11  (mul:^rq x9 x2)
+        =/  c0   .~~~0.5
+        =/  c1   .~~~-0.0625
+        =/  c2   .~~~0.00260416666666666667
+        =/  c3   .~~~-0.0000542534722222222
+        =/  c4   .~~~0.000000677168402777778
+        =/  c5   .~~~-0.00000000564307002314815
+        %+  add:^rq  (mul:^rq c0 ax)
+        %+  add:^rq  (mul:^rq c1 x3)
+        %+  add:^rq  (mul:^rq c2 x5)
+        %+  add:^rq  (mul:^rq c3 x7)
+        %+  add:^rq  (mul:^rq c4 x9)
+        (mul:^rq c5 x11)
+      =/  z      (div:^rq .~~~8 ax)
+      =/  z2     (mul:^rq z z)
+      =/  p1     .~~~1
+      =/  p3     .~~~0.00084
+      =/  q1     .~~~0.375
+      =/  q3     .~~~-0.00195
+      =/  p      (add:^rq p1 (mul:^rq z2 p3))
+      =/  q      (add:^rq q1 (mul:^rq z2 q3))
+      =/  xx     (sub:^rq ax .~~~2.356194490192345)
+      =/  amp    (div:^rq .~~~0.7978845608028654 (sqt ax))
+      (mul:^rq amp (sub:^rq (mul:^rq p (cos xx)) (mul:^rq (mul:^rq z q) (sin xx))))
+    ?:(=(sign 0) result (sub:^rq .~~~0 result))
+  ::
+  ::  +y0: Bessel function of second kind, order 0
+  ::
+  ++  y0
+    |=  x=@rq
+    ^-  @rq
+    ?:  (lte:^rq x .~~~0)  (sub:^rq x x)
+    =/  twoopi  .~~~0.6366197723675814
+    ?:  (lth:^rq x .~~~8)
+      =/  j0x   (j0 x)
+      =/  lnhx  (log (mul:^rq .~~~0.5 x))
+      (add:^rq (mul:^rq twoopi (mul:^rq j0x lnhx)) (mul:^rq .~~~0.36746691 (mul:^rq x x)))
+    =/  z      (div:^rq .~~~8 x)
+    =/  z2     (mul:^rq z z)
+    =/  p0     .~~~1
+    =/  q0     .~~~-0.125
+    =/  p      (add:^rq p0 (mul:^rq z2 .~~~-0.00021))
+    =/  q      (add:^rq q0 (mul:^rq z2 .~~~0.00066))
+    =/  xx     (sub:^rq x .~~~0.7853981633974483)
+    =/  amp    (div:^rq .~~~0.7978845608028654 (sqt x))
+    (mul:^rq amp (add:^rq (mul:^rq p (sin xx)) (mul:^rq (mul:^rq z q) (cos xx))))
+  ::
+  ::  +y1: Bessel function of second kind, order 1
+  ::
+  ++  y1
+    |=  x=@rq
+    ^-  @rq
+    ?:  (lte:^rq x .~~~0)  (sub:^rq x x)
+    =/  twoopi  .~~~0.6366197723675814
+    ?:  (lth:^rq x .~~~8)
+      =/  j1x   (j1 x)
+      =/  lnx   (log x)
+      =/  invx  (div:^rq .~~~1 x)
+      (mul:^rq twoopi (sub:^rq (mul:^rq j1x lnx) invx))
+    =/  z      (div:^rq .~~~8 x)
+    =/  z2     (mul:^rq z z)
+    =/  p1     .~~~1
+    =/  q1     .~~~0.375
+    =/  p      (add:^rq p1 (mul:^rq z2 .~~~0.00084))
+    =/  q      (add:^rq q1 (mul:^rq z2 .~~~-0.00195))
+    =/  xx     (sub:^rq x .~~~2.356194490192345)
+    =/  amp    (div:^rq .~~~0.7978845608028654 (sqt x))
+    (mul:^rq amp (add:^rq (mul:^rq p (sin xx)) (mul:^rq (mul:^rq z q) (cos xx))))
   --
 ::
 ::  ================================================================

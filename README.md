@@ -1,8 +1,6 @@
 #   Numerical Libraries for Urbit
 
-**Status ~2025.4.15:  Lagoon and /lib/math releasing with 410K; other development on pause.**
-
-Status ~2024.5.28:  Lagoon releases with IEEE 754 reals in 410K; Saloon releases with corresponding functionality in 409K; Maroon is in progress for tinygrad.
+**Status ~2026.1.21:  Lagoon updated for Vere64 by @matthewlevan; Saloon conversion to Chebyshev basis functions underway by @sigilante.**
 
 ![An evocative scene of a mysterious futuristic castle in the style of Flash Gordon](./img/hero-scene.jpg)
 

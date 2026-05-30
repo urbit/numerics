@@ -223,6 +223,21 @@
     %+  expect-eq  !>(%.n)  !>((all:la all-false))
     %+  expect-eq  !>(%.n)  !>((any:la all-false))
   ==
+::
+::  1-D coverage: min/max reduce regardless of rank, so any/all must work
+::  on a plain vector too (the 2-D-only test above hid a rank assumption).
+++  test-any-all-1d  ^-  tang
+  =/  all-true   (en-ray:la [meta=[shape=~[3] bloq=5 kind=%i754 tail=~] baum=~[.1.0 .1.0 .1.0]])
+  =/  has-false  (en-ray:la [meta=[shape=~[3] bloq=5 kind=%i754 tail=~] baum=~[.1.0 .0.0 .1.0]])
+  =/  all-false  (en-ray:la [meta=[shape=~[3] bloq=5 kind=%i754 tail=~] baum=~[.0.0 .0.0 .0.0]])
+  ;:  weld
+    %+  expect-eq  !>(%.y)  !>((all:la all-true))
+    %+  expect-eq  !>(%.y)  !>((any:la all-true))
+    %+  expect-eq  !>(%.n)  !>((all:la has-false))
+    %+  expect-eq  !>(%.y)  !>((any:la has-false))
+    %+  expect-eq  !>(%.n)  !>((all:la all-false))
+    %+  expect-eq  !>(%.n)  !>((any:la all-false))
+  ==
 
 --
 :: to-tank

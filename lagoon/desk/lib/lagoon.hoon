@@ -998,19 +998,17 @@
   ::  An element is truthy iff its encoded value is nonzero (also +0.0=0x0).
   ::  any: some element truthy  <=>  the max element is nonzero.
   ::  all: every element truthy  <=>  the min element is nonzero.
-  ::  min/max reduce to an all-1s-shape scalar ray, so index with a
-  ::  rank-matched zero index rather than assuming a fixed dimensionality.
+  ::  Read the reduced scalar as the head of its ravel, so this is
+  ::  independent of min/max's output shape and works for any rank.
   ++  any
     |=  [a=ray]
     ^-  ?(%.y %.n)
-    =/  dex  (reap (lent shape.meta.a) 0)
-    ?!(=((get-item (max a) dex) 0))
+    ?!(=(-:(ravel (max a)) 0))
   ::
   ++  all
     |=  [a=ray]
     ^-  ?(%.y %.n)
-    =/  dex  (reap (lent shape.meta.a) 0)
-    ?!(=((get-item (min a) dex) 0))
+    ?!(=(-:(ravel (min a)) 0))
   ::
   +$  ops   $?  %add
                 %sub

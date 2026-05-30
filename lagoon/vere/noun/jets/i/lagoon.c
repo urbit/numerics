@@ -1667,7 +1667,7 @@
 
       case 7:
         u3r_bytes(0, 16, (c3_y*)&(n128.v[0]), n);
-        f128M_div(&((float128_t){SB_REAL128L_ONE,SB_REAL128U_ZERO}), &n128, &in128);
+        f128M_div(&((float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}), &n128, &in128);
 
         for (c3_d i = 0; i < len_x; i++) {
           float128_t x_val128 = ((float128_t*)x_bytes)[i];

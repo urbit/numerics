@@ -1028,7 +1028,7 @@
     return r_data;
   }
 
-/* gte - x > y
+/* gte - x >= y
 */
   u3_noun
   u3qi_la_gte_real(u3_noun x_data,
@@ -1101,7 +1101,7 @@
     return r_data;
   }
 
-/* lth - x > y
+/* lth - x < y
 */
   u3_noun
   u3qi_la_lth_real(u3_noun x_data,
@@ -1174,7 +1174,7 @@
     return r_data;
   }
 
-/* lte - x > y
+/* lte - x <= y
 */
   u3_noun
   u3qi_la_lte_real(u3_noun x_data,

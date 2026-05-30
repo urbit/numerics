@@ -586,7 +586,7 @@
     c3_y* x_bytes = (c3_y*)u3a_malloc(syz_x*sizeof(c3_y));
     u3r_bytes(0, syz_x, x_bytes, x_data);
 
-    c3_w min_idx = 0;
+    c3_d min_idx = 0;
 
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
@@ -595,7 +595,7 @@
         for (c3_d i = 0; i < len_x; i++) {
            if(f16_lt(((float16_t*)x_bytes)[i], min_val16)) {
              min_val16 = ((float16_t*)x_bytes)[i];
-             min_idx = (len_x - i - 1);
+             min_idx = i;
            }
         }
         break;}
@@ -605,7 +605,7 @@
         for (c3_d i = 0; i < len_x; i++) {
            if(f32_lt(((float32_t*)x_bytes)[i], min_val32)) {
              min_val32 = ((float32_t*)x_bytes)[i];
-             min_idx = (len_x - i - 1);
+             min_idx = i;
            }
         }
         break;}
@@ -615,7 +615,7 @@
         for (c3_d i = 0; i < len_x; i++) {
            if(f64_lt(((float64_t*)x_bytes)[i], min_val64)) {
              min_val64 = ((float64_t*)x_bytes)[i];
-             min_idx = (len_x - i - 1);
+             min_idx = i;
            }
         }
         break;}
@@ -625,7 +625,7 @@
         for (c3_d i = 0; i < len_x; i++) {
            if(f128M_lt(&(((float128_t*)x_bytes)[i]), &min_val128)) {
              min_val128 = *f128M_min(&min_val128, &((float128_t*)x_bytes)[i]);
-             min_idx = (len_x - i - 1);
+             min_idx = i;
            }
         }
         break;}
@@ -659,7 +659,7 @@
     c3_y* x_bytes = (c3_y*)u3a_malloc(syz_x*sizeof(c3_y));
     u3r_bytes(0, syz_x, x_bytes, x_data);
 
-    c3_w max_idx = 0;
+    c3_d max_idx = 0;
 
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
@@ -668,7 +668,7 @@
         for (c3_d i = 0; i < len_x; i++) {
            if(f16_gt(((float16_t*)x_bytes)[i], max_val16)) {
              max_val16 = ((float16_t*)x_bytes)[i];
-             max_idx = (len_x - i - 1);
+             max_idx = i;
            }
         }
         break;}
@@ -678,7 +678,7 @@
         for (c3_d i = 0; i < len_x; i++) {
            if(f32_gt(((float32_t*)x_bytes)[i], max_val32)) {
              max_val32 = ((float32_t*)x_bytes)[i];
-             max_idx = (len_x - i - 1);
+             max_idx = i;
            }
         }
         break;}
@@ -688,7 +688,7 @@
         for (c3_d i = 0; i < len_x; i++) {
            if(f64_gt(((float64_t*)x_bytes)[i], max_val64)) {
              max_val64 = ((float64_t*)x_bytes)[i];
-             max_idx = (len_x - i - 1);
+             max_idx = i;
            }
         }
         break;}
@@ -698,7 +698,7 @@
         for (c3_d i = 0; i < len_x; i++) {
            if(f128M_gt(&(((float128_t*)x_bytes)[i]), &max_val128)) {
              max_val128 = *f128M_max(&max_val128, &((float128_t*)x_bytes)[i]);
-             max_idx = (len_x - i - 1);
+             max_idx = i;
            }
         }
         break;}

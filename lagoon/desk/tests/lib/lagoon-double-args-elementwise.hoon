@@ -5560,4 +5560,17 @@
   %+  is-equal
     canon-mods-1x2-7r
   assay-mods-1x2-7r
+::
+::  Regression test: the mod jet must match the Hoon reference, which rounds
+::  the quotient with `toi` under the active rounding mode (default %n,
+::  round-nearest), not by truncation.  5 mod 3 = 5 - 3*round(5/3) =
+::  5 - 3*2 = -1.  The old jet hardcoded truncation and returned 2.
+++  test-mod-1x1-6r  ^-  tang
+  =/  input-mod-1x1-6r  (en-ray:la [meta=[shape=~[1 1] bloq=6 kind=%i754 tail=~] baum=~[~[.~5.0]]])
+  =/  jnput-mod-1x1-6r  (en-ray:la [meta=[shape=~[1 1] bloq=6 kind=%i754 tail=~] baum=~[~[.~3.0]]])
+  =/  canon-mod-1x1-6r  (en-ray:la [meta=[shape=~[1 1] bloq=6 kind=%i754 tail=~] baum=~[~[.~-1.0]]])
+  =/  assay-mod-1x1-6r  (mod:la input-mod-1x1-6r jnput-mod-1x1-6r)
+  %+  is-equal
+    canon-mod-1x1-6r
+  assay-mod-1x1-6r
 --

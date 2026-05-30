@@ -994,15 +994,23 @@
     =/  rtol  (fill meta.a data:(scale meta.a +.tol))
     (lte (abs (sub a b)) (add atol (mul rtol (abs b))))
   ::
+  ::  Booleans use the numeric convention true=1, false=0 (see fun-scalar).
+  ::  An element is truthy iff its encoded value is nonzero (also +0.0=0x0).
+  ::  any: some element truthy  <=>  the max element is nonzero.
+  ::  all: every element truthy  <=>  the min element is nonzero.
+  ::  min/max reduce to an all-1s-shape scalar ray, so index with a
+  ::  rank-matched zero index rather than assuming a fixed dimensionality.
   ++  any
     |=  [a=ray]
     ^-  ?(%.y %.n)
-    (^lth (get-item (cumsum a) ~[0]) (roll shape.meta.a ^mul))
+    =/  dex  (reap (lent shape.meta.a) 0)
+    !(=((get-item (max a) dex) 0))
   ::
   ++  all
     |=  [a=ray]
     ^-  ?(%.y %.n)
-    =((get-item (cumsum a) ~[0]) 0)
+    =/  dex  (reap (lent shape.meta.a) 0)
+    !(=((get-item (min a) dex) 0))
   ::
   +$  ops   $?  %add
                 %sub

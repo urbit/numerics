@@ -208,6 +208,21 @@
       !>((get-item:la (max:la a) ~[0 0]))
       !>((snag (argmax:la a) (ravel:la a)))
   ==
+::
+::  any/all over boolean rays (numeric convention: true=1.0, false=0.0).
+::  any = some element truthy; all = every element truthy.
+++  test-any-all  ^-  tang
+  =/  all-true   (en-ray:la [meta=[shape=~[1 3] bloq=5 kind=%i754 tail=~] baum=~[~[.1.0 .1.0 .1.0]]])
+  =/  has-false  (en-ray:la [meta=[shape=~[1 3] bloq=5 kind=%i754 tail=~] baum=~[~[.1.0 .0.0 .1.0]]])
+  =/  all-false  (en-ray:la [meta=[shape=~[1 3] bloq=5 kind=%i754 tail=~] baum=~[~[.0.0 .0.0 .0.0]]])
+  ;:  weld
+    %+  expect-eq  !>(%.y)  !>((all:la all-true))
+    %+  expect-eq  !>(%.y)  !>((any:la all-true))
+    %+  expect-eq  !>(%.n)  !>((all:la has-false))
+    %+  expect-eq  !>(%.y)  !>((any:la has-false))
+    %+  expect-eq  !>(%.n)  !>((all:la all-false))
+    %+  expect-eq  !>(%.n)  !>((any:la all-false))
+  ==
 
 --
 :: to-tank

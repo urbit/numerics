@@ -8,6 +8,12 @@
 ::
 ::    rnd: rounding mode
 ::
+::  Limited to the four modes the hoon @rs/@rd/@rq/@rh precision doors
+::  accept: %n (nearest, ties to even), %u (toward +inf), %d (toward
+::  -inf), %z (toward zero).  The underlying ++fl engine — and the C
+::  jets' _set_rounding — also implement %a (nearest, ties away from
+::  zero), but the precision doors do not expose it, so %a is
+::  intentionally excluded here; the jets handle it defensively only.
 +$  rounding-mode  ?(%n %u %d %z)
 ++  lake
   |=  [inrnd=rounding-mode]

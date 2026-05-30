@@ -30,7 +30,10 @@
     c3_d c[2];
   };
 
-  //  $?(%n %u %d %z %a)
+  //  Set the SoftFloat/SoftBLAS rounding mode from a rounding-mode atom.
+  //  Accepts %n %u %d %z (see +$rounding-mode); %a (nearest, ties away)
+  //  is handled too, but the hoon @rs/@rd/@rq/@rh doors never produce it.
+  //  Any other value bails.
   static inline void
   _set_rounding(c3_w a)
   {

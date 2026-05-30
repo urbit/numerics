@@ -3,6 +3,8 @@
 #include "jets/q.h"
 #include "jets/w.h"
 
+#include "c3/motes.h"
+
 #include "noun.h"
 #include "softfloat.h"
 #include "softblas.h"
@@ -3206,6 +3208,7 @@
                 u3r_bytes(0, 8, (c3_y*)&d_, d);
                 n_ = f64_to_i64(f64_ceil(f64_div(f64_sub((float64_t){b_}, (float64_t){a_}), (float64_t){d_})), softfloat_round_minMag, false) - 1;
                 break;
+              }
               case 7: {
                 c3_d a__[2], b__[2], d__[2];
                 u3r_bytes(0, 16, (c3_y*)&a__, a);
@@ -3321,13 +3324,12 @@
     {
       u3m_bail(c3__exit);
     } else {
-      u3_noun x_shape, x_bloq, x_kind, x_tail,
+      u3_noun x_shape, x_bloq, x_kind,
               y_shape,
               rnd;
       x_shape = u3h(x_meta);          //  2
       x_bloq = u3h(u3t(x_meta));      //  6
       x_kind = u3h(u3t(u3t(x_meta))); // 14
-      x_tail = u3t(u3t(u3t(x_meta))); // 15
       y_shape = u3h(y_meta);          //  2
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       if ( c3n == _check(u3nc(x_meta, x_data)) ||

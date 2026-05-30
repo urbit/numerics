@@ -1141,7 +1141,7 @@
     ?>  (check a)
     %-  spac
     :-  meta.a
-    =/  ali  (flop (ravel a))  :: compensate for LSB
+    =/  ali  (ravel a)
     %+  rep  bloq.meta.a
     %+  turn
       ali

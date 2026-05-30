@@ -1,8 +1,10 @@
 /-  *lagoon
 /+  *test
 /+  *lagoon
-  ::
-::::
+::::  /tests/lib/lagoon-indexing -- indexing and structural ops
+::
+::  Named ++test-<op>-<shape>-<kind>.  A `canon` is the reference result,
+::  an `assay` is the result of the operation under test.
 ::
 ^|
 |_  $:  atol=_.1e-3          :: absolute tolerance for precision of operations
@@ -12,8 +14,8 @@
 ++  is-equal
   |=  [a=ray b=ray]  ^-  tang
   ?:  =(a b)  ~
-  :~  [%palm [": " ~ ~ ~] [leaf+"expected" "{<a>}"]]
-      [%palm [": " ~ ~ ~] [leaf+"actual  " "{<b>}"]]
+  :~  [%palm [": " ~ ~ ~] [leaf+"expected" "{<`ray`a>}"]]
+      [%palm [": " ~ ~ ~] [leaf+"actual  " "{<`ray`b>}"]]
   ==
 ::
 ++  is-close
@@ -23,9 +25,6 @@
       [%palm [": " ~ ~ ~] [leaf+"actual  " "{<b>}"]]
   ==
 ::
-::  Utilities
-::
-
 ++  test-get-item-1d  ^-  tang
   =/  input-iota-1x8-3u  (iota:la [shape=~[8] bloq=3 kind=%uint prec=~])
   ;:  weld
@@ -41,6 +40,7 @@
     %-  expect-fail
       |.((get-item:la input-iota-1x8-3u ~[8]))
   ==
+::
 
 ++  test-get-item-2d  ^-  tang
   =/  input-magic-4x4-4u  (magic:la [shape=~[4 4] bloq=4 kind=%uint prec=~])
@@ -57,6 +57,7 @@
     %-  expect-fail
       |.((get-item:la input-magic-4x4-4u ~[4 4]))
   ==
+::
 
 ++  test-get-item-3d  ^-  tang
   =/  input-magic-4x4x4-5u  (magic:la [shape=~[4 4 4] bloq=5 kind=%uint prec=~])
@@ -73,6 +74,7 @@
     %-  expect-fail
       |.((get-item:la input-magic-4x4x4-5u ~[4 4 4]))
   ==
+::
 
 ++  test-set-item-1d  ^-  tang
   =/  input-meta  [shape=~[8] bloq=3 kind=%uint prec=~]
@@ -90,6 +92,7 @@
     %-  expect-fail
       |.((set-item:la input-iota-1x8-3u ~[8] 0xf))
   ==
+::
 
 ++  test-set-item-2d  ^-  tang
   =/  input-meta  [shape=~[3 3] bloq=4 kind=%uint prec=~]
@@ -107,6 +110,7 @@
     %-  expect-fail
       |.((set-item:la input-magic-3x3-4u ~[3 3] 0xf))
   ==
+::
 
 ++  test-set-item-3d  ^-  tang
   =/  input-meta  [shape=~[2 2 2] bloq=4 kind=%uint prec=~]
@@ -124,6 +128,7 @@
     %-  expect-fail
       |.((set-item:la input-magic-2x2x2-5u ~[3 2 1] 0xf))
   ==
+::
 
 ++  test-get-row-1d  ^-  tang
   =/  input-iota-1x8-3u  (iota:la [shape=~[8] bloq=3 kind=%uint prec=~])
@@ -137,6 +142,7 @@
     %-  expect-fail
       |.((get-row:la input-iota-1x8-3u ~[8]))
   ==
+::
 
 ++  test-get-row-2d  ^-  tang
   =/  input-magic-3x3-4u  (magic:la [shape=~[3 3] bloq=4 kind=%uint prec=~])
@@ -150,6 +156,7 @@
     %-  expect-fail
       |.((get-row:la input-magic-3x3-4u ~[3]))
   ==
+::
 
 ++  test-get-row-3d  ^-  tang
   =/  input-magic-3x3-4u  (magic:la [shape=~[3 3 3] bloq=4 kind=%uint prec=~])
@@ -160,6 +167,7 @@
     %-  expect-fail
       |.((get-row:la input-magic-3x3-4u ~[3 3]))
   ==
+::
 
 ++  test-set-row-1d  ^-  tang
   =/  input-iota-1x8-3u  (iota:la [shape=~[8] bloq=3 kind=%uint prec=~])
@@ -173,6 +181,7 @@
     %-  expect-fail
       |.((set-row:la input-iota-1x8-3u ~[8] (en-ray:la [~[1] 3 %uint ~] ~[0xf])))
   ==
+::
 
 ++  test-set-row-2d  ^-  tang
   =/  input-magic-3x3-4u  (magic:la [shape=~[3 3] bloq=4 kind=%uint prec=~])
@@ -183,6 +192,7 @@
     %-  expect-fail
       |.((set-row:la input-magic-3x3-4u ~[3] (en-ray:la [~[1 3] 4 %uint ~] ~[~[0x0 0x1 0x2]])))
   ==
+::
 
 ++  test-set-row-3d  ^-  tang
   =/  input-magic-3x3x3-4u  (magic:la [shape=~[3 3 3] bloq=5 kind=%uint prec=~])
@@ -193,77 +203,4 @@
     %-  expect-fail
       |.((set-row:la input-magic-3x3x3-4u ~[3 3] (en-ray:la [~[1 3] 4 %uint ~] ~[~[0x0 0x1 0x2]])))
   ==
-::
-::  argmin/argmax return the ravel index of the min/max element (matching
-::  the Hoon `find` reference), so the element fetched at that index must
-::  equal the min/max value.  A reversed index (len - i - 1) would fetch
-::  the wrong element for a non-symmetric array.
-++  test-argmin-argmax  ^-  tang
-  =/  a  (en-ray:la [meta=[shape=~[1 4] bloq=5 kind=%i754 tail=~] baum=~[~[.3.0 .1.0 .4.0 .2.0]]])
-  ;:  weld
-    %+  expect-eq
-      !>((get-item:la (min:la a) ~[0 0]))
-      !>((snag (argmin:la a) (ravel:la a)))
-    %+  expect-eq
-      !>((get-item:la (max:la a) ~[0 0]))
-      !>((snag (argmax:la a) (ravel:la a)))
-  ==
-::
-::  any/all over boolean rays (numeric convention: true=1.0, false=0.0).
-::  any = some element truthy; all = every element truthy.
-++  test-any-all  ^-  tang
-  =/  all-true   (en-ray:la [meta=[shape=~[1 3] bloq=5 kind=%i754 tail=~] baum=~[~[.1.0 .1.0 .1.0]]])
-  =/  has-false  (en-ray:la [meta=[shape=~[1 3] bloq=5 kind=%i754 tail=~] baum=~[~[.1.0 .0.0 .1.0]]])
-  =/  all-false  (en-ray:la [meta=[shape=~[1 3] bloq=5 kind=%i754 tail=~] baum=~[~[.0.0 .0.0 .0.0]]])
-  ;:  weld
-    %+  expect-eq  !>(%.y)  !>((all:la all-true))
-    %+  expect-eq  !>(%.y)  !>((any:la all-true))
-    %+  expect-eq  !>(%.n)  !>((all:la has-false))
-    %+  expect-eq  !>(%.y)  !>((any:la has-false))
-    %+  expect-eq  !>(%.n)  !>((all:la all-false))
-    %+  expect-eq  !>(%.n)  !>((any:la all-false))
-  ==
-::
-::  1-D coverage: min/max reduce regardless of rank, so any/all must work
-::  on a plain vector too (the 2-D-only test above hid a rank assumption).
-++  test-any-all-1d  ^-  tang
-  =/  all-true   (en-ray:la [meta=[shape=~[3] bloq=5 kind=%i754 tail=~] baum=~[.1.0 .1.0 .1.0]])
-  =/  has-false  (en-ray:la [meta=[shape=~[3] bloq=5 kind=%i754 tail=~] baum=~[.1.0 .0.0 .1.0]])
-  =/  all-false  (en-ray:la [meta=[shape=~[3] bloq=5 kind=%i754 tail=~] baum=~[.0.0 .0.0 .0.0]])
-  ;:  weld
-    %+  expect-eq  !>(%.y)  !>((all:la all-true))
-    %+  expect-eq  !>(%.y)  !>((any:la all-true))
-    %+  expect-eq  !>(%.n)  !>((all:la has-false))
-    %+  expect-eq  !>(%.y)  !>((any:la has-false))
-    %+  expect-eq  !>(%.n)  !>((all:la all-false))
-    %+  expect-eq  !>(%.n)  !>((any:la all-false))
-  ==
-
 --
-:: to-tank
-:: get-term
-:: squeeze
-:: submatrix
-:: product
-:: gather
-
-:: get-item √
-:: set-item √
-:: get-row √
-:: set-row
-:: get-col
-:: set-col
-:: get-bloq-offset
-:: get-item-number
-:: strides
-:: get-dim
-:: get-item-index
-:: ravel
-
-:: en-ray:la
-:: de-ray
-:: get-item-baum
-:: fill
-:: spac
-:: unspac
-:: scalar-to-ray

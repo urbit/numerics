@@ -5548,4 +5548,16 @@
   %+  is-equal
     canon-gth-3x3-6u
   assay-gth-3x3-6u
+::
+::  Regression test for the quad mod-scalar (mods) jet reciprocal constant.
+::  u3qi_la_mods_i754 case 7 computes 1/n as the reciprocal; a typo set the
+::  quad numerator to 0.0 instead of 1.0, so the jet returned x unchanged.
+::  a=[7 5], n=3 so a mod n = [1 2]; the bug would yield [7 5].
+++  test-mods-1x2-7r  ^-  tang
+  =/  input-mods-1x2-7r  (en-ray:la [meta=[shape=~[1 2] bloq=7 kind=%i754 tail=~] baum=~[~[.~~~7.0 .~~~5.0]]])
+  =/  canon-mods-1x2-7r  (en-ray:la [meta=[shape=~[1 2] bloq=7 kind=%i754 tail=~] baum=~[~[.~~~1.0 .~~~2.0]]])
+  =/  assay-mods-1x2-7r  (mod-scalar:la input-mods-1x2-7r .~~~3.0)
+  %+  is-equal
+    canon-mods-1x2-7r
+  assay-mods-1x2-7r
 --

@@ -608,6 +608,38 @@
     canon-add-3x3-6u
   assay-add-3x3-6u
 ::
+::  Asymmetric regression tests for sub: x - y with x != y, where the
+::  expected result distinguishes the correct answer from every known
+::  failure mode (returning unmodified y, returning x, or computing y - x).
+::  See the x_bytes/y_bytes swap in the ?axpy jets.  x=[5 2], y=[3 1] so
+::  x - y = [2 1]; the failure modes would yield [3 1], [5 2], or [-2 -1].
+++  test-sub-asym-1x2-4r  ^-  tang
+  =/  input-sub-asym-1x2-4r  (en-ray:la [meta=[shape=~[1 2] bloq=4 kind=%real fxp=~] baum=~[~[.~~5.0 .~~2.0]]])
+  =/  jnput-sub-asym-1x2-4r  (en-ray:la [meta=[shape=~[1 2] bloq=4 kind=%real fxp=~] baum=~[~[.~~3.0 .~~1.0]]])
+  =/  canon-sub-asym-1x2-4r  (en-ray:la [meta=[shape=~[1 2] bloq=4 kind=%real fxp=~] baum=~[~[.~~2.0 .~~1.0]]])
+  =/  assay-sub-asym-1x2-4r  (sub:la input-sub-asym-1x2-4r jnput-sub-asym-1x2-4r)
+  %+  is-equal
+    canon-sub-asym-1x2-4r
+  assay-sub-asym-1x2-4r
+::
+++  test-sub-asym-1x2-5r  ^-  tang
+  =/  input-sub-asym-1x2-5r  (en-ray:la [meta=[shape=~[1 2] bloq=5 kind=%real fxp=~] baum=~[~[.5.0 .2.0]]])
+  =/  jnput-sub-asym-1x2-5r  (en-ray:la [meta=[shape=~[1 2] bloq=5 kind=%real fxp=~] baum=~[~[.3.0 .1.0]]])
+  =/  canon-sub-asym-1x2-5r  (en-ray:la [meta=[shape=~[1 2] bloq=5 kind=%real fxp=~] baum=~[~[.2.0 .1.0]]])
+  =/  assay-sub-asym-1x2-5r  (sub:la input-sub-asym-1x2-5r jnput-sub-asym-1x2-5r)
+  %+  is-equal
+    canon-sub-asym-1x2-5r
+  assay-sub-asym-1x2-5r
+::
+++  test-sub-asym-1x2-6r  ^-  tang
+  =/  input-sub-asym-1x2-6r  (en-ray:la [meta=[shape=~[1 2] bloq=6 kind=%real fxp=~] baum=~[~[.~5.0 .~2.0]]])
+  =/  jnput-sub-asym-1x2-6r  (en-ray:la [meta=[shape=~[1 2] bloq=6 kind=%real fxp=~] baum=~[~[.~3.0 .~1.0]]])
+  =/  canon-sub-asym-1x2-6r  (en-ray:la [meta=[shape=~[1 2] bloq=6 kind=%real fxp=~] baum=~[~[.~2.0 .~1.0]]])
+  =/  assay-sub-asym-1x2-6r  (sub:la input-sub-asym-1x2-6r jnput-sub-asym-1x2-6r)
+  %+  is-equal
+    canon-sub-asym-1x2-6r
+  assay-sub-asym-1x2-6r
+::
 ++  test-sub-1x1-4r  ^-  tang
   =/  input-ones-1x1-4r  (en-ray:la [meta=[shape=~[1 1] bloq=4 kind=%real fxp=~] baum=~[~[.~~1.0]]])
   =/  jnput-ones-1x1-4r  (en-ray:la [meta=[shape=~[1 1] bloq=4 kind=%real fxp=~] baum=~[~[.~~1.0]]])

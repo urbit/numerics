@@ -2066,7 +2066,9 @@
                      u3_noun bloq)
   {
     u3_noun d_data = u3qi_la_diag(x_data, shape, bloq);
-    c3_d len_x0 = _get_dims(shape)[0];
+    c3_d *dim_x = _get_dims(shape);
+    c3_d len_x0 = dim_x[0];
+    u3a_free(dim_x);
     u3_noun r_data = u3qi_la_dot_i754(d_data, d_data, u3nt(len_x0, 0x1, u3_nul), u3k(bloq));
     return r_data;
   }
@@ -3051,7 +3053,9 @@
             _set_rounding(rnd);
             u3_noun r_data = u3qi_la_dot_i754(x_data, y_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
-            c3_d len_x0 = _get_dims(x_shape)[0];
+            c3_d *dim_x = _get_dims(x_shape);
+            c3_d len_x0 = dim_x[0];
+            u3a_free(dim_x);
             return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
 
           default:
@@ -3240,7 +3244,9 @@
       } else {
         u3_noun r_data = u3qi_la_diag(x_data, x_shape, x_bloq);
         if (r_data == u3_none) { return u3_none; }
-        c3_d len_x0 = _get_dims(x_shape)[0];
+        c3_d *dim_x = _get_dims(x_shape);
+        c3_d len_x0 = dim_x[0];
+        u3a_free(dim_x);
         return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
       }
     }

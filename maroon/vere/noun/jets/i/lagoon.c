@@ -1843,6 +1843,11 @@
       return u3_none;
     }
 
+    //  Guard degenerate count: n = 0 underflows n-1 and writes out of bounds.
+    if (n < 1) {
+      return u3_none;
+    }
+
     u3_noun r_data;
 
     switch (u3x_atom(bloq)) {
@@ -1946,7 +1951,9 @@
         u3r_bytes(0, 2, (c3_y*)&(a16.v), a);
         u3r_bytes(0, 2, (c3_y*)&(b16.v), b);
         u3r_bytes(0, 2, (c3_y*)&(interval16.v), d);
-        c3_d n16 = f16_to_i64(f16_div(f16_sub(b16, a16), interval16), softfloat_round_minMag, false);
+        c3_ds raw_n16 = f16_to_i64(f16_div(f16_sub(b16, a16), interval16), softfloat_round_minMag, false);
+        if ( raw_n16 < 1 || raw_n16 > 0xffffffff ) { return u3_none; }
+        c3_d n16 = raw_n16;
         c3_y* x_bytes16 = (c3_y*)u3a_malloc(((n16+1)*2+1)*sizeof(c3_y));
         for (c3_d i = 1; i <= n16; i++) {
           ((float16_t*)x_bytes16)[n16-i] = f16_add(a16, f16_mul(i32_to_f16(i), interval16));
@@ -1963,7 +1970,9 @@
         u3r_bytes(0, 4, (c3_y*)&(a32.v), a);
         u3r_bytes(0, 4, (c3_y*)&(b32.v), b);
         u3r_bytes(0, 4, (c3_y*)&(interval32.v), d);
-        c3_d n32 = f32_to_i64(f32_div(f32_sub(b32, a32), interval32), softfloat_round_minMag, false);
+        c3_ds raw_n32 = f32_to_i64(f32_div(f32_sub(b32, a32), interval32), softfloat_round_minMag, false);
+        if ( raw_n32 < 1 || raw_n32 > 0xffffffff ) { return u3_none; }
+        c3_d n32 = raw_n32;
         c3_y* x_bytes32 = (c3_y*)u3a_malloc(((n32+1)*4+1)*sizeof(c3_y));
         for (c3_d i = 1; i <= n32; i++) {
           ((float32_t*)x_bytes32)[n32-i] = f32_add(a32, f32_mul(i32_to_f32(i), interval32));
@@ -1980,7 +1989,9 @@
         u3r_bytes(0, 8, (c3_y*)&(a64.v), a);
         u3r_bytes(0, 8, (c3_y*)&(b64.v), b);
         u3r_bytes(0, 8, (c3_y*)&(interval64.v), d);
-        c3_d n64 = f64_to_i64(f64_div(f64_sub(b64, a64), interval64), softfloat_round_minMag, false);
+        c3_ds raw_n64 = f64_to_i64(f64_div(f64_sub(b64, a64), interval64), softfloat_round_minMag, false);
+        if ( raw_n64 < 1 || raw_n64 > 0xffffffff ) { return u3_none; }
+        c3_d n64 = raw_n64;
         c3_y* x_bytes64 = (c3_y*)u3a_malloc(((n64+1)*8+1)*sizeof(c3_y));
         for (c3_d i = 1; i < n64; i++) {
           ((float64_t*)x_bytes64)[n64-i] = f64_add(a64, f64_mul(i32_to_f64(i), interval64));
@@ -2000,7 +2011,9 @@
         float128_t tmp;
         f128M_sub(&b128, &a128, &tmp);
         f128M_div(&tmp, &interval128, &interval128);
-        c3_d n128 = f128M_to_i64(&tmp, softfloat_round_minMag, false);
+        c3_ds raw_n128 = f128M_to_i64(&tmp, softfloat_round_minMag, false);
+        if ( raw_n128 < 1 || raw_n128 > 0xffffffff ) { return u3_none; }
+        c3_d n128 = raw_n128;
         c3_y* x_bytes128 = (c3_y*)u3a_malloc(((n128+1)*16+1)*sizeof(c3_y));
         float128_t i128;
         for (c3_d i = 1; i < n128; i++) {

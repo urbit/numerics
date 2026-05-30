@@ -207,15 +207,15 @@
     // syz_x is length in bytes
     c3_d syz_x = len_x * pow(2, bloq-3);
 
-    // x_bytes is the data array (w/o leading 0x1)
-    c3_y* x_bytes = (c3_y*)u3a_malloc(syz_x*sizeof(c3_y));
-    u3r_bytes(0, syz_x, x_bytes, x_data);
+    // x_bytes is the data array (w/ leading 0x1, skipped by ?axpy; holds result)
+    c3_y* x_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
+    u3r_bytes(0, syz_x+1, x_bytes, x_data);
 
-    // y_bytes is the data array (w/ leading 0x1, skipped by ?axpy)
-    c3_y* y_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
-    u3r_bytes(0, syz_x+1, y_bytes, y_data);
-    
-    //  Switch on the block size.
+    // y_bytes is the data array (w/o leading 0x1)
+    c3_y* y_bytes = (c3_y*)u3a_malloc(syz_x*sizeof(c3_y));
+    u3r_bytes(0, syz_x, y_bytes, y_data);
+
+    //  Switch on the block size.  Computes x_bytes := -1*y + x = x - y.
     switch (u3x_atom(bloq)) {
       case 4:
         haxpy(len_x, (float16_t){SB_REAL16_NEGONE}, (float16_t*)y_bytes, 1, (float16_t*)x_bytes, 1);
@@ -235,7 +235,7 @@
     }
 
     // r_data is the result noun of [data]
-    u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
+    u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), x_bytes);
 
     //  Clean up and return.
     u3a_free(x_bytes);

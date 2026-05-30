@@ -1004,13 +1004,13 @@
     |=  [a=ray]
     ^-  ?(%.y %.n)
     =/  dex  (reap (lent shape.meta.a) 0)
-    !(=((get-item (max a) dex) 0))
+    ?!(=((get-item (max a) dex) 0))
   ::
   ++  all
     |=  [a=ray]
     ^-  ?(%.y %.n)
     =/  dex  (reap (lent shape.meta.a) 0)
-    !(=((get-item (min a) dex) 0))
+    ?!(=((get-item (min a) dex) 0))
   ::
   +$  ops   $?  %add
                 %sub

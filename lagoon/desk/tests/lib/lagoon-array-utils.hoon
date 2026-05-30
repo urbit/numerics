@@ -193,6 +193,21 @@
     %-  expect-fail
       |.((set-row:la input-magic-3x3x3-4u ~[3 3] (en-ray:la [~[1 3] 4 %uint ~] ~[~[0x0 0x1 0x2]])))
   ==
+::
+::  argmin/argmax return the ravel index of the min/max element (matching
+::  the Hoon `find` reference), so the element fetched at that index must
+::  equal the min/max value.  A reversed index (len - i - 1) would fetch
+::  the wrong element for a non-symmetric array.
+++  test-argmin-argmax  ^-  tang
+  =/  a  (en-ray:la [meta=[shape=~[1 4] bloq=5 kind=%i754 tail=~] baum=~[~[.3.0 .1.0 .4.0 .2.0]]])
+  ;:  weld
+    %+  expect-eq
+      !>((get-item:la (min:la a) ~[0 0]))
+      !>((snag (argmin:la a) (ravel:la a)))
+    %+  expect-eq
+      !>((get-item:la (max:la a) ~[0 0]))
+      !>((snag (argmax:la a) (ravel:la a)))
+  ==
 
 --
 :: to-tank

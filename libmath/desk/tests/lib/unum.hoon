@@ -2,15 +2,17 @@
 ::::
 ::    Posits (2022 Posit Standard, es=2)
 ::
+::  Test strategy: the heavy exhaustive cross-check of arithmetic against
+::  SoftPosit (all 65,536 posit8 pairs for add/sub/mul/div) is done ONCE,
+::  offline, in Python.  The on-ship suite stays lean: exhaustive
+::  decode/encode round-trips, a light oracle-free property sweep, and
+::  curated SoftPosit-verified spot values.
+::
 /+  *test,
     unum
 ^|
 |%
-::  +rt: exhaustively check that bit(sea(p)) == p for every n-bit pattern.
-::
-::  Posits are non-redundant, so decode-then-encode is the identity on every
-::  bit pattern.  This catches the overwhelming majority of decode/encode and
-::  rounding bugs for posit8 (256 patterns) and posit16 (65,536 patterns).
+::  +rt: exhaustively check bit(sea(p)) == p for every n-bit pattern.
 ::
 ++  test-round-trip-rpb  ^-  tang
   =|  i=@
@@ -39,7 +41,49 @@
     %+  expect-eq  !>(`@`0x1)   !>(minpos:rpb:unum)          ::  2^-24
   ==
 ::
-::  posit8 decode (sea) spot checks against the g-layer form.
+::  Mathematical constants, cross-checked against SoftPosit (pX2) and an
+::  independent reference encoder at posit8/16/32.
+::
+++  test-consts-rpb  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x4d)  !>(pi:rpb:unum)
+    %+  expect-eq  !>(`@`0x55)  !>(tau:rpb:unum)
+    %+  expect-eq  !>(`@`0x4b)  !>(e:rpb:unum)
+    %+  expect-eq  !>(`@`0x45)  !>(phi:rpb:unum)
+    %+  expect-eq  !>(`@`0x43)  !>(sqt2:rpb:unum)
+    %+  expect-eq  !>(`@`0x3b)  !>(invsqt2:rpb:unum)
+    %+  expect-eq  !>(`@`0x3b)  !>(log2:rpb:unum)
+    %+  expect-eq  !>(`@`0x44)  !>(invlog2:rpb:unum)
+    %+  expect-eq  !>(`@`0x49)  !>(log10:rpb:unum)
+  ==
+::
+++  test-consts-rph  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x4c91)  !>(pi:rph:unum)
+    %+  expect-eq  !>(`@`0x5491)  !>(tau:rph:unum)
+    %+  expect-eq  !>(`@`0x4ae0)  !>(e:rph:unum)
+    %+  expect-eq  !>(`@`0x44f2)  !>(phi:rph:unum)
+    %+  expect-eq  !>(`@`0x4350)  !>(sqt2:rph:unum)
+    %+  expect-eq  !>(`@`0x3b50)  !>(invsqt2:rph:unum)
+    %+  expect-eq  !>(`@`0x3b17)  !>(log2:rph:unum)
+    %+  expect-eq  !>(`@`0x438b)  !>(invlog2:rph:unum)
+    %+  expect-eq  !>(`@`0x4936)  !>(log10:rph:unum)
+  ==
+::
+++  test-consts-rps  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x4c90.fdaa)  !>(pi:rps:unum)
+    %+  expect-eq  !>(`@`0x5490.fdaa)  !>(tau:rps:unum)
+    %+  expect-eq  !>(`@`0x4adf.8546)  !>(e:rps:unum)
+    %+  expect-eq  !>(`@`0x44f1.bbce)  !>(phi:rps:unum)
+    %+  expect-eq  !>(`@`0x4350.4f33)  !>(sqt2:rps:unum)
+    %+  expect-eq  !>(`@`0x3b50.4f33)  !>(invsqt2:rps:unum)
+    %+  expect-eq  !>(`@`0x3b17.217f)  !>(log2:rps:unum)
+    %+  expect-eq  !>(`@`0x438a.a3b3)  !>(invlog2:rps:unum)
+    %+  expect-eq  !>(`@`0x4935.d8de)  !>(log10:rps:unum)
+  ==
+::
+::  posit8 decode (sea) / encode (bit) spot checks against the g-layer form.
 ::
 ++  test-sea-rpb  ^-  tang
   ;:  weld
@@ -49,8 +93,6 @@
     %+  expect-eq  !>([%p %.y -2 8])      !>((sea:rpb:unum 0x48))   ::  2.0
     %+  expect-eq  !>([%p %.y -3 10])     !>((sea:rpb:unum 0x42))   ::  1.25
   ==
-::
-::  posit8 encode (bit) spot checks.
 ::
 ++  test-bit-rpb  ^-  tang
   ;:  weld
@@ -74,4 +116,46 @@
     %+  expect-eq  !>(`@`0x40)  !>((abs:rpb:unum 0xc0))    ::  |-1.0|
     %+  expect-eq  !>(`@`0xc0)  !>((sgn:rpb:unum 0xa0))    ::  sign of a negative
   ==
+::
+::  Arithmetic spot checks (SoftPosit pX2, es=2).
+::
+++  test-arith-spot-rpb  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x48)  !>((add:rpb:unum 0x40 0x40))  ::  1+1=2
+    %+  expect-eq  !>(`@`0x40)  !>((add:rpb:unum 0x38 0x38))  ::  .5+.5=1
+    %+  expect-eq  !>(`@`0x4c)  !>((add:rpb:unum 0x40 0x48))  ::  1+2=3
+    %+  expect-eq  !>(`@`0x48)  !>((sub:rpb:unum 0x4c 0x40))  ::  3-1=2
+    %+  expect-eq  !>(`@`0x54)  !>((mul:rpb:unum 0x48 0x4c))  ::  2*3=6
+    %+  expect-eq  !>(`@`0x38)  !>((div:rpb:unum 0x40 0x48))  ::  1/2=.5
+    %+  expect-eq  !>(`@`0x80)  !>((div:rpb:unum 0x40 0x0))   ::  1/0=NaR
+    %+  expect-eq  !>(`@`0x80)  !>((mul:rpb:unum 0x40 0x80))  ::  1*NaR=NaR
+  ==
+::
+++  test-arith-spot-rph  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x4c00)  !>((add:rph:unum 0x4000 0x4800))  ::  1+2=3
+    %+  expect-eq  !>(`@`0x319a)  !>((mul:rph:unum 0x4c00 0x24cd))  ::  3*0.1
+  ==
+::
+::  Light algebraic property sweep over posit8 (256 pseudo-random pairs):
+::  add/mul commute, a+0=a, a*1=a, a*(-1)=neg(a).  No oracle needed; the
+::  exhaustive arithmetic check lives in the offline Python harness.
+::
+++  test-arith-props-rpb  ^-  tang
+  =/  mu  mul:rpb:unum
+  =/  ad  add:rpb:unum
+  =/  ng  neg:rpb:unum
+  =/  on  one:rpb:unum
+  =/  no  (ng on)
+  =|  i=@
+  |-  ^-  tang
+  ?:  =(256 i)  ~
+  =/  a  i
+  =/  b  (mod (add (mul i 181) 67) 256)            :: pseudo-random partner
+  =/  e1=tang  ?:(=((mu a b) (mu b a)) ~ ~[(cat 3 'mul comm at ' (scot %ux i))])
+  =/  e2=tang  ?:(=((ad a b) (ad b a)) ~ ~[(cat 3 'add comm at ' (scot %ux i))])
+  =/  e3=tang  ?:(=(a (ad a 0x0)) ~ ~[(cat 3 'a+0 at ' (scot %ux i))])
+  =/  e4=tang  ?:(=(a (mu a on)) ~ ~[(cat 3 'a*1 at ' (scot %ux i))])
+  =/  e5=tang  ?:(=((ng a) (mu a no)) ~ ~[(cat 3 'a*-1 at ' (scot %ux i))])
+  :(weld e1 e2 e3 e4 e5 $(i +(i)))
 --

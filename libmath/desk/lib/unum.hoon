@@ -27,6 +27,10 @@
 ::
 ::  Exceptions: all bits but S zero -> S=0 is posit 0, S=1 is NaR.
 ::
+::  NB: this core defines posit add/sub/mul/div, which shadow the stdlib
+::  gates of the same name.  Internal integer arithmetic therefore uses the
+::  ^-prefixed forms (^add/^sub/^mul/^div) to reach the standard library.
+::
 |%
 ::  G-layer (decoded) representation of a posit, mirroring the stdlib float +$fn
 ::  (`[%f s=? e=@s a=@u]`):  value = (sign) a * 2^e, with a an integer
@@ -111,7 +115,7 @@
     ?:  =(nar p)  [%n ~]
     ::  sign at the MSB; work on the magnitude (two's-complement) thereafter.
     =/  neg  =(1 (cut 0 [(dec n) 1] p))
-    =/  mag  ?:(neg (sub (bex n) p) p)
+    =/  mag  ?:(neg (^sub (bex n) p) p)
     =/  pw   (dec n)                       :: payload width (bits below sign)
     =/  r0   (cut 0 [(dec pw) 1] mag)      :: regime leading bit, R0
     ::  count the regime run length k (number of bits equal to R0).
@@ -121,22 +125,22 @@
       ::  regime fills the payload: no terminator, exponent, or fraction.
       =/  r  ?:(=(1 r0) (sun:si (dec k)) (dif:si --0 (sun:si k)))
       [%p !neg (pro:si r --4) 1]
-    =/  nb  (cut 0 [(sub (dec pw) k) 1] mag)
+    =/  nb  (cut 0 [(^sub (dec pw) k) 1] mag)
     ?:  =(nb r0)
       $(k +(k))
     ::  terminator at position pw-1-k; (pw-1-k) bits of exponent+fraction below.
     =/  r       ?:(=(1 r0) (sun:si (dec k)) (dif:si --0 (sun:si k)))
-    =/  remwid  (sub pw +(k))
+    =/  remwid  (^sub pw +(k))
     =/  rem     (dis (dec (bex remwid)) mag)
     ::  exponent: top 2 bits of the remaining field (low bits truncate to 0).
     =/  elo  ?:  (^gte remwid 2)
-               (rsh [0 (sub remwid 2)] rem)
-             ?:(=(1 remwid) (mul 2 rem) 0)
-    =/  fw    ?:((^gte remwid 2) (sub remwid 2) 0)
+               (rsh [0 (^sub remwid 2)] rem)
+             ?:(=(1 remwid) (^mul 2 rem) 0)
+    =/  fw    ?:((^gte remwid 2) (^sub remwid 2) 0)
     =/  frac  (dis (dec (bex fw)) rem)
     ::  x = 4r + e (total scale); significand a = 2^fw + frac with hidden 1.
     =/  x  (sum:si (pro:si r --4) (sun:si elo))
-    =/  a  (add (bex fw) frac)
+    =/  a  (^add (bex fw) frac)
     [%p !neg (dif:si x (sun:si fw)) a]
   ::    +bit:  $up -> @
   ::
@@ -166,36 +170,36 @@
     =/  rel
       =/  ax  (abs:si x)
       ?:  (syn:si x)
-        [(sun:si (div ax 4)) (mod ax 4)]
-      =/  q  (div ax 4)
+        [(sun:si (^div ax 4)) (mod ax 4)]
+      =/  q  (^div ax 4)
       =/  m  (mod ax 4)
       ?:  =(0 m)
         [(dif:si --0 (sun:si q)) 0]
-      [(dif:si --0 (sun:si +(q))) (sub 4 m)]
+      [(dif:si --0 (sun:si +(q))) (^sub 4 m)]
     =/  r=@s   -.rel
     =/  elo=@  +.rel
     ::  saturate when the regime cannot fit in the payload.
-    ?:  (gte-s r (sun:si (sub n 2)))    (smag neg maxpos)
+    ?:  (gte-s r (sun:si (^sub n 2)))    (smag neg maxpos)
     ?:  (lte-s r (dif:si --0 (sun:si (dec n))))  (smag neg minpos)
     ::  build the regime field (value, and its width) MSB-first.
     =/  rmag  (abs:si r)
     =/  rr
       ?:  (syn:si r)
         ::  R0=1: (rmag+1) ones, then a 0 terminator.
-        [(lsh [0 1] (dec (bex +(rmag)))) (add rmag 2)]
+        [(lsh [0 1] (dec (bex +(rmag)))) (^add rmag 2)]
       ::  R0=0: rmag zeros, then a 1 terminator.
-      [1 (add rmag 1)]
+      [1 (^add rmag 1)]
     =/  regval=@  -.rr
     =/  regwid=@  +.rr
     ::  assemble payload [regime | 2-bit exponent | fraction] and its width.
-    =/  totw  (add (add regwid 2) lead)
-    =/  pay   (con (lsh [0 (add 2 lead)] regval) (con (lsh [0 lead] elo) frac))
+    =/  totw  (^add (^add regwid 2) lead)
+    =/  pay   (con (lsh [0 (^add 2 lead)] regval) (con (lsh [0 lead] elo) frac))
     =/  pw    (dec n)
     ?:  (^lte totw pw)
       ::  fits exactly; left-justify (regime to the top of the payload).
-      (smag neg (lsh [0 (sub pw totw)] pay))
+      (smag neg (lsh [0 (^sub pw totw)] pay))
     ::  round to nearest, ties to even, keeping the top pw bits.
-    =/  sh      (sub totw pw)
+    =/  sh      (^sub totw pw)
     =/  keep    (rsh [0 sh] pay)
     =/  guard   (cut 0 [(dec sh) 1] pay)
     =/  sticky  ?:(=(0 (dis (dec (bex (dec sh))) pay)) 0 1)
@@ -210,7 +214,7 @@
     |=  [neg=? mag=@]
     ^-  @
     ?.  neg  mag
-    (dis msk (sub (bex n) mag))
+    (dis msk (^sub (bex n) mag))
   ::  +gte-s / +lte-s: signed (@s) comparisons via the stdlib compare.
   ++  gte-s  |=([a=@s b=@s] ^-(? !=(-1 (cmp:si a b))))
   ++  lte-s  |=([a=@s b=@s] ^-(? !=(--1 (cmp:si a b))))
@@ -227,7 +231,7 @@
   ++  equ  |=([a=@ b=@] ^-(? =(a b)))
   ++  neq  |=([a=@ b=@] ^-(? !=(a b)))
   ::  +neg: negate (two's-complement); fixes neither 0 nor NaR.
-  ++  neg  |=(a=@ ^-(@ (dis msk (sub (bex n) a))))
+  ++  neg  |=(a=@ ^-(@ (dis msk (^sub (bex n) a))))
   ::  +abs: absolute value (NaR stays NaR).
   ++  abs  |=(a=@ ^-(@ ?:(=(1 (~(msb twoc:twoc bloq) a)) (neg a) a)))
   ::  +sgn: sign as a posit (0 -> 0, NaR -> NaR, else +-1).
@@ -238,6 +242,64 @@
     ?:  =(nar a)   nar
     ?:  =(1 (~(msb twoc:twoc bloq) a))  (neg one)
     one
+  ::
+  ::  Arithmetic (2022 standard sec 5.4).  Each combines exact g-layer
+  ::  significands and rounds once via +bit, so all four are correctly
+  ::  rounded.  Verified against SoftPosit (pX2) over all 65,536 posit8 pairs.
+  ::
+  ::    +mul:  @ -> @ -> @  (correctly-rounded product)
+  ++  mul
+    |=  [a=@ b=@]
+    ^-  @
+    =/  ua  (sea a)
+    =/  ub  (sea b)
+    ?:  |(?=(%n -.ua) ?=(%n -.ub))  nar
+    ?:  |(?=(%z -.ua) ?=(%z -.ub))  zero
+    ?>  ?=(%p -.ua)
+    ?>  ?=(%p -.ub)
+    (bit [%p =(s.ua s.ub) (sum:si e.ua e.ub) (^mul a.ua a.ub)])
+  ::    +add:  @ -> @ -> @  (correctly-rounded sum)
+  ++  add
+    |=  [a=@ b=@]
+    ^-  @
+    =/  ua  (sea a)
+    =/  ub  (sea b)
+    ?:  |(?=(%n -.ua) ?=(%n -.ub))  nar
+    ?:  ?=(%z -.ua)  b
+    ?:  ?=(%z -.ub)  a
+    ?>  ?=(%p -.ua)
+    ?>  ?=(%p -.ub)
+    ::  align both significands to the smaller exponent, then add/subtract.
+    =/  emin  ?:(=(-1 (cmp:si e.ua e.ub)) e.ua e.ub)
+    =/  s1  (lsh [0 (abs:si (dif:si e.ua emin))] a.ua)
+    =/  s2  (lsh [0 (abs:si (dif:si e.ub emin))] a.ub)
+    ?:  =(s.ua s.ub)
+      (bit [%p s.ua emin (^add s1 s2)])
+    ?:  (^gth s1 s2)
+      (bit [%p s.ua emin (^sub s1 s2)])
+    ?:  (^gth s2 s1)
+      (bit [%p s.ub emin (^sub s2 s1)])
+    zero
+  ::    +sub:  @ -> @ -> @  (a - b)
+  ++  sub  |=([a=@ b=@] ^-(@ (add a (neg b))))
+  ::    +div:  @ -> @ -> @  (correctly-rounded quotient; x/0 = NaR)
+  ++  div
+    |=  [a=@ b=@]
+    ^-  @
+    =/  ua  (sea a)
+    =/  ub  (sea b)
+    ?:  |(?=(%n -.ua) ?=(%n -.ub))  nar
+    ?:  ?=(%z -.ub)  nar
+    ?:  ?=(%z -.ua)  zero
+    ?>  ?=(%p -.ua)
+    ?>  ?=(%p -.ub)
+    ::  long division with guard bits; fold the remainder into a sticky bit.
+    =/  g    (^add n n)
+    =/  num  (lsh [0 g] a.ua)
+    =/  q    (^div num a.ub)
+    =/  qs   ?:(=(0 (mod num a.ub)) q (con q 1))
+    =/  eo   (dif:si (dif:si e.ua e.ub) (sun:si g))
+    (bit [%p =(s.ua s.ub) eo qs])
   --
 ::  posit8  ("byte"),  posit<8,2>
 ++  rpb  %*(. pp bloq 3)

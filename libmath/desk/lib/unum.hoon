@@ -75,14 +75,16 @@
   ++  one  (bit [%p %.y --0 1])
   ::    +sea:  @ -> $up
   ::
-  ::  Decode an n-bit posit atom into its g-layer +$up form.
+  ::  Decode an n-bit posit atom into its g-layer +$up form.  The decoder
+  ::  yields the fraction-aligned form: a is the hidden 1 plus all fraction
+  ::  bits, e offset so the value is exactly a * 2^e (not minimally normalized).
   ::    Examples (posit8, es=2)
-  ::      > (sea:rpb 0x40)   ::  1.0
-  ::      [%p s=%.y e=--0 a=1]
-  ::      > (sea:rpb 0x48)   ::  2.0
-  ::      [%p s=%.y e=--1 a=1]
-  ::      > (sea:rpb 0x38)   ::  0.5
-  ::      [%p s=%.y e=--3 a=1]   :: a=1, e=-1 after normalization below
+  ::      > (sea:rpb 0x40)   ::  1.0  = 8 * 2^-3
+  ::      [%p s=%.y e=-3 a=8]
+  ::      > (sea:rpb 0x48)   ::  2.0  = 8 * 2^-2
+  ::      [%p s=%.y e=-2 a=8]
+  ::      > (sea:rpb 0x42)   ::  1.25 = 10 * 2^-3
+  ::      [%p s=%.y e=-3 a=10]
   ::  Source
   ++  sea
     |=  p=@
@@ -92,7 +94,7 @@
     ?:  =(nar p)  [%n ~]
     ::  sign at the MSB; work on the magnitude (two's-complement) thereafter.
     =/  neg  =(1 (cut 0 [(dec n) 1] p))
-    =/  mag  ?:(neg (^sub (bex n) p) p)
+    =/  mag  ?:(neg (sub (bex n) p) p)
     =/  pw   (dec n)                       :: payload width (bits below sign)
     =/  r0   (cut 0 [(dec pw) 1] mag)      :: regime leading bit, R0
     ::  count the regime run length k (number of bits equal to R0).
@@ -110,10 +112,10 @@
     =/  remwid  (sub pw +(k))
     =/  rem     (dis (dec (bex remwid)) mag)
     ::  exponent: top 2 bits of the remaining field (low bits truncate to 0).
-    =/  elo  ?:  (gte remwid 2)
+    =/  elo  ?:  (^gte remwid 2)
                (rsh [0 (sub remwid 2)] rem)
              ?:(=(1 remwid) (mul 2 rem) 0)
-    =/  fw    ?:((gte remwid 2) (sub remwid 2) 0)
+    =/  fw    ?:((^gte remwid 2) (sub remwid 2) 0)
     =/  frac  (dis (dec (bex fw)) rem)
     ::  x = 4r + e (total scale); significand a = 2^fw + frac with hidden 1.
     =/  x  (sum:si (pro:si r --4) (sun:si elo))
@@ -144,7 +146,7 @@
     =/  frac  (dis (dec (bex lead)) a.up)  :: the `lead` fraction bits
     ::  split x into regime r and 2-bit exponent elo: x = 4r + elo, elo in 0..3
     ::  (floor division, so elo is always non-negative).
-    =+  ^=  [r=@s elo=@]
+    =/  rel
       =/  ax  (abs:si x)
       ?:  (syn:si x)
         [(sun:si (div ax 4)) (mod ax 4)]
@@ -153,22 +155,26 @@
       ?:  =(0 m)
         [(dif:si --0 (sun:si q)) 0]
       [(dif:si --0 (sun:si +(q))) (sub 4 m)]
+    =/  r=@s   -.rel
+    =/  elo=@  +.rel
     ::  saturate when the regime cannot fit in the payload.
     ?:  (gte-s r (sun:si (sub n 2)))    (smag neg maxpos)
     ?:  (lte-s r (dif:si --0 (sun:si (dec n))))  (smag neg minpos)
     ::  build the regime field (value, and its width) MSB-first.
     =/  rmag  (abs:si r)
-    =+  ^=  [regval=@ regwid=@]
+    =/  rr
       ?:  (syn:si r)
         ::  R0=1: (rmag+1) ones, then a 0 terminator.
         [(lsh [0 1] (dec (bex +(rmag)))) (add rmag 2)]
       ::  R0=0: rmag zeros, then a 1 terminator.
       [1 (add rmag 1)]
+    =/  regval=@  -.rr
+    =/  regwid=@  +.rr
     ::  assemble payload [regime | 2-bit exponent | fraction] and its width.
     =/  totw  (add (add regwid 2) lead)
     =/  pay   (con (lsh [0 (add 2 lead)] regval) (con (lsh [0 lead] elo) frac))
     =/  pw    (dec n)
-    ?:  (lte totw pw)
+    ?:  (^lte totw pw)
       ::  fits exactly; left-justify (regime to the top of the payload).
       (smag neg (lsh [0 (sub pw totw)] pay))
     ::  round to nearest, ties to even, keeping the top pw bits.
@@ -177,8 +183,8 @@
     =/  guard   (cut 0 [(dec sh) 1] pay)
     =/  sticky  ?:(=(0 (dis (dec (bex (dec sh))) pay)) 0 1)
     =/  lsbit   (dis 1 keep)
-    =/  up?     &(=(1 guard) |(=(1 sticky) =(1 lsbit)))
-    =/  mag     ?:(up? +(keep) keep)
+    =/  roundup  &(=(1 guard) |(=(1 sticky) =(1 lsbit)))
+    =/  mag      ?:(roundup +(keep) keep)
     ::  a carry must never spill into the sign bit; clamp to maxPos.
     =?  mag  (^gth mag maxpos)  maxpos
     (smag neg mag)
@@ -187,25 +193,24 @@
     |=  [neg=? mag=@]
     ^-  @
     ?.  neg  mag
-    (dis msk (^sub (bex n) mag))
+    (dis msk (sub (bex n) mag))
   ::  +gte-s / +lte-s: signed (@s) comparisons via the stdlib compare.
   ++  gte-s  |=([a=@s b=@s] ^-(? !=(-1 (cmp:si a b))))
   ++  lte-s  |=([a=@s b=@s] ^-(? !=(--1 (cmp:si a b))))
   ::
   ::  Comparisons.  Posit ordering is identical to two's-complement integer
   ::  ordering of the raw bits (§5.3), with NaR (= most-negative int) below
-  ::  every real posit.  We use twoc's (sound) +gth and derive the rest;
-  ::  twoc's own +lth is actually <= and is avoided.
+  ::  every real posit, so we defer to the numerics twoc lib.
   ::
   ::    +gth:  @ -> @ -> ?
   ++  gth  |=([a=@ b=@] ^-(? (~(gth twoc:twoc bloq) a b)))
-  ++  lth  |=([a=@ b=@] ^-(? (gth b a)))
-  ++  gte  |=([a=@ b=@] ^-(? |(=(a b) (gth a b))))
-  ++  lte  |=([a=@ b=@] ^-(? |(=(a b) (gth b a))))
+  ++  lth  |=([a=@ b=@] ^-(? (~(lth twoc:twoc bloq) a b)))
+  ++  gte  |=([a=@ b=@] ^-(? (~(gte twoc:twoc bloq) a b)))
+  ++  lte  |=([a=@ b=@] ^-(? (~(lte twoc:twoc bloq) a b)))
   ++  equ  |=([a=@ b=@] ^-(? =(a b)))
   ++  neq  |=([a=@ b=@] ^-(? !=(a b)))
   ::  +neg: negate (two's-complement); fixes neither 0 nor NaR.
-  ++  neg  |=(a=@ ^-(@ (dis msk (^sub (bex n) a))))
+  ++  neg  |=(a=@ ^-(@ (dis msk (sub (bex n) a))))
   ::  +abs: absolute value (NaR stays NaR).
   ++  abs  |=(a=@ ^-(@ ?:(=(1 (~(msb twoc:twoc bloq) a)) (neg a) a)))
   ::  +sgn: sign as a posit (0 -> 0, NaR -> NaR, else +-1).

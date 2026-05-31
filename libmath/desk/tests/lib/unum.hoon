@@ -45,7 +45,7 @@
   ;:  weld
     %+  expect-eq  !>([%z ~])             !>((sea:rpb:unum 0x0))
     %+  expect-eq  !>([%n ~])             !>((sea:rpb:unum 0x80))
-    %+  expect-eq  !>([%p %.y --0 1])     !>((sea:rpb:unum 0x40))   ::  1.0
+    %+  expect-eq  !>([%p %.y -3 8])      !>((sea:rpb:unum 0x40))   ::  1.0 (8*2^-3)
     %+  expect-eq  !>([%p %.y -2 8])      !>((sea:rpb:unum 0x48))   ::  2.0
     %+  expect-eq  !>([%p %.y -3 10])     !>((sea:rpb:unum 0x42))   ::  1.25
   ==

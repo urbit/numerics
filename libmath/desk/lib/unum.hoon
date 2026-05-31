@@ -6,9 +6,9 @@
 ::  https://posithub.org/docs/posit_standard-2.pdf
 ::
 ::  We represent unums using Hoon auras at four bitwidths:
-::  - @rpb @rph @rps @rpd  :: posits  (byte/half/single/double = 8/16/32/64)
-::  - @rqb @rqh @rqs       :: quires
-::  - @rvb @rvh @rvs       :: valids  (not yet implemented)
+::  - @rpb @rph @rps @rpd @rpq  :: posits  (byte/half/single/double/quad)
+::  - @rqb @rqh @rqs            :: quires
+::  - @rvb @rvh @rvs            :: valids  (not yet implemented)
 ::
 ::  STANDARD, NOT LEGACY.  The 2022 standard fixes the exponent size at
 ::  es = 2 for every width (the exponent field is a 2-bit unsigned integer,
@@ -383,13 +383,68 @@
     ?~  av  (q-to-p q)
     ?~  bv  (q-to-p q)
     $(q (q-mul-add q i.av i.bv), av t.av, bv t.bv)
+  ::
+  ::  IEEE-754 interop, same bit width only (sec 6.5).  The posit g-layer +$up
+  ::  and the stdlib float +$fn share a layout, so a posit converts only to the
+  ::  float of EQUAL width: rph<->rh (16), rps<->rs (32), rpd<->rd (64),
+  ::  rpq<->rq (128).  posit8 has no IEEE peer.  Posit zero <-> float +0; posit
+  ::  NaR <-> float NaN; float +-inf/NaN -> NaR.  Exposed per width below as
+  ::  from-rh/to-rh, etc.
+  ::
+  ++  from-ieee
+    |=  r=@
+    ^-  @
+    =/  f=fn
+      ?:  =(4 bloq)  (sea:rh r)
+      ?:  =(5 bloq)  (sea:rs r)
+      ?:  =(6 bloq)  (sea:rd r)
+      ?:  =(7 bloq)  (sea:rq r)
+      ~|(%unum-no-ieee-at-width !!)
+    ?.  ?=(%f -.f)  nar
+    ?:  =(0 a.f)  zero
+    (bit [%p s.f e.f a.f])
+  ++  to-ieee
+    |=  p=@
+    ^-  @
+    =/  u  (sea p)
+    =/  f=fn
+      ?:  ?=(%n -.u)  [%n ~]
+      ?:  ?=(%z -.u)  [%f %.y --0 0]
+      [%f s.u e.u a.u]
+    ?:  =(4 bloq)  (bit:rh f)
+    ?:  =(5 bloq)  (bit:rs f)
+    ?:  =(6 bloq)  (bit:rd f)
+    ?:  =(7 bloq)  (bit:rq f)
+    ~|(%unum-no-ieee-at-width !!)
   --
-::  posit8  ("byte"),  posit<8,2>
+::  posit8  ("byte"),    posit<8,2>  (no same-width IEEE float)
 ++  rpb  %*(. pp bloq 3)
-::  posit16 ("half"),  posit<16,2>
-++  rph  %*(. pp bloq 4)
-::  posit32 ("single"), posit<32,2>
-++  rps  %*(. pp bloq 5)
-::  posit64 ("double"), posit<64,2>
-++  rpd  %*(. pp bloq 6)
+::  posit16 ("half"),    posit<16,2> <-> @rh
+++  rph
+  =>  %*(. pp bloq 4)
+  |%
+  ++  from-rh  from-ieee
+  ++  to-rh    to-ieee
+  --
+::  posit32 ("single"),  posit<32,2> <-> @rs
+++  rps
+  =>  %*(. pp bloq 5)
+  |%
+  ++  from-rs  from-ieee
+  ++  to-rs    to-ieee
+  --
+::  posit64 ("double"),  posit<64,2> <-> @rd
+++  rpd
+  =>  %*(. pp bloq 6)
+  |%
+  ++  from-rd  from-ieee
+  ++  to-rd    to-ieee
+  --
+::  posit128 ("quad"),   posit<128,2> <-> @rq
+++  rpq
+  =>  %*(. pp bloq 7)
+  |%
+  ++  from-rq  from-ieee
+  ++  to-rq    to-ieee
+  --
 --

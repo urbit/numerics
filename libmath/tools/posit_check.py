@@ -160,6 +160,79 @@ def check_arith():
         ok &= (bad == 0)
     return ok
 
+def isqrt(x):
+    if x == 0: return 0
+    r = 1 << ((x.bit_length() + 1) // 2)
+    while True:
+        nr = (r + x // r) // 2
+        if nr >= r: break
+        r = nr
+    while r * r > x: r -= 1
+    return r
+
+def my_sqrt(p, n):
+    u = decode(p, n)
+    if u[0] == 'n': return 1 << (n - 1)
+    if u[0] == 'z': return 0
+    _, neg, e, a = u
+    if neg: return 1 << (n - 1)
+    if e & 1: a <<= 1; e -= 1
+    G = 2 * n; m = a << (2 * G); s = isqrt(m)
+    if s * s != m: s |= 1
+    return encode(False, e // 2 - G, s, n)
+
+def my_round(p, n):
+    u = decode(p, n)
+    if u[0] != 'p': return p
+    _, neg, e, a = u
+    if e >= 0: return p
+    sh = -e; hi = a >> sh; rem = a & ((1 << sh) - 1); half = 1 << (sh - 1)
+    if rem > half or (rem == half and (hi & 1)): hi += 1
+    if hi == 0: return 0
+    return encode(neg, 0, hi, n)
+
+def my_fma(a, b, c, n):
+    ua, ub, uc = decode(a, n), decode(b, n), decode(c, n)
+    if ua[0] == 'n' or ub[0] == 'n' or uc[0] == 'n': return 1 << (n - 1)
+    if ua[0] == 'z' or ub[0] == 'z': return c
+    _, sa, ea, aa = ua; _, sb, eb, ab = ub
+    ps, pe, pa = sa ^ sb, ea + eb, aa * ab
+    if uc[0] == 'z': return encode(ps, pe, pa, n)
+    _, sc2, ec, ac = uc
+    emin = min(pe, ec); s1 = pa << (pe - emin); s2 = ac << (ec - emin)
+    if ps == sc2: return encode(ps, emin, s1 + s2, n)
+    if s1 > s2: return encode(ps, emin, s1 - s2, n)
+    if s2 > s1: return encode(sc2, emin, s2 - s1, n)
+    return 0
+
+def my_from_i(v, n):
+    if v == 0: return 0
+    return encode(v < 0, 0, abs(v), n)
+
+def check_elementary():
+    if sp is None:
+        print("elementary: SKIP (softposit not installed)"); return True
+    def mk(pat, n):
+        o = sp.convertDoubleToPX2(0.0, n); o.v = pat << (32 - n); return o
+    def pt(p, n): return p.v >> (32 - n)
+    n = 8; ok = True
+    bad = sum(1 for p in range(256) if my_sqrt(p, n) != pt(sp.pX2_sqrt(mk(p, n), n), n))
+    print(f"  sqrt: {256 - bad}/256 match"); ok &= (bad == 0)
+    # roundToInt: skip p=0x81 (-maxPos), a SoftPosit sign-flip bug at the extreme
+    bad = sum(1 for p in range(256)
+              if p != 0x81 and my_round(p, n) != pt(sp.pX2_roundToInt(mk(p, n), n), n))
+    print(f"  roundToInt: {255 - bad}/255 match (0x81 excluded: SoftPosit bug)")
+    ok &= (bad == 0)
+    bad = sum(1 for v in range(-300, 301) if my_from_i(v, n) != pt(sp.i32_to_pX2(v, n), n))
+    print(f"  i32->posit: {601 - bad}/601 match"); ok &= (bad == 0)
+    import random as _r; _r.seed(7); bad = 0
+    for _ in range(20000):
+        a, b, c = _r.randrange(256), _r.randrange(256), _r.randrange(256)
+        if my_fma(a, b, c, n) != pt(sp.pX2_mulAdd(mk(a, n), mk(b, n), mk(c, n), n), n): bad += 1
+    print(f"  fma: {20000 - bad}/20000 sampled match"); ok &= (bad == 0)
+    return ok
+
 if __name__ == '__main__':
     c = check_consts(); a = check_arith()
-    print("ALL PASS:", c and a)
+    print("elementary:"); el = check_elementary()
+    print("ALL PASS:", c and a and el)

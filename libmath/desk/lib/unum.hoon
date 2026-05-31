@@ -300,6 +300,107 @@
     =/  qs   ?:(=(0 (mod num a.ub)) q (con q 1))
     =/  eo   (dif:si (dif:si e.ua e.ub) (sun:si g))
     (bit [%p =(s.ua s.ub) eo qs])
+  ::
+  ::  Elementary and rounding ops.
+  ::
+  ::  +isqt: integer (floor) square root, by Newton's method.
+  ++  isqt
+    |=  x=@
+    ^-  @
+    ?:  =(0 x)  0
+    =/  r  (bex (^div (^add (met 0 x) 1) 2))
+    |-  ^-  @
+    =/  nr  (^div (^add r (^div x r)) 2)
+    ?:  (^gte nr r)
+      |-  ^-  @
+      ?:  (^gth (^mul r r) x)  $(r (dec r))
+      r
+    $(r nr)
+  ::    +sqt:  @ -> @  (correctly-rounded square root; sqrt of negative = NaR)
+  ++  sqt
+    |=  p=@
+    ^-  @
+    =/  u  (sea p)
+    ?:  ?=(%n -.u)  nar
+    ?:  ?=(%z -.u)  zero
+    ?>  ?=(%p -.u)
+    ?.  s.u  nar                                  :: negative -> NaR
+    =/  odd  =(1 (dis 1 (abs:si e.u)))            :: exponent parity
+    =/  aa   ?:(odd (lsh [0 1] a.u) a.u)          :: make exponent even
+    =/  ee   ?:(odd (dif:si e.u --1) e.u)
+    =/  g    (^add n n)
+    =/  m    (lsh [0 (^mul 2 g)] aa)
+    =/  s    (isqt m)
+    =/  sx   ?:(=(m (^mul s s)) s (con s 1))      :: fold sticky if inexact
+    (bit [%p %.y (dif:si (fra:si ee --2) (sun:si g)) sx])
+  ::    +round:  (mode) -> @ -> @  (round to integer-valued posit)
+  ++  round
+    |=  mode=?(%near %down %up)
+    |=  p=@
+    ^-  @
+    =/  u  (sea p)
+    ?.  ?=(%p -.u)  p
+    ?:  (gte-s e.u --0)  p                        :: already integer-valued
+    =/  sh    (abs:si e.u)                        :: -e
+    =/  hi    (rsh [0 sh] a.u)
+    =/  rem   (dis (dec (bex sh)) a.u)
+    =/  half  (bex (dec sh))
+    =?  hi  &(?=(%near mode) |((^gth rem half) &(=(rem half) =(1 (dis 1 hi)))))
+      +(hi)
+    =?  hi  &(?=(%down mode) !s.u !=(0 rem))  +(hi)
+    =?  hi  &(?=(%up mode) s.u !=(0 rem))     +(hi)
+    ?:  =(0 hi)  zero
+    (bit [%p s.u --0 hi])
+  ::    +rnd / +flr / +cel:  nearest-even / floor / ceil
+  ++  rnd  (round %near)
+  ++  flr  (round %down)
+  ++  cel  (round %up)
+  ::    +sun:  @u -> @  (unsigned integer to posit)
+  ++  sun  |=(v=@ ^-(@ ?:(=(0 v) zero (bit [%p %.y --0 v]))))
+  ::    +san:  @s -> @  (signed integer to posit)
+  ++  san
+    |=  v=@s
+    ^-  @
+    =+  [sn mg]=(old:si v)
+    ?:  =(0 mg)  zero
+    (bit [%p sn --0 mg])
+  ::    +toi:  @ -> (unit @s)  (posit to nearest-even integer; NaR -> ~)
+  ++  toi
+    |=  p=@
+    ^-  (unit @s)
+    =/  u  (sea p)
+    ?:  ?=(%n -.u)  ~
+    =/  r   (rnd p)
+    =/  ur  (sea r)
+    ?:  ?=(%z -.ur)  `--0
+    ?>  ?=(%p -.ur)
+    ::  value is integer-valued; shift the significand into place (exact).
+    =/  sh   (abs:si e.ur)
+    =/  mag  ?:((gte-s e.ur --0) (lsh [0 sh] a.ur) (rsh [0 sh] a.ur))
+    `(new:si s.ur mag)
+  ::    +fma:  @ -> @ -> @ -> @  (fused multiply-add a*b+c, single rounding)
+  ++  fma
+    |=  [a=@ b=@ c=@]
+    ^-  @
+    =/  ua  (sea a)
+    =/  ub  (sea b)
+    =/  uc  (sea c)
+    ?:  |(?=(%n -.ua) ?=(%n -.ub) ?=(%n -.uc))  nar
+    ?:  |(?=(%z -.ua) ?=(%z -.ub))  c
+    ?>  ?=(%p -.ua)
+    ?>  ?=(%p -.ub)
+    =/  ps  =(s.ua s.ub)
+    =/  pe  (sum:si e.ua e.ub)
+    =/  pa  (^mul a.ua a.ub)
+    ?:  ?=(%z -.uc)  (bit [%p ps pe pa])
+    ?>  ?=(%p -.uc)
+    =/  emin  ?:(=(-1 (cmp:si pe e.uc)) pe e.uc)
+    =/  s1  (lsh [0 (abs:si (dif:si pe emin))] pa)
+    =/  s2  (lsh [0 (abs:si (dif:si e.uc emin))] a.uc)
+    ?:  =(ps s.uc)    (bit [%p ps emin (^add s1 s2)])
+    ?:  (^gth s1 s2)  (bit [%p ps emin (^sub s1 s2)])
+    ?:  (^gth s2 s1)  (bit [%p s.uc emin (^sub s2 s1)])
+    zero
   --
 ::  posit8  ("byte"),  posit<8,2>
 ++  rpb  %*(. pp bloq 3)

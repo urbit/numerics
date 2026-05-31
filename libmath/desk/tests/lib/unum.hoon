@@ -1,226 +1,77 @@
   ::  /tests/lib/unum
 ::::
-::    Posits
+::    Posits (2022 Posit Standard, es=2)
 ::
-/+  math,
-    *test,
+/+  *test,
     unum
 ^|
 |%
-::  posit8 tests
-++  test-values-rpb  ^-  tang
-  ;:  weld
-    ::  0
-    %+  expect-eq
-      !>  `@rpb`0b0
-      !>  zero:rpb:unum
-    ::  1
-    %+  expect-eq
-      !>  `@rpb`0b100.0000
-      !>  one:rpb:unum
-    ::  -1
-    %+  expect-eq
-      !>  `@rpb`0b1100.0000
-      !>  neg-one:rpb:unum
-    ::  NaR
-    %+  expect-eq
-      !>  `@rpb`0b1000.0000
-      !>  nar:rpb:unum
-    ::  pi
-    %+  expect-eq
-      !>  `@rpb`0b110.1001
-      !>  pi:rpb:unum
-    ::  tau
-    %+  expect-eq
-      !>  `@rpb`0b111.0101
-      !>  tau:rpb:unum
-    ::  e
-    %+  expect-eq
-      !>  `@rpb`0b110.0110
-      !>  e:rpb:unum
-    ::  phi
-    %+  expect-eq
-      !>  `@rpb`0b101.0100
-      !>  phi:rpb:unum
-    ::  sqrt(2)
-    %+  expect-eq
-      !>  `@rpb`0b100.1101
-      !>  sqt2:rpb:unum
-    ::  TODO other constants
-    ::  huge
-    %+  expect-eq
-      !>  `@rpb`0b111.1111
-      !>  huge:rpb:unum
-    ::  neg-huge
-    %+  expect-eq
-      !>  `@rpb`0b1000.0001
-      !>  neg-huge:rpb:unum
-    ::  tiny
-    %+  expect-eq
-      !>  `@rpb`0b1
-      !>  tiny:rpb:unum
-    ::  neg-tiny
-    %+  expect-eq
-      !>  `@rpb`0b1111.1111
-      !>  neg-tiny:rpb:unum
-  ==
+::  +rt: exhaustively check that bit(sea(p)) == p for every n-bit pattern.
 ::
-++  test-from-rpb  ^-  tang
-  ;:  weld
-    ::  0
-    %+  expect-eq
-      !>  [%z 3 ~]
-      !>  (from:rpb:unum zero:rpb:unum)
-    ::  1
-    %+  expect-eq
-      !>  [%p 3 s=%.y x=--0 f=0]
-      !>  (from:rpb:unum one:rpb:unum)
-    ::  NaR
-    %+  expect-eq
-      !>  [%n 3 ~]
-      !>  (from:rpb:unum nar:rpb:unum)
-    ::  tau
-    %+  expect-eq
-      !>  [%p 3 s=%.y x=2 f=0b101]
-      !>  (from:rpb:unum tau:rpb:unum)
-    ::  huge
-    %+  expect-eq
-      !>  [%p 3 s=%.y x=--6 f=0b0]
-      !>  (from:rpb:unum huge:rpb:unum)
-    ::  neg-huge
-    %+  expect-eq
-      !>  [%p 3 s=%.n x=-6 f=0b0]
-      !>  (from:rpb:unum neg-huge:rpb:unum)
-    ::  tiny
-    %+  expect-eq
-      !>  [%p 3 s=%.y x=-6 f=0b0]
-      !>  (from:rpb:unum tiny:rpb:unum)
-    ::  neg-tiny
-    %+  expect-eq
-      !>  [%p 3 s=%.n x=--6 f=0b0]
-      !>  (from:rpb:unum neg-tiny:rpb:unum)
-  ==
-::
-++  test-into-rpb  ^-  tang
-  ;:  weld
-    ::  0
-    %+  expect-eq
-      !>  zero:rpb:unum
-      !>  (into:rpb:unum [%z 3 ~])
-    ::  1
-    %+  expect-eq
-      !>  one:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.y x=--0 f=0])
-    ::  1.25
-    %+  expect-eq
-      !>  `@rpb`0b100.1000
-      !>  (into:rpb:unum [%p 3 s=%.y x=--0 f=0b1000])
-    ::  0.5
-    %+  expect-eq
-      !>  `@rpb`0b10.0000
-      !>  (into:rpb:unum [%p 3 s=%.y x=-1 f=0])
-    ::  -1.0
-    %+  expect-eq
-      !>  neg-one:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.n x=--0 f=0])
-    ::  huge
-    %+  expect-eq
-      !>  huge:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.y x=--6 f=0b0])
-    ::  neg-huge
-    %+  expect-eq
-      !>  neg-huge:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.n x=-6 f=0b0])
-    ::  tiny
-    %+  expect-eq
-      !>  tiny:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.y x=-6 f=0b0])
-    ::  neg-tiny
-    %+  expect-eq
-      !>  neg-tiny:rpb:unum
-      !>  (into:rpb:unum [%p 3 s=%.n x=--6 f=0b0])
-  ==
+::  Posits are non-redundant, so decode-then-encode is the identity on every
+::  bit pattern.  This catches the overwhelming majority of decode/encode and
+::  rounding bugs for posit8 (256 patterns) and posit16 (65,536 patterns).
 ::
 ++  test-round-trip-rpb  ^-  tang
+  =|  i=@
+  |-  ^-  tang
+  ?:  =(256 i)  ~
+  =/  rt  (bit:rpb:unum (sea:rpb:unum i))
+  ?:  =(i rt)  $(i +(i))
+  [(cat 3 'rpb round-trip failed at ' (scot %ux i)) $(i +(i))]
+::
+++  test-round-trip-rph  ^-  tang
+  =|  i=@
+  |-  ^-  tang
+  ?:  =(65.536 i)  ~
+  =/  rt  (bit:rph:unum (sea:rph:unum i))
+  ?:  =(i rt)  $(i +(i))
+  [(cat 3 'rph round-trip failed at ' (scot %ux i)) $(i +(i))]
+::
+::  posit8 spot values (es=2): hand-derived canonical bit patterns.
+::
+++  test-values-rpb  ^-  tang
   ;:  weld
-    ::  0
-    %+  expect-eq
-      !>  zero:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum zero:rpb:unum))
-    ::  1
-    %+  expect-eq
-      !>  one:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum one:rpb:unum))
-    ::  -1.0
-    %+  expect-eq
-      !>  neg-one:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum neg-one:rpb:unum))
-    ::  NaR
-    %+  expect-eq
-      !>  nar:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum nar:rpb:unum))
-    ::  pi
-    %+  expect-eq
-      !>  pi:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum pi:rpb:unum))
-    ::  tau
-    %+  expect-eq
-      !>  tau:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum tau:rpb:unum))
-    ::  e
-    %+  expect-eq
-      !>  e:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum e:rpb:unum))
-    ::  phi
-    %+  expect-eq
-      !>  phi:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum phi:rpb:unum))
-    ::  sqrt(2)
-    %+  expect-eq
-      !>  sqt2:rpb:unum
-      !>  (into:rpb:unum (from:rpb:unum sqt2:rpb:unum))
-    :: TODO other constants, huge, neg-huge, tiny, neg-tiny, etc.
+    %+  expect-eq  !>(`@`0x0)   !>(zero:rpb:unum)
+    %+  expect-eq  !>(`@`0x80)  !>(nar:rpb:unum)
+    %+  expect-eq  !>(`@`0x40)  !>(one:rpb:unum)             ::  1.0
+    %+  expect-eq  !>(`@`0x7f)  !>(maxpos:rpb:unum)          ::  2^24
+    %+  expect-eq  !>(`@`0x1)   !>(minpos:rpb:unum)          ::  2^-24
   ==
 ::
-::  posit16 tests
-++  test-values-rph  ^-  tang
+::  posit8 decode (sea) spot checks against the g-layer form.
+::
+++  test-sea-rpb  ^-  tang
   ;:  weld
-    ::  0
-    %+  expect-eq
-      !>  `@rph`0b0
-      !>  zero:rph:unum
-    ::  1
-    %+  expect-eq
-      !>  `@rph`0b1000.0000.0000.0000
-      !>  one:rph:unum
-    ::  -1
-    %+  expect-eq
-      !>  `@rph`0b11000.0000.0000.0000
-      !>  neg-one:rph:unum
-    ::  NaR
-    %+  expect-eq
-      !>  `@rph`0b10000.0000.0000.0000
-      !>  nar:rph:unum
-    ::  pi
-    %+  expect-eq
-      !>  `@rph`0b110.1001.0001.1111
-      !>  pi:rph:unum
-    ::  tau
-    %+  expect-eq
-      !>  `@rph`0b111.0101.1001.1001
-      !>  tau:rph:unum
-    ::  e
-    %+  expect-eq
-      !>  `@rph`0b110.0110.0110.0110
-      !>  e:rph:unum
-    ::  phi
-    %+  expect-eq
-      !>  `@rph`0b101.0100.1010.1001
-      !>  phi:rph:unum
-    ::  sqrt(2)
-    %+  expect-eq
-      !>  `@rph`0b100.1101.0111.1011
-      !>  sqt2:rph:unum
-    :: TODO other constants, huge, neg-huge, tiny, neg-tiny, etc.
+    %+  expect-eq  !>([%z ~])             !>((sea:rpb:unum 0x0))
+    %+  expect-eq  !>([%n ~])             !>((sea:rpb:unum 0x80))
+    %+  expect-eq  !>([%p %.y --0 1])     !>((sea:rpb:unum 0x40))   ::  1.0
+    %+  expect-eq  !>([%p %.y -2 8])      !>((sea:rpb:unum 0x48))   ::  2.0
+    %+  expect-eq  !>([%p %.y -3 10])     !>((sea:rpb:unum 0x42))   ::  1.25
+  ==
+::
+::  posit8 encode (bit) spot checks.
+::
+++  test-bit-rpb  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x0)   !>((bit:rpb:unum [%z ~]))
+    %+  expect-eq  !>(`@`0x80)  !>((bit:rpb:unum [%n ~]))
+    %+  expect-eq  !>(`@`0x40)  !>((bit:rpb:unum [%p %.y --0 1]))   ::  1.0
+    %+  expect-eq  !>(`@`0x48)  !>((bit:rpb:unum [%p %.y -2 8]))    ::  2.0
+    %+  expect-eq  !>(`@`0xc0)  !>((bit:rpb:unum [%p %.n --0 1]))   ::  -1.0
+  ==
+::
+::  comparisons and sign ops (signed two's-complement ordering, NaR lowest).
+::
+++  test-compare-rpb  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(%.y)  !>((lth:rpb:unum 0x38 0x40))   ::  0.5 < 1.0
+    %+  expect-eq  !>(%.n)  !>((lth:rpb:unum 0x40 0x38))
+    %+  expect-eq  !>(%.y)  !>((gth:rpb:unum 0x40 0xc0))   ::  1.0 > -1.0
+    %+  expect-eq  !>(%.y)  !>((lth:rpb:unum 0x80 0xc0))   ::  NaR < -1.0
+    %+  expect-eq  !>(%.y)  !>((equ:rpb:unum 0x80 0x80))   ::  NaR == NaR
+    %+  expect-eq  !>(`@`0xc0)  !>((neg:rpb:unum 0x40))    ::  -(1.0)
+    %+  expect-eq  !>(`@`0x40)  !>((abs:rpb:unum 0xc0))    ::  |-1.0|
+    %+  expect-eq  !>(`@`0xc0)  !>((sgn:rpb:unum 0xa0))    ::  sign of a negative
   ==
 --

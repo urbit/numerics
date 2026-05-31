@@ -71,8 +71,25 @@
   ++  nar     (bex (dec n))         :: 1000...0, also the most-negative int
   ++  maxpos  (dec (bex (dec n)))   :: 0111...1, value 2^(4n-8)
   ++  minpos  `@`1                  :: 0000...1, value 2^-(4n-8)
+  ::  huge/tiny: aliases for the structural extremes (cf. /lib/math).
+  ++  huge  maxpos
+  ++  tiny  minpos
   ::  one: the posit 1.0 (s=0, e=0, a=1).
   ++  one  (bit [%p %.y --0 1])
+  ::  Mathematical constants, correctly rounded at every width.  Each is the
+  ::  recognizable Q2.52 fixed-point hex of the value (e.g. pi = 0x3.243F6A88...),
+  ::  i.e. value = a * 2^-52, fed through the verified encoder.
+  ::  Cross-checked against SoftPosit (pX2, es=2) and an independent reference
+  ::  encoder for posit8/16/32.
+  ++  pi       (bit [%p %.y -52 0x32.43f6.a888.5a31])   ::  3.14159265358979
+  ++  tau      (bit [%p %.y -52 0x64.87ed.5110.b461])   ::  6.28318530717959
+  ++  e        (bit [%p %.y -52 0x2b.7e15.1628.aed3])   ::  2.71828182845905
+  ++  phi      (bit [%p %.y -52 0x19.e377.9b97.f4a8])   ::  1.61803398874989
+  ++  sqt2     (bit [%p %.y -52 0x16.a09e.667f.3bcd])   ::  1.41421356237310
+  ++  invsqt2  (bit [%p %.y -52 0xb.504f.333f.9de6])    ::  0.70710678118655
+  ++  log2     (bit [%p %.y -52 0xb.1721.7f7d.1cf8])    ::  0.69314718055995
+  ++  invlog2  (bit [%p %.y -52 0x17.1547.652b.82fe])   ::  1.44269504088896
+  ++  log10    (bit [%p %.y -52 0x24.d763.776a.aa2b])   ::  2.30258509299405
   ::    +sea:  @ -> $up
   ::
   ::  Decode an n-bit posit atom into its g-layer +$up form.  The decoder

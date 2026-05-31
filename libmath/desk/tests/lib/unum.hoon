@@ -225,4 +225,41 @@
     %+  expect-eq  !>(`@`0x40)
       !>((fdp:rpb:unum ~[0x7f 0x40 0x81] ~[0x40 0x40 0x40]))
   ==
+::
+::  posit32 <-> single (value-based; posit -2.0 = 0xb800.0000, NOT the
+::  single -2.0 = 0xc000.0000 -- the two formats differ at the same width).
+++  test-ieee-rps  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x3f80.0000)  !>((to-rs:rps:unum 0x4000.0000))   ::  1.0
+    %+  expect-eq  !>(`@`0xc000.0000)  !>((to-rs:rps:unum 0xb800.0000))   ::  -2.0
+    %+  expect-eq  !>(`@`0x3f00.0000)  !>((to-rs:rps:unum 0x3800.0000))   ::  0.5
+    %+  expect-eq  !>(`@`0x4000.0000)  !>((from-rs:rps:unum 0x3f80.0000)) ::  1.0
+    %+  expect-eq  !>(`@`0xb800.0000)  !>((from-rs:rps:unum 0xc000.0000)) ::  -2.0
+    %+  expect-eq  !>(`@`0x3800.0000)  !>((from-rs:rps:unum 0x3f00.0000)) ::  0.5
+  ==
+::
+++  test-ieee-rph  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x3c00)  !>((to-rh:rph:unum 0x4000))   ::  posit16 1.0 -> half
+    %+  expect-eq  !>(`@`0xc000)  !>((to-rh:rph:unum 0xb800))   ::  posit16 -2.0
+    %+  expect-eq  !>(`@`0x4000)  !>((from-rh:rph:unum 0x3c00)) ::  half 1.0 -> posit16
+    %+  expect-eq  !>(`@`0xb800)  !>((from-rh:rph:unum 0xc000)) ::  -2.0
+  ==
+::
+::  The matrix: ANY posit width <-> ANY float width (value-based).  posits
+::  pack more accuracy per bit, so cross-width is the useful correspondence.
+::
+++  test-ieee-matrix  ^-  tang
+  ;:  weld
+    ::  posit16 1.0 -> single 1.0
+    %+  expect-eq  !>(`@`0x3f80.0000)  !>((to-rs:rph:unum 0x4000))
+    ::  posit32 1.0 -> double 1.0
+    %+  expect-eq  !>(`@`0x3ff0.0000.0000.0000)  !>((to-rd:rps:unum 0x4000.0000))
+    ::  posit8  1.0 -> single 1.0
+    %+  expect-eq  !>(`@`0x3f80.0000)  !>((to-rs:rpb:unum 0x40))
+    ::  single 1.0 -> posit16 1.0
+    %+  expect-eq  !>(`@`0x4000)  !>((from-rs:rph:unum 0x3f80.0000))
+    ::  double 1.0 -> posit32 1.0
+    %+  expect-eq  !>(`@`0x4000.0000)  !>((from-rd:rps:unum 0x3ff0.0000.0000.0000))
+  ==
 --

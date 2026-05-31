@@ -199,4 +199,30 @@
     %+  expect-eq  !>(`@`0x56)  !>((fma:rpb:unum 0x48 0x4c 0x40))  ::  2*3+1=7
     %+  expect-eq  !>(`@`0x80)  !>((fma:rpb:unum 0x48 0x80 0x40))  ::  NaR
   ==
+::
+::  Quire (Phase 4): exact accumulation + fused dot product (SoftPosit qX2).
+::
+++  test-quire-rpb  ^-  tang
+  ;:  weld
+    ::  p -> q -> p round trips (exact)
+    %+  expect-eq  !>(`@`0x42)  !>((q-to-p:rpb:unum (p-to-q:rpb:unum 0x42)))
+    %+  expect-eq  !>(`@`0x38)  !>((q-to-p:rpb:unum (p-to-q:rpb:unum 0x38)))
+    ::  q-add-p: 1 + 2 = 3
+    %+  expect-eq  !>(`@`0x4c)
+      !>((q-to-p:rpb:unum (q-add-p:rpb:unum (p-to-q:rpb:unum 0x40) 0x48)))
+    ::  q-mul-add: 0 + 2*3 = 6
+    %+  expect-eq  !>(`@`0x54)
+      !>((q-to-p:rpb:unum (q-mul-add:rpb:unum q-zero:rpb:unum 0x48 0x4c)))
+  ==
+::
+++  test-fdp-rpb  ^-  tang
+  ;:  weld
+    ::  [1,2] . [3,1] = 5
+    %+  expect-eq  !>(`@`0x52)  !>((fdp:rpb:unum ~[0x40 0x48] ~[0x4c 0x40]))
+    ::  [2,3] . [2,3] = 13
+    %+  expect-eq  !>(`@`0x5d)  !>((fdp:rpb:unum ~[0x48 0x4c] ~[0x48 0x4c]))
+    ::  exact accumulation: maxpos + 1 - maxpos = 1 (naive float sum gives 0)
+    %+  expect-eq  !>(`@`0x40)
+      !>((fdp:rpb:unum ~[0x7f 0x40 0x81] ~[0x40 0x40 0x40]))
+  ==
 --

@@ -232,7 +232,36 @@ def check_elementary():
     print(f"  fma: {20000 - bad}/20000 sampled match"); ok &= (bad == 0)
     return ok
 
+def my_fdp(av, bv, n):
+    acc = 0; sc = 8 * n - 16
+    for a, b in zip(av, bv):
+        ua, ub = decode(a, n), decode(b, n)
+        if ua[0] == 'n' or ub[0] == 'n': return 1 << (n - 1)
+        if ua[0] == 'z' or ub[0] == 'z': continue
+        _, sa, ea, aa = ua; _, sb, eb, ab = ub
+        qc = (aa * ab) << (ea + eb + sc)
+        acc += -qc if (sa ^ sb) else qc
+    return ref_value_encode(Fraction(acc, 1 << sc), n)
+
+def check_quire():
+    if sp is None:
+        print("quire: SKIP (softposit not installed)"); return True
+    def mk(pat, n):
+        o = sp.convertDoubleToPX2(0.0, n); o.v = pat << (32 - n); return o
+    def pt(p, n): return p.v >> (32 - n)
+    import random as _r; _r.seed(11); n = 8; bad = 0; T = 3000
+    for _ in range(T):
+        L = _r.randrange(1, 6)
+        av = [_r.randrange(256) for _ in range(L)]
+        bv = [_r.randrange(256) for _ in range(L)]
+        q = sp.qX2Clr()
+        for a, b in zip(av, bv): q = sp.qX2_fdp_add(q, mk(a, n), mk(b, n))
+        if my_fdp(av, bv, n) != pt(sp.qX2_to_pX2(q, n), n): bad += 1
+    print(f"  fdp: {T - bad}/{T} random vectors match")
+    return bad == 0
+
 if __name__ == '__main__':
     c = check_consts(); a = check_arith()
     print("elementary:"); el = check_elementary()
-    print("ALL PASS:", c and a and el)
+    print("quire:"); q = check_quire()
+    print("ALL PASS:", c and a and el and q)

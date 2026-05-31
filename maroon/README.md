@@ -5,6 +5,14 @@
 - Our current objective is to implement `++forward` inference.
 - The `++backward` arms need to deal with `grad_output` arguments.
 
+###  Roadmap
+
+- [ ] **Migrate the ray kind tag `%real` → `%i754` (and meta field `fxp` → `tail`)
+      across Maroon's Hoon.** The lagoon C jet is now a symlink to the canonical
+      `lagoon/vere/noun/jets/i/lagoon.c`, which dispatches on `c3__i754`. Until
+      Maroon's Hoon emits `%i754`-tagged rays, those jets fall through to the
+      `default` branch and run unjetted. (`real` was the old name for `i754`.)
+
 ##  Code
 
 ### Layer Zero (Opcodes)

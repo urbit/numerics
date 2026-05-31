@@ -37,12 +37,16 @@
     c3_d c[2];
   };
 
+  //  SoftBLAS is now stateless: rounding is passed per call. This holds
+  //  the active mode (replaces the old softblas_roundingMode global).
+  static c3_y _la_rnd = 'n';
+
   //  Set the SoftFloat/SoftBLAS rounding mode from a rounding-mode atom.
   //  Accepts %n %u %d %z (see +$rounding-mode); %a (nearest, ties away)
   //  is handled too, but the hoon @rs/@rd/@rq/@rh doors never produce it.
   //  Any other value bails.
   static inline void
-  _set_rounding(c3_w a)
+  _set_rounding_la(c3_w a)
   {
     // We could use SoftBLAS set_rounding() to set the SoftFloat
     // mode as well, but it's more explicit to do it here since
@@ -56,27 +60,27 @@
     // %n - near
     case c3__n:
       softfloat_roundingMode = softfloat_round_near_even;
-      softblas_roundingMode = 'n';
+      _la_rnd = 'n';
       break;
     // %z - zero
     case c3__z:
       softfloat_roundingMode = softfloat_round_minMag;
-      softblas_roundingMode = 'z';
+      _la_rnd = 'z';
       break;
     // %u - up
     case c3__u:
       softfloat_roundingMode = softfloat_round_max;
-      softblas_roundingMode = 'u';
+      _la_rnd = 'u';
       break;
     // %d - down
     case c3__d:
       softfloat_roundingMode = softfloat_round_min;
-      softblas_roundingMode = 'd';
+      _la_rnd = 'd';
       break;
     // %a - away
     case c3__a:
       softfloat_roundingMode = softfloat_round_near_maxMag;
-      softblas_roundingMode = 'a';
+      _la_rnd = 'a';
       break;
     }
   }
@@ -161,19 +165,19 @@
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
       case 4:
-        haxpy(len_x, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
+        haxpy(len_x, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1, _la_rnd);
         break;
 
       case 5:
-        saxpy(len_x, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1);
+        saxpy(len_x, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1, _la_rnd);
         break;
 
       case 6:
-        daxpy(len_x, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1);
+        daxpy(len_x, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1, _la_rnd);
         break;
 
       case 7:
-        qaxpy(len_x, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1);
+        qaxpy(len_x, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1, _la_rnd);
         break;
     }
 
@@ -220,19 +224,19 @@
     //  Switch on the block size.  Computes x_bytes := -1*y + x = x - y.
     switch (u3x_atom(bloq)) {
       case 4:
-        haxpy(len_x, (float16_t){SB_REAL16_NEGONE}, (float16_t*)y_bytes, 1, (float16_t*)x_bytes, 1);
+        haxpy(len_x, (float16_t){SB_REAL16_NEGONE}, (float16_t*)y_bytes, 1, (float16_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 5:
-        saxpy(len_x, (float32_t){SB_REAL32_NEGONE}, (float32_t*)y_bytes, 1, (float32_t*)x_bytes, 1);
+        saxpy(len_x, (float32_t){SB_REAL32_NEGONE}, (float32_t*)y_bytes, 1, (float32_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 6:
-        daxpy(len_x, (float64_t){SB_REAL64_NEGONE}, (float64_t*)y_bytes, 1, (float64_t*)x_bytes, 1);
+        daxpy(len_x, (float64_t){SB_REAL64_NEGONE}, (float64_t*)y_bytes, 1, (float64_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 7:
-        qaxpy(len_x, (float128_t){SB_REAL128L_NEGONE,SB_REAL128U_NEGONE}, (float128_t*)y_bytes, 1, (float128_t*)x_bytes, 1);
+        qaxpy(len_x, (float128_t){SB_REAL128L_NEGONE,SB_REAL128U_NEGONE}, (float128_t*)y_bytes, 1, (float128_t*)x_bytes, 1, _la_rnd);
         break;
     }
 
@@ -1322,7 +1326,7 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float16_t*)y_bytes)[i] = n16;
         }
-        haxpy(len_x, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
+        haxpy(len_x, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1, _la_rnd);
         break;
 
       case 5:
@@ -1331,7 +1335,7 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float32_t*)y_bytes)[i] = n32;
         }
-        saxpy(len_x, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1);
+        saxpy(len_x, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1, _la_rnd);
         break;
 
       case 6:
@@ -1340,7 +1344,7 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float64_t*)y_bytes)[i] = n64;
         }
-        daxpy(len_x, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1);
+        daxpy(len_x, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1, _la_rnd);
         break;
 
       case 7:
@@ -1349,7 +1353,7 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float128_t*)y_bytes)[i] = (float128_t){n128.v[0], n128.v[1]};
         }
-        qaxpy(len_x, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1);
+        qaxpy(len_x, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1, _la_rnd);
         break;
     }
 
@@ -1404,7 +1408,7 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float16_t*)y_bytes)[i] = n16;
         }
-        haxpy(len_x, (float16_t){SB_REAL16_NEGONE}, (float16_t*)y_bytes, 1, (float16_t*)x_bytes, 1);
+        haxpy(len_x, (float16_t){SB_REAL16_NEGONE}, (float16_t*)y_bytes, 1, (float16_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 5:
@@ -1413,7 +1417,7 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float32_t*)y_bytes)[i] = n32;
         }
-        saxpy(len_x, (float32_t){SB_REAL32_NEGONE}, (float32_t*)y_bytes, 1, (float32_t*)x_bytes, 1);
+        saxpy(len_x, (float32_t){SB_REAL32_NEGONE}, (float32_t*)y_bytes, 1, (float32_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 6:
@@ -1422,7 +1426,7 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float64_t*)y_bytes)[i] = n64;
         }
-        daxpy(len_x, (float64_t){SB_REAL64_NEGONE}, (float64_t*)y_bytes, 1, (float64_t*)x_bytes, 1);
+        daxpy(len_x, (float64_t){SB_REAL64_NEGONE}, (float64_t*)y_bytes, 1, (float64_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 7:
@@ -1431,7 +1435,7 @@
         for (c3_d i = 0; i < len_x; i++) {
           ((float128_t*)y_bytes)[i] = (float128_t){n128.v[0], n128.v[1]};
         }
-        qaxpy(len_x, (float128_t){SB_REAL128L_NEGONE,SB_REAL128U_NEGONE}, (float128_t*)y_bytes, 1, (float128_t*)x_bytes, 1);
+        qaxpy(len_x, (float128_t){SB_REAL128L_NEGONE,SB_REAL128U_NEGONE}, (float128_t*)y_bytes, 1, (float128_t*)x_bytes, 1, _la_rnd);
         break;
     }
 
@@ -1481,22 +1485,22 @@
     switch (u3x_atom(bloq)) {
       case 4:
         u3r_bytes(0, 2, (c3_y*)&(n16.v), n);
-        hscal(len_x, n16, (float16_t*)x_bytes, 1);
+        hscal(len_x, n16, (float16_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 5:
         u3r_bytes(0, 4, (c3_y*)&(n32.v), n);
-        sscal(len_x, n32, (float32_t*)x_bytes, 1);
+        sscal(len_x, n32, (float32_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 6:
         u3r_bytes(0, 8, (c3_y*)&(n64.v), n);
-        dscal(len_x, n64, (float64_t*)x_bytes, 1);
+        dscal(len_x, n64, (float64_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 7:
         u3r_bytes(0, 16, (c3_y*)&(n128.v[0]), n);
-        qscal(len_x, n128, (float128_t*)x_bytes, 1);
+        qscal(len_x, n128, (float128_t*)x_bytes, 1, _la_rnd);
         break;
     }
 
@@ -1546,28 +1550,28 @@
         //  XX note that in16 is doing double duty here
         u3r_bytes(0, 2, (c3_y*)&(in16.v), n);
         in16 = f16_div((float16_t){SB_REAL16_ONE}, in16);
-        hscal(len_x, in16, (float16_t*)x_bytes, 1);
+        hscal(len_x, in16, (float16_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 5:
         //  XX note that in32 is doing double duty here
         u3r_bytes(0, 4, (c3_y*)&(in32.v), n);
         in32 = f32_div((float32_t){SB_REAL32_ONE}, in32);
-        sscal(len_x, in32, (float32_t*)x_bytes, 1);
+        sscal(len_x, in32, (float32_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 6:
         //  XX note that in64 is doing double duty here
         u3r_bytes(0, 8, (c3_y*)&(in64.v), n);
         in64 = f64_div((float64_t){SB_REAL64_ONE}, in64);
-        dscal(len_x, in64, (float64_t*)x_bytes, 1);
+        dscal(len_x, in64, (float64_t*)x_bytes, 1, _la_rnd);
         break;
 
       case 7:
         //  XX note that in128 is doing double duty here
         u3r_bytes(0, 16, (c3_y*)&(in128.v[0]), n);
         f128M_div(&((float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}), &in128, &in128);
-        qscal(len_x, in128, (float128_t*)x_bytes, 1);
+        qscal(len_x, in128, (float128_t*)x_bytes, 1, _la_rnd);
         break;
     }
 
@@ -1732,28 +1736,28 @@
     switch (u3x_atom(bloq)) {
       case 4: {
         float16_t r16[2];
-        r16[0] = hdot(len_x, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1);
+        r16[0] = hdot(len_x, (float16_t*)x_bytes, 1, (float16_t*)y_bytes, 1, _la_rnd);
         r16[1].v = 0x1;
         r_data = u3i_bytes((2+1)*sizeof(c3_y), (c3_y*)r16);
         break;}
 
       case 5: {
         float32_t r32[2];
-        r32[0] = sdot(len_x, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1);
+        r32[0] = sdot(len_x, (float32_t*)x_bytes, 1, (float32_t*)y_bytes, 1, _la_rnd);
         r32[1].v = 0x1;
         r_data = u3i_bytes((4+1)*sizeof(c3_y), (c3_y*)r32);
         break;}
 
       case 6: {
         float64_t r64[2];
-        r64[0] = ddot(len_x, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1);
+        r64[0] = ddot(len_x, (float64_t*)x_bytes, 1, (float64_t*)y_bytes, 1, _la_rnd);
         r64[1].v = 0x1;
         r_data = u3i_bytes((8+1)*sizeof(c3_y), (c3_y*)r64);
         break;}
 
       case 7: {
         float128_t r128[2];
-        r128[0] = qdot(len_x, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1);
+        r128[0] = qdot(len_x, (float128_t*)x_bytes, 1, (float128_t*)y_bytes, 1, _la_rnd);
         r128[1] = (float128_t){0x1, 0x0};
         r_data = u3i_bytes((16+1)*sizeof(c3_y), (c3_y*)r128);
         break;}
@@ -2143,19 +2147,19 @@
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
       case 4:
-        hgemm('N', 'N', M, N, P, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, N, (float16_t*)y_bytes, P, (float16_t){SB_REAL16_ZERO}, (float16_t*)r_bytes, P);
+        hgemm('N', 'N', M, N, P, (float16_t){SB_REAL16_ONE}, (float16_t*)x_bytes, N, (float16_t*)y_bytes, P, (float16_t){SB_REAL16_ZERO}, (float16_t*)r_bytes, P, _la_rnd);
         break;
 
       case 5:
-        sgemm('N', 'N', M, N, P, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, N, (float32_t*)y_bytes, P, (float32_t){SB_REAL32_ZERO}, (float32_t*)r_bytes, P);
+        sgemm('N', 'N', M, N, P, (float32_t){SB_REAL32_ONE}, (float32_t*)x_bytes, N, (float32_t*)y_bytes, P, (float32_t){SB_REAL32_ZERO}, (float32_t*)r_bytes, P, _la_rnd);
         break;
 
       case 6:
-        dgemm('N', 'N', M, N, P, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, N, (float64_t*)y_bytes, P, (float64_t){SB_REAL64_ZERO}, (float64_t*)r_bytes, P);
+        dgemm('N', 'N', M, N, P, (float64_t){SB_REAL64_ONE}, (float64_t*)x_bytes, N, (float64_t*)y_bytes, P, (float64_t){SB_REAL64_ZERO}, (float64_t*)r_bytes, P, _la_rnd);
         break;
 
       case 7:
-        qgemm('N', 'N', M, N, P, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, N, (float128_t*)y_bytes, P, (float128_t){SB_REAL128L_ZERO,SB_REAL128U_ZERO}, (float128_t*)r_bytes, P);
+        qgemm('N', 'N', M, N, P, (float128_t){SB_REAL128L_ONE,SB_REAL128U_ONE}, (float128_t*)x_bytes, N, (float128_t*)y_bytes, P, (float128_t){SB_REAL128L_ZERO,SB_REAL128U_ZERO}, (float128_t*)r_bytes, P, _la_rnd);
         break;
     }
 
@@ -2206,7 +2210,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_add_i754(x_data, y_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2253,7 +2257,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_sub_i754(x_data, y_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2300,7 +2304,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_mul_i754(x_data, y_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2347,7 +2351,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_div_i754(x_data, y_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2394,7 +2398,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_mod_i754(x_data, y_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2436,7 +2440,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_cumsum_i754(x_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             return u3nc(u3nq(u3nc(0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2871,7 +2875,7 @@
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
         case c3__i754:
-          _set_rounding(rnd);
+          _set_rounding_la(rnd);
           u3_noun r_data = u3qi_la_adds_i754(x_data, n, x_shape, x_bloq);
           if (r_data == u3_none) { return u3_none; }
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2907,7 +2911,7 @@
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
         case c3__i754:
-          _set_rounding(rnd);
+          _set_rounding_la(rnd);
           u3_noun r_data = u3qi_la_subs_i754(x_data, n, x_shape, x_bloq);
           if (r_data == u3_none) { return u3_none; }
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2943,7 +2947,7 @@
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
         case c3__i754:
-          _set_rounding(rnd);
+          _set_rounding_la(rnd);
           u3_noun r_data = u3qi_la_muls_i754(x_data, n, x_shape, x_bloq);
           if (r_data == u3_none) { return u3_none; }
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -2979,7 +2983,7 @@
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
         case c3__i754:
-          _set_rounding(rnd);
+          _set_rounding_la(rnd);
           u3_noun r_data = u3qi_la_divs_i754(x_data, n, x_shape, x_bloq);
           if (r_data == u3_none) { return u3_none; }
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -3015,7 +3019,7 @@
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       switch (x_kind) {
         case c3__i754:
-          _set_rounding(rnd);
+          _set_rounding_la(rnd);
           u3_noun r_data = u3qi_la_mods_i754(x_data, n, x_shape, x_bloq);
           if (r_data == u3_none) { return u3_none; }
           return u3nc(u3nq(u3k(x_shape), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
@@ -3060,7 +3064,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_dot_i754(x_data, y_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             c3_d *dim_x = _get_dims(x_shape);
@@ -3138,7 +3142,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_linspace_i754(a, b, n, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             x_shape = u3nc(u3x_atom(n), u3_nul);
@@ -3179,7 +3183,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_range_i754(a, b, d, x_bloq);
             if (r_data == u3_none) { return u3_none; }
             c3_d a_, b_, d_;
@@ -3340,7 +3344,7 @@
       } else {
         switch (x_kind) {
           case c3__i754:
-            _set_rounding(rnd);
+            _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_mmul_i754(x_data, y_data, x_shape, y_shape, x_bloq);
             // result is already [meta data]
             return r_data;

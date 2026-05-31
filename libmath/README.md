@@ -73,11 +73,69 @@ We use naïve algorithms which are highly reproducible.  We special-case some ar
 
 # `/lib/unum` for Urbit
 
-A library for universal numbers (posits, quires, and valids) per the Gustafson (2019) formulation and the 2022 Posit Standard.
+A library for universal numbers (posits, quires, and valids) per the [2022 Posit Standard](https://posithub.org/docs/posit_standard-2.pdf) (Posit Working Group, John Gustafson chair).
 
-- $\text{posit}<8,0>$
-- $\text{posit}<16,1>$
-- $\text{posit}<32,2>$
+We implement the three standard precisions:
+
+- $\text{posit}\langle 8,2\rangle$
+- $\text{posit}\langle 16,2\rangle$
+- $\text{posit}\langle 32,2\rangle$
+
+> **Standard, not legacy.**  The 2022 Posit Standard fixes the exponent size at **`es = 2` for every width** (§2 defines the exponent field as a 2-bit unsigned integer).  This differs from the original 2017 draft (and from SoftPosit's *fast* `p8`/`p16` types), which scaled `es` with width as `posit<8,0>`, `posit<16,1>`, `posit<32,2>`.  Only `posit32` coincides between the two conventions; `posit8` and `posit16` have different bit layouts.  We target the standard.  The reference oracle for 8- and 16-bit posits is therefore SoftPosit's `pX2` (es=2 at any width) path, *not* the fast `p8`/`p16` types; `p32` is used directly.
+
+##  Format and encoding
+
+A posit of precision $n$ has four bit-fields, most-significant first (§3.3):
+
+| field | width | meaning |
+|---|---|---|
+| sign $S$ | 1 bit | integer $s \in \{0,1\}$; implicit value $1-3s$ (so $+1$ or $-2$) |
+| regime $R$ | $k$ bits | run of bits equal to $R_0$, terminated by $\overline{R_0}$; signed integer $r = -k$ if $R_0=0$, else $r = k-1$ |
+| exponent $E$ | 2 bits | unsigned $e \in \{0,1,2,3\}$ (`es = 2`); may be truncated past the LSB, then treated as 0 |
+| fraction $F$ | up to $\max(0,n-5)$ bits | unsigned $f = F / 2^m$, $0 \le f < 1$; trailing truncated bits are 0 |
+
+The represented value (with `useed` $= 2^{2^{es}} = 16$, so the regime contributes $4r$ to the power of two) is:
+
+$$p = \bigl((1-3s) + f\bigr) \times 2^{(1-2s)\,(4r + e + s)}$$
+
+**Exceptions** (all bits except $S$ are zero): $S=0 \Rightarrow$ posit $0$; $S=1 \Rightarrow$ **NaR** (Not a Real — the single non-real value, with bit pattern equal to the most-negative two's-complement integer, $1000\ldots0$).
+
+Key constants per width (§3, Table 1; $n$ = bit width):
+
+| property | posit8 | posit16 | posit32 | $\text{posit}n$ |
+|---|---|---|---|---|
+| fraction length | 0–3 | 0–11 | 0–27 | $0$–$\max(0,n-5)$ |
+| $\textit{minPos}$ | $2^{-24}$ | $2^{-56}$ | $2^{-120}$ | $2^{-4n+8}$ |
+| $\textit{maxPos}$ | $2^{24}$ | $2^{56}$ | $2^{120}$ | $2^{4n-8}$ |
+| $\textit{pIntMax}$ | $16$ | $1024$ | $8388608$ | $2^{\lceil 4(n-3)/5\rceil}$ |
+| quire bits | 128 | 256 | 512 | $16n$ |
+| decimals to round-trip | 2 | 5 | 10 | — |
+
+$\textit{minPos} = 1/\textit{maxPos}$, and every posit value is an integer multiple of $\textit{minPos}$.  $\textit{pIntMax}$ is the largest integer all of whose predecessors are exactly representable (so posit8 represents every integer only up to 16).
+
+### Rounding
+
+Posits have exactly **one** rounding mode (§4.1): round-to-nearest, **ties-to-even**, and **saturating** — a magnitude above $\textit{maxPos}$ rounds to $\pm\textit{maxPos}$ and a nonzero magnitude below $\textit{minPos}$ rounds to $\pm\textit{minPos}$.  Posits never round up to NaR nor down to zero.  Fused operations (`++fmm`, `++rsqrt`, `++exp-minus-1`, `++hypot`, …) are evaluated exactly and rounded once.
+
+### Comparisons
+
+Posit ordering is **identical to two's-complement signed-integer ordering of the raw bits** (§5.3), so comparisons need no decoding — a single signed compare suffices.  NaR shares the bit pattern of the most-negative integer, so it compares less than every real posit; `NaR == NaR` is true and `++sign` of NaR is NaR.
+
+### Quire
+
+The quire is a fixed-point exact accumulator of $16n$ bits (§3.4): sign (1) · carry guard (31) · integer part ($8n-16$) · fraction part ($8n-16$).  Its value is $2^{16-8n}$ times the two's-complement integer formed by all bits; $S=1$ with all other bits zero is NaR.  The quire makes dot products and sums of up to $\sim 2^{23+4n}$ terms exact before a single final rounding — the core reason posits beat floats for linear algebra.
+
+### Auras
+
+| aura | meaning | width |
+|---|---|---|
+| `@rpb` `@rph` `@rps` `@rpd` | posit | byte (8), half (16), single (32), double (64) |
+| `@rqb` `@rqh` `@rqs` | quire | for posit8 / posit16 / posit32 |
+| `@rvb` `@rvh` `@rvs` | valid (interval) | byte / half / single |
+
+The `@rq*` quire auras nest under `@rq` (quad-precision float) by Hoon's prefix-nesting rule; this overlap is accepted intentionally.  There is currently **no literal syntax or pretty-printer** for posit auras — values are written as bit-casts, e.g. `` `@rpb`0b100.0000 `` for $1.0$.  A decimal printer (emitting the §6.3 minimum significant digits: 2/5/10/21 for posit8/16/32/64) would be an *optional local runtime patch*, decoupled from this library, with no upstream-timing commitment.
+
+> **Implementation status.**  This section specifies the `es = 2` target.  The current `lib/unum.hoon` still encodes the legacy `es`-by-width layout (posit8 es=0, posit16 es=1) and stubs much of the arithmetic; migrating it to the layout above is Phase 1 of the development plan.
 
 ##  Posit Standard Compliance
 

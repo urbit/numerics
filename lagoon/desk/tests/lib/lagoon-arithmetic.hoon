@@ -112,7 +112,7 @@
 ::  %n, round-nearest), not truncate.  5 mod 3 = 5 - 3*round(5/3) = -1.
 ++  test-mod-nearest-6r  ^-  tang
   =/  m  `meta`[~[1 1] 6 %i754 ~]
-  (is-equal (fill:la m .~-1) (mod:la (fill:la m .~5) (fill:la m .~3)))
+  (is-equal (fill:la m .~-1) (mod:(lake %n) (fill:la m .~5) (fill:la m .~3)))
 ::  Regression: quad mod-scalar reciprocal constant (was 0.0, returned x).
 ::  7 mod 3 = 1, 5 mod 3 = 2.
 ++  test-mods-7r  ^-  tang

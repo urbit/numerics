@@ -135,11 +135,32 @@ The quire is a fixed-point exact accumulator of $16n$ bits (§3.4): sign (1) · 
 
 The `@rq*` quire auras nest under `@rq` (quad-precision float) by Hoon's prefix-nesting rule; this overlap is accepted intentionally.  There is currently **no literal syntax or pretty-printer** for posit auras — values are written as bit-casts, e.g. `` `@rpb`0b100.0000 `` for $1.0$.  A decimal printer (emitting the §6.3 minimum significant digits: 2/5/10/21 for posit8/16/32/64) would be an *optional local runtime patch*, decoupled from this library, with no upstream-timing commitment.
 
-> **Implementation status.**  This section specifies the `es = 2` target.  The current `lib/unum.hoon` still encodes the legacy `es`-by-width layout (posit8 es=0, posit16 es=1) and stubs much of the arithmetic; migrating it to the layout above is Phase 1 of the development plan.
+### Implemented
 
-##  Posit Standard Compliance
+`lib/unum.hoon` implements the `es = 2` layout above as a single generic core `++pp` (keyed on `bloq`), specialized into `++rpb` / `++rph` / `++rps` / `++rpd` / `++rpq` (posit8/16/32/64/128).  The g-layer record `+$up` mirrors the standard library float `+$fn`.  Each width exposes:
 
-Two interfaces are maintained for `/lib/unum`:  one to hew to the `/lib/math` and `/lib/saloon` interface, and another to alias in the 2022 Posit Standard requirements.  The names are slightly modified from the standard to adhere to Hoon name requirements.
+- **decode / encode** — `++sea` (`@` → `+$up`), `++bit` (`+$up` → `@`, round-to-nearest-even, saturating)
+- **constants** — `++zero` `++nar` `++one` `++maxpos` `++minpos` `++huge` `++tiny`, and `++pi` `++tau` `++e` `++phi` `++sqt2` `++invsqt2` `++log2` `++invlog2` `++log10` (correctly rounded at every width)
+- **comparison / sign** — `++gth` `++lth` `++gte` `++lte` `++equ` `++neq`, `++neg` `++abs` `++sgn`
+- **arithmetic** — `++add` `++sub` `++mul` `++div` (correctly rounded), `++fma` (fused multiply-add), `++sqt` (square root)
+- **rounding** — `++round` with `++rnd` (nearest-even) / `++flr` (floor) / `++cel` (ceil)
+- **integer conversion** — `++sun` (`@u`→), `++san` (`@s`→), `++toi` (→`(unit @s)`)
+- **IEEE-754 conversion** — `++to-rh` `++to-rs` `++to-rd` `++to-rq` and `++from-rh` `++from-rs` `++from-rd` `++from-rq`, value-based across *any* posit/float width pair
+- **quire** (the `16n`-bit exact accumulator) — `++p-to-q` `++q-to-p` `++q-mul-add` `++q-mul-sub` `++q-add-p` `++q-sub-p` `++q-add-q` `++q-sub-q` `++q-negate`, and `++fdp` (fused dot product, single rounding)
+- **elementary** — `++exp` `++sin` `++cos` `++tan` `++pow-n` `++log` `++log-2` `++log-10` `++pow` `++is-close` (naive Taylor series in the `/lib/math` style: reproducible, accurate near 0, not range-reduced)
+
+Arithmetic is verified against SoftPosit (the reference C implementation, via its Python wrapper): exhaustively over all posit8 pairs and sampled at posit16/32, with the offline harness in `tools/posit_check.py`; the on-ship suite is `tests/lib/unum-core` and `tests/lib/unum-fns`.
+
+### Not yet implemented
+
+- the standard-name alias interface (below): `++negate` `++addition` `++compare-less` `++sin-pi` `++compound` `++root-n` `++fmm` `++hypot` `++arctan2` etc., and the inverse / hyperbolic / `*-plus-1` / `*-minus-1` elementary functions
+- `++next` / `++prior` / `++nearest-int` / `++ceil` / `++floor` under their standard names (the behaviors exist as `++rnd`/`++flr`/`++cel`)
+- valids (the interval unum class, `@rv*`)
+- jets (the library is pure Hoon; SoftPosit's C is the spec for a future jet)
+
+##  Posit Standard Compliance (planned alias layer)
+
+The following is the *planned* second interface for `/lib/unum`: standard-named aliases over the implemented operations above, plus the not-yet-written functions.  One interface hews to the `/lib/math` and `/lib/saloon` conventions; this one aliases in the 2022 Posit Standard names, slightly modified to adhere to Hoon name requirements.
 
 ### Basic functions of one posit value argument
 

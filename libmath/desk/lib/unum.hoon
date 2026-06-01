@@ -322,6 +322,83 @@
     ?:  (^gth s2 s1)  (bit [%p s.uc emin (^sub s2 s1)])
     zero
   ::
+  ::  Transcendental / elementary functions, in the naive, reproducible
+  ::  Taylor-series style of /lib/math: fixed term counts, posit arithmetic
+  ::  throughout (the loop counters use ^-escaped stdlib ops).  NOT correctly
+  ::  rounded and accurate only near 0 (no range reduction), matching libmath;
+  ::  the running sums could later move to the quire for exact accumulation.
+  ::
+  ::    +exp:  @ -> @   (e^x = sum x^k/k!)
+  ++  exp
+    |=  x=@
+    ^-  @
+    =/  sum   one
+    =/  term  one
+    =/  nn=@  1
+    |-
+    ?:  (^gth nn 20)  sum
+    =.  term  (mul term (div x (sun nn)))
+    =.  sum   (add sum term)
+    $(nn +(nn))
+  ::    +sin:  @ -> @   (sum (-1)^k x^(2k+1)/(2k+1)!)
+  ++  sin
+    |=  x=@
+    ^-  @
+    =/  term  x
+    =/  sum   x
+    =/  nn=@  1
+    |-
+    ?:  (^gth nn 20)  sum
+    =/  k  (^mul 2 nn)
+    =.  term  (neg (mul term (div (mul x x) (mul (sun k) (sun +(k))))))
+    =.  sum   (add sum term)
+    $(nn +(nn))
+  ::    +cos:  @ -> @   (sum (-1)^k x^2k/(2k)!)
+  ++  cos
+    |=  x=@
+    ^-  @
+    =/  term  one
+    =/  sum   one
+    =/  nn=@  1
+    |-
+    ?:  (^gth nn 20)  sum
+    =/  k  (^mul 2 nn)
+    =.  term  (neg (mul term (div (mul x x) (mul (sun (dec k)) (sun k)))))
+    =.  sum   (add sum term)
+    $(nn +(nn))
+  ::    +tan:  @ -> @
+  ++  tan  |=(x=@ ^-(@ (div (sin x) (cos x))))
+  ::    +pow-n:  @ -> @u -> @   (integer power by repeated multiplication)
+  ++  pow-n
+    |=  [x=@ p=@u]
+    ^-  @
+    =/  res  one
+    |-
+    ?:  =(0 p)  res
+    $(p (dec p), res (mul res x))
+  ::    +log:  @ -> @   (ln, via 2*atanh((x-1)/(x+1)))
+  ++  log
+    |=  x=@
+    ^-  @
+    =/  y     (div (sub x one) (add x one))
+    =/  y2    (mul y y)
+    =/  sum   y
+    =/  term  y
+    =/  nn=@  1
+    |-
+    ?:  (^gth nn 30)  (mul (sun 2) sum)
+    =.  term  (mul term y2)
+    =/  coef  (div one (sun +((^mul 2 nn))))
+    =.  sum   (add sum (mul coef term))
+    $(nn +(nn))
+  ::    +log-2 / +log-10:  base-2 / base-10 logarithm
+  ++  log-2   |=(x=@ ^-(@ (div (log x) log2)))
+  ++  log-10  |=(x=@ ^-(@ (div (log x) log10)))
+  ::    +pow:  @ -> @ -> @   (x^y = exp(y * log x))
+  ++  pow  |=([x=@ y=@] ^-(@ (exp (mul y (log x)))))
+  ::    +is-close:  @ -> @ -> @ -> ?   (|a - b| <= tol)
+  ++  is-close  |=([a=@ b=@ tol=@] ^-(? (lte (abs (sub a b)) tol)))
+  ::
   ::  Quire (sec 3.4 / 5.11): a 16n-bit fixed-point exact accumulator, held
   ::  as a raw two's-complement atom.  Sums of products accumulate exactly and
   ::  round only once, via +q-to-p -- the basis of the fused dot product +fdp,

@@ -121,4 +121,20 @@
     %+  expect-eq  !>(`@`0x58)  !>((pow-n:u (sun:u 2) 3))
     %+  expect-eq  !>(`@`0x40)  !>((pow:u (sun:u 2) 0x0))
   ==
+::
+::  Domain guards: log/pow of out-of-domain inputs return NaR (not a divergent
+::  series result), and NaR propagates through pow-n even when the exponent is 0.
+::
+++  test-domain-rpb  ^-  tang
+  =/  u  rpb:unum
+  ;:  weld
+    %+  expect-eq  !>(`@`0x80)  !>((log:u 0x0))            ::  log(0)=NaR
+    %+  expect-eq  !>(`@`0x80)  !>((log:u 0xc0))           ::  log(-1)=NaR
+    %+  expect-eq  !>(`@`0x80)  !>((log:u 0x80))           ::  log(NaR)=NaR
+    %+  expect-eq  !>(`@`0x80)  !>((log:u 0xb4))           ::  log(-3)=NaR
+    %+  expect-eq  !>(`@`0x80)  !>((pow-n:u 0x80 0))       ::  NaR^0=NaR (not 1)
+    %+  expect-eq  !>(`@`0x40)  !>((pow-n:u 0x40 0))       ::  1^0=1 still
+    %+  expect-eq  !>(`@`0x80)  !>((pow:u 0x0 (sun:u 2)))  ::  pow(0,2)=NaR
+    %+  expect-eq  !>(`@`0x80)  !>((pow:u 0xc0 (sun:u 2))) ::  pow(-1,2)=NaR
+  ==
 --

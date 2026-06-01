@@ -372,14 +372,19 @@
   ++  pow-n
     |=  [x=@ p=@u]
     ^-  @
+    ?:  =(nar x)  nar            :: NaR propagates even when p=0
     =/  res  one
     |-
     ?:  =(0 p)  res
     $(p (dec p), res (mul res x))
   ::    +log:  @ -> @   (ln, via 2*atanh((x-1)/(x+1)))
+  ::  Domain is x > 0; x <= 0 (which includes NaR, the most-negative
+  ::  bit pattern, and posit zero) returns NaR rather than a divergent
+  ::  series result.  Like the rest of /lib/math, accurate only near 1.
   ++  log
     |=  x=@
     ^-  @
+    ?:  (lte x zero)  nar
     =/  y     (div (sub x one) (add x one))
     =/  y2    (mul y y)
     =/  sum   y

@@ -27,7 +27,7 @@
   ++  s-to-twoc
     |=  a=@s
     ^-  @
-    ?>  (lte `@`a (dec ~(out fe bloq)))
+    ?>  (^lte `@`a (dec ~(out fe bloq)))
     %+  mix
       (rsh 0 a) 
     (~(sum fe bloq) (not 0 len (dis a 1)) 1)
@@ -39,38 +39,62 @@
     |=  a=@
     ^-  @s
     ?:  =(1 (msb a))
-      (new:si | +((sub (dec (bex len)) a)))
+      (new:si | +((^sub (dec (bex len)) a)))
     (new:si & a)
   ::
   ::
-  ++  add
-    |=  [a=@ b=@]
-    =/  res  (^add a b)
-    ?.  (^gth (xeb res) len)
-      res 
-    =/  rez=@  (rep 0 (snip (rip [0 1] res)))
-    ?:  !(overflow a b rez)
-      rez
-    ~|('signed int overflow' !!)
+  ::  Arithmetic is MODULAR two's-complement: results wrap mod 2^len rather
+  ::  than crashing on overflow.  This DIVERGES from a checked-overflow
+  ::  signed-integer type, but matches hardware two's-complement and the
+  ::  wrapping behavior of Lagoon's %uint (fe) scalars.  Because the low len
+  ::  bits of a sum/product are independent of sign, the same bit-level add
+  ::  and multiply serve signed and unsigned alike.
   ::
+  ++  add  |=([a=@ b=@] ^-(@ (mod (^add a b) len-mod)))
+  ::  +neg: two's-complement negation, (~a + 1) mod 2^len.  neg(min) = min.
+  ++  neg  |=(a=@ ^-(@ (mod (^add (^sub (dec len-mod) (mod a len-mod)) 1) len-mod)))
+  ++  sub  |=([a=@ b=@] ^-(@ (add a (neg b))))
+  ++  mul  |=([a=@ b=@] ^-(@ (mod (^mul (mod a len-mod) (mod b len-mod)) len-mod)))
+  ::  +abs: |a| as a two's-complement value (abs(min) wraps back to min).
+  ++  abs  |=(a=@ ^-(@ ?:(=(1 (msb a)) (neg a) (mod a len-mod))))
+  ::  +len-mod: 2^len, the modulus (len is the bit width = 2^bloq).
+  ++  len-mod  (bex len)
+  ::  +overflow: would a + b overflow a CHECKED signed add?  Retained for
+  ::  callers that want to detect, rather than wrap; +add no longer uses it.
   ++  overflow
     |=  [a=@ b=@ c=@]
     ?|  &(=(0 (msb c)) =(1 (msb a)) =(1 (msb b)))
         &(=(1 (msb c)) =(0 (msb a)) =(0 (msb b)))
     ==
-  ::
-  ++  mul
-  ::
-  :: https://stackoverflow.com/questions/20793701/how-to-do-two-complement-multiplication-and-division-of-integers
+  ::  +div: signed division, truncating toward zero (C / Hoon `div` style).
+  ::  Division by zero crashes (as `div` does).  div(min, -1) wraps to min.
+  ++  div
     |=  [a=@ b=@]
-    =/  ae  (rep bloq ~[a (extend a)])
-    =/  be  (rep bloq ~[b (extend b)])
-    =/  c  (cut 0 [0 (^mul 2 len)] (^mul ae be))
-    ?:  (lte (xeb c) len)
-      c
-    ?:  !=((dec (bex len)) (cut 0 [len len] c))
-      ~|('signed int overflow' !!)
-    (cut 0 [0 len] c)
+    ^-  @
+    =/  sa  (msb a)
+    =/  sb  (msb b)
+    =/  q   (^div (abs a) (abs b))
+    ?:  =(sa sb)  (mod q len-mod)            :: same sign -> non-negative
+    (neg q)                                  :: opposite sign -> negative
+  ::  +mod: signed remainder, sign follows the DIVIDEND (C `%` / truncated).
+  ::  a == (add (mul (div a b) b) (mod a b)).
+  ++  rem
+    |=  [a=@ b=@]
+    ^-  @
+    =/  r  (mod (abs a) (abs b))
+    ?:  =(0 (msb a))  (mod r len-mod)        :: dividend non-negative
+    (neg r)                                  :: dividend negative
+  ::  +pow: a to a NON-NEGATIVE integer power n (n a raw @, not two's-comp),
+  ::  by modular squaring.  pow(a, 0) = 1.
+  ++  pow
+    |=  [a=@ n=@]
+    ^-  @
+    =/  base  (mod a len-mod)
+    =/  acc   (mod 1 len-mod)
+    |-  ^-  @
+    ?:  =(0 n)  acc
+    =?  acc  =(1 (dis n 1))  (mul acc base)
+    $(n (rsh 0 n), base (mul base base))
   ::
   ::
   ++  extend

@@ -2,18 +2,14 @@
 ::::
 ::    Posits (2022 Posit Standard, es=2)
 ::
-::  Test strategy: the heavy exhaustive cross-check of arithmetic against
-::  SoftPosit (all 65,536 posit8 pairs for add/sub/mul/div) is done ONCE,
-::  offline, in Python.  The on-ship suite stays lean: exhaustive
-::  decode/encode round-trips, a light oracle-free property sweep, and
-::  curated SoftPosit-verified spot values.
+::  Heavy exhaustive cross-checks vs SoftPosit run once, offline, in Python
+::  (libmath/tools/posit_check.py).  The on-ship suite is lean: round-trips,
+::  a property sweep, and curated SoftPosit-verified spot values.
 ::
 /+  *test,
     unum
 ^|
 |%
-::  +rt: exhaustively check bit(sea(p)) == p for every n-bit pattern.
-::
 ++  test-round-trip-rpb  ^-  tang
   =|  i=@
   |-  ^-  tang
@@ -30,19 +26,14 @@
   ?:  =(i rt)  $(i +(i))
   [(cat 3 'rph round-trip failed at ' (scot %ux i)) $(i +(i))]
 ::
-::  posit8 spot values (es=2): hand-derived canonical bit patterns.
-::
 ++  test-values-rpb  ^-  tang
   ;:  weld
     %+  expect-eq  !>(`@`0x0)   !>(zero:rpb:unum)
     %+  expect-eq  !>(`@`0x80)  !>(nar:rpb:unum)
-    %+  expect-eq  !>(`@`0x40)  !>(one:rpb:unum)             ::  1.0
-    %+  expect-eq  !>(`@`0x7f)  !>(maxpos:rpb:unum)          ::  2^24
-    %+  expect-eq  !>(`@`0x1)   !>(minpos:rpb:unum)          ::  2^-24
+    %+  expect-eq  !>(`@`0x40)  !>(one:rpb:unum)
+    %+  expect-eq  !>(`@`0x7f)  !>(maxpos:rpb:unum)
+    %+  expect-eq  !>(`@`0x1)   !>(minpos:rpb:unum)
   ==
-::
-::  Mathematical constants, cross-checked against SoftPosit (pX2) and an
-::  independent reference encoder at posit8/16/32.
 ::
 ++  test-consts-rpb  ^-  tang
   ;:  weld
@@ -83,63 +74,53 @@
     %+  expect-eq  !>(`@`0x4935.d8de)  !>(log10:rps:unum)
   ==
 ::
-::  posit8 decode (sea) / encode (bit) spot checks against the g-layer form.
-::
 ++  test-sea-rpb  ^-  tang
   ;:  weld
     %+  expect-eq  !>([%z ~])             !>((sea:rpb:unum 0x0))
     %+  expect-eq  !>([%n ~])             !>((sea:rpb:unum 0x80))
-    %+  expect-eq  !>([%p %.y -3 8])      !>((sea:rpb:unum 0x40))   ::  1.0 (8*2^-3)
-    %+  expect-eq  !>([%p %.y -2 8])      !>((sea:rpb:unum 0x48))   ::  2.0
-    %+  expect-eq  !>([%p %.y -3 10])     !>((sea:rpb:unum 0x42))   ::  1.25
+    %+  expect-eq  !>([%p %.y -3 8])      !>((sea:rpb:unum 0x40))
+    %+  expect-eq  !>([%p %.y -2 8])      !>((sea:rpb:unum 0x48))
+    %+  expect-eq  !>([%p %.y -3 10])     !>((sea:rpb:unum 0x42))
   ==
 ::
 ++  test-bit-rpb  ^-  tang
   ;:  weld
     %+  expect-eq  !>(`@`0x0)   !>((bit:rpb:unum [%z ~]))
     %+  expect-eq  !>(`@`0x80)  !>((bit:rpb:unum [%n ~]))
-    %+  expect-eq  !>(`@`0x40)  !>((bit:rpb:unum [%p %.y --0 1]))   ::  1.0
-    %+  expect-eq  !>(`@`0x48)  !>((bit:rpb:unum [%p %.y -2 8]))    ::  2.0
-    %+  expect-eq  !>(`@`0xc0)  !>((bit:rpb:unum [%p %.n --0 1]))   ::  -1.0
+    %+  expect-eq  !>(`@`0x40)  !>((bit:rpb:unum [%p %.y --0 1]))
+    %+  expect-eq  !>(`@`0x48)  !>((bit:rpb:unum [%p %.y -2 8]))
+    %+  expect-eq  !>(`@`0xc0)  !>((bit:rpb:unum [%p %.n --0 1]))
   ==
-::
-::  comparisons and sign ops (signed two's-complement ordering, NaR lowest).
 ::
 ++  test-compare-rpb  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(%.y)  !>((lth:rpb:unum 0x38 0x40))   ::  0.5 < 1.0
+    %+  expect-eq  !>(%.y)  !>((lth:rpb:unum 0x38 0x40))
     %+  expect-eq  !>(%.n)  !>((lth:rpb:unum 0x40 0x38))
-    %+  expect-eq  !>(%.y)  !>((gth:rpb:unum 0x40 0xc0))   ::  1.0 > -1.0
-    %+  expect-eq  !>(%.y)  !>((lth:rpb:unum 0x80 0xc0))   ::  NaR < -1.0
-    %+  expect-eq  !>(%.y)  !>((equ:rpb:unum 0x80 0x80))   ::  NaR == NaR
-    %+  expect-eq  !>(`@`0xc0)  !>((neg:rpb:unum 0x40))    ::  -(1.0)
-    %+  expect-eq  !>(`@`0x40)  !>((abs:rpb:unum 0xc0))    ::  |-1.0|
-    %+  expect-eq  !>(`@`0xc0)  !>((sgn:rpb:unum 0xa0))    ::  sign of a negative
+    %+  expect-eq  !>(%.y)  !>((gth:rpb:unum 0x40 0xc0))
+    %+  expect-eq  !>(%.y)  !>((lth:rpb:unum 0x80 0xc0))
+    %+  expect-eq  !>(%.y)  !>((equ:rpb:unum 0x80 0x80))
+    %+  expect-eq  !>(`@`0xc0)  !>((neg:rpb:unum 0x40))
+    %+  expect-eq  !>(`@`0x40)  !>((abs:rpb:unum 0xc0))
+    %+  expect-eq  !>(`@`0xc0)  !>((sgn:rpb:unum 0xa0))
   ==
-::
-::  Arithmetic spot checks (SoftPosit pX2, es=2).
 ::
 ++  test-arith-spot-rpb  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(`@`0x48)  !>((add:rpb:unum 0x40 0x40))  ::  1+1=2
-    %+  expect-eq  !>(`@`0x40)  !>((add:rpb:unum 0x38 0x38))  ::  .5+.5=1
-    %+  expect-eq  !>(`@`0x4c)  !>((add:rpb:unum 0x40 0x48))  ::  1+2=3
-    %+  expect-eq  !>(`@`0x48)  !>((sub:rpb:unum 0x4c 0x40))  ::  3-1=2
-    %+  expect-eq  !>(`@`0x54)  !>((mul:rpb:unum 0x48 0x4c))  ::  2*3=6
-    %+  expect-eq  !>(`@`0x38)  !>((div:rpb:unum 0x40 0x48))  ::  1/2=.5
-    %+  expect-eq  !>(`@`0x80)  !>((div:rpb:unum 0x40 0x0))   ::  1/0=NaR
-    %+  expect-eq  !>(`@`0x80)  !>((mul:rpb:unum 0x40 0x80))  ::  1*NaR=NaR
+    %+  expect-eq  !>(`@`0x48)  !>((add:rpb:unum 0x40 0x40))
+    %+  expect-eq  !>(`@`0x40)  !>((add:rpb:unum 0x38 0x38))
+    %+  expect-eq  !>(`@`0x4c)  !>((add:rpb:unum 0x40 0x48))
+    %+  expect-eq  !>(`@`0x48)  !>((sub:rpb:unum 0x4c 0x40))
+    %+  expect-eq  !>(`@`0x54)  !>((mul:rpb:unum 0x48 0x4c))
+    %+  expect-eq  !>(`@`0x38)  !>((div:rpb:unum 0x40 0x48))
+    %+  expect-eq  !>(`@`0x80)  !>((div:rpb:unum 0x40 0x0))
+    %+  expect-eq  !>(`@`0x80)  !>((mul:rpb:unum 0x40 0x80))
   ==
 ::
 ++  test-arith-spot-rph  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(`@`0x4c00)  !>((add:rph:unum 0x4000 0x4800))  ::  1+2=3
-    %+  expect-eq  !>(`@`0x319a)  !>((mul:rph:unum 0x4c00 0x24cd))  ::  3*0.1
+    %+  expect-eq  !>(`@`0x4c00)  !>((add:rph:unum 0x4000 0x4800))
+    %+  expect-eq  !>(`@`0x319a)  !>((mul:rph:unum 0x4c00 0x24cd))
   ==
-::
-::  Light algebraic property sweep over posit8 (256 pseudo-random pairs):
-::  add/mul commute, a+0=a, a*1=a, a*(-1)=neg(a).  No oracle needed; the
-::  exhaustive arithmetic check lives in the offline Python harness.
 ::
 ++  test-arith-props-rpb  ^-  tang
   =/  mu  mul:rpb:unum
@@ -151,7 +132,7 @@
   |-  ^-  tang
   ?:  =(256 i)  ~
   =/  a  i
-  =/  b  (mod (add (mul i 181) 67) 256)            :: pseudo-random partner
+  =/  b  (mod (add (mul i 181) 67) 256)
   =/  e1=tang  ?:(=((mu a b) (mu b a)) ~ ~[(cat 3 'mul comm at ' (scot %ux i))])
   =/  e2=tang  ?:(=((ad a b) (ad b a)) ~ ~[(cat 3 'add comm at ' (scot %ux i))])
   =/  e3=tang  ?:(=(a (ad a 0x0)) ~ ~[(cat 3 'a+0 at ' (scot %ux i))])
@@ -159,107 +140,111 @@
   =/  e5=tang  ?:(=((ng a) (mu a no)) ~ ~[(cat 3 'a*-1 at ' (scot %ux i))])
   :(weld e1 e2 e3 e4 e5 $(i +(i)))
 ::
-::  sqrt, rounding, conversions, fma (SoftPosit pX2-verified, es=2).
-::
 ++  test-sqt-rpb  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(`@`0x48)  !>((sqt:rpb:unum 0x50))   ::  sqrt(4)=2
-    %+  expect-eq  !>(`@`0x43)  !>((sqt:rpb:unum 0x48))   ::  sqrt(2)=sqt2
-    %+  expect-eq  !>(`@`0x80)  !>((sqt:rpb:unum 0xc0))   ::  sqrt(-1)=NaR
-    %+  expect-eq  !>(`@`0x0)   !>((sqt:rpb:unum 0x0))    ::  sqrt(0)=0
-    %+  expect-eq  !>(`@`0x80)  !>((sqt:rpb:unum 0x80))   ::  sqrt(NaR)=NaR
+    %+  expect-eq  !>(`@`0x48)  !>((sqt:rpb:unum 0x50))
+    %+  expect-eq  !>(`@`0x43)  !>((sqt:rpb:unum 0x48))
+    %+  expect-eq  !>(`@`0x80)  !>((sqt:rpb:unum 0xc0))
+    %+  expect-eq  !>(`@`0x0)   !>((sqt:rpb:unum 0x0))
+    %+  expect-eq  !>(`@`0x80)  !>((sqt:rpb:unum 0x80))
   ==
 ::
 ++  test-round-rpb  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(`@`0x40)  !>((rnd:rpb:unum 0x42))   ::  1.25 -> 1
-    %+  expect-eq  !>(`@`0x48)  !>((rnd:rpb:unum 0x4a))   ::  2.5 -> 2 (even)
-    %+  expect-eq  !>(`@`0x0)   !>((rnd:rpb:unum 0x38))   ::  0.5 -> 0 (even)
-    %+  expect-eq  !>(`@`0x50)  !>((rnd:rpb:unum 0x4e))   ::  3.5 -> 4 (even)
-    %+  expect-eq  !>(`@`0x40)  !>((flr:rpb:unum 0x42))   ::  floor 1.25 = 1
-    %+  expect-eq  !>(`@`0x48)  !>((cel:rpb:unum 0x42))   ::  ceil 1.25 = 2
-    %+  expect-eq  !>(`@`0xb8)  !>((flr:rpb:unum 0xbe))   ::  floor -1.25 = -2
-    %+  expect-eq  !>(`@`0xc0)  !>((cel:rpb:unum 0xbe))   ::  ceil -1.25 = -1
+    %+  expect-eq  !>(`@`0x40)  !>((rnd:rpb:unum 0x42))
+    %+  expect-eq  !>(`@`0x48)  !>((rnd:rpb:unum 0x4a))
+    %+  expect-eq  !>(`@`0x0)   !>((rnd:rpb:unum 0x38))
+    %+  expect-eq  !>(`@`0x50)  !>((rnd:rpb:unum 0x4e))
+    %+  expect-eq  !>(`@`0x40)  !>((flr:rpb:unum 0x42))
+    %+  expect-eq  !>(`@`0x48)  !>((cel:rpb:unum 0x42))
+    %+  expect-eq  !>(`@`0xb8)  !>((flr:rpb:unum 0xbe))
+    %+  expect-eq  !>(`@`0xc0)  !>((cel:rpb:unum 0xbe))
   ==
 ::
 ++  test-convert-rpb  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(`@`0x4c)  !>((sun:rpb:unum 3))      ::  3 -> 3.0
+    %+  expect-eq  !>(`@`0x4c)  !>((sun:rpb:unum 3))
     %+  expect-eq  !>(`@`0x0)   !>((sun:rpb:unum 0))
-    %+  expect-eq  !>(`@`0x4c)  !>((san:rpb:unum --3))    ::  +3 -> 3.0
-    %+  expect-eq  !>(`@`0xb4)  !>((san:rpb:unum -3))     ::  -3 -> -3.0
-    %+  expect-eq  !>(`(unit @s)`[~ --1])  !>((toi:rpb:unum 0x42))  ::  1.25 -> 1
-    %+  expect-eq  !>(`(unit @s)`[~ --4])  !>((toi:rpb:unum 0x4e))  ::  3.5 -> 4
-    %+  expect-eq  !>(`(unit @s)`~)        !>((toi:rpb:unum 0x80))  ::  NaR -> ~
+    %+  expect-eq  !>(`@`0x4c)  !>((san:rpb:unum --3))
+    %+  expect-eq  !>(`@`0xb4)  !>((san:rpb:unum -3))
+    %+  expect-eq  !>(`(unit @s)`[~ --1])  !>((toi:rpb:unum 0x42))
+    %+  expect-eq  !>(`(unit @s)`[~ --4])  !>((toi:rpb:unum 0x4e))
+    %+  expect-eq  !>(`(unit @s)`~)        !>((toi:rpb:unum 0x80))
     %+  expect-eq  !>(`(unit @s)`[~ --0])  !>((toi:rpb:unum 0x0))
   ==
 ::
 ++  test-fma-rpb  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(`@`0x56)  !>((fma:rpb:unum 0x48 0x4c 0x40))  ::  2*3+1=7
-    %+  expect-eq  !>(`@`0x80)  !>((fma:rpb:unum 0x48 0x80 0x40))  ::  NaR
+    %+  expect-eq  !>(`@`0x56)  !>((fma:rpb:unum 0x48 0x4c 0x40))
+    %+  expect-eq  !>(`@`0x80)  !>((fma:rpb:unum 0x48 0x80 0x40))
   ==
-::
-::  Quire (Phase 4): exact accumulation + fused dot product (SoftPosit qX2).
 ::
 ++  test-quire-rpb  ^-  tang
   ;:  weld
-    ::  p -> q -> p round trips (exact)
     %+  expect-eq  !>(`@`0x42)  !>((q-to-p:rpb:unum (p-to-q:rpb:unum 0x42)))
     %+  expect-eq  !>(`@`0x38)  !>((q-to-p:rpb:unum (p-to-q:rpb:unum 0x38)))
-    ::  q-add-p: 1 + 2 = 3
     %+  expect-eq  !>(`@`0x4c)
       !>((q-to-p:rpb:unum (q-add-p:rpb:unum (p-to-q:rpb:unum 0x40) 0x48)))
-    ::  q-mul-add: 0 + 2*3 = 6
     %+  expect-eq  !>(`@`0x54)
       !>((q-to-p:rpb:unum (q-mul-add:rpb:unum q-zero:rpb:unum 0x48 0x4c)))
   ==
 ::
 ++  test-fdp-rpb  ^-  tang
   ;:  weld
-    ::  [1,2] . [3,1] = 5
     %+  expect-eq  !>(`@`0x52)  !>((fdp:rpb:unum ~[0x40 0x48] ~[0x4c 0x40]))
-    ::  [2,3] . [2,3] = 13
     %+  expect-eq  !>(`@`0x5d)  !>((fdp:rpb:unum ~[0x48 0x4c] ~[0x48 0x4c]))
-    ::  exact accumulation: maxpos + 1 - maxpos = 1 (naive float sum gives 0)
     %+  expect-eq  !>(`@`0x40)
       !>((fdp:rpb:unum ~[0x7f 0x40 0x81] ~[0x40 0x40 0x40]))
   ==
 ::
-::  posit32 <-> single (value-based; posit -2.0 = 0xb800.0000, NOT the
-::  single -2.0 = 0xc000.0000 -- the two formats differ at the same width).
+::  posit32 <-> single (value-based; posit -2.0 = 0xb800.0000).
 ++  test-ieee-rps  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(`@`0x3f80.0000)  !>((to-rs:rps:unum 0x4000.0000))   ::  1.0
-    %+  expect-eq  !>(`@`0xc000.0000)  !>((to-rs:rps:unum 0xb800.0000))   ::  -2.0
-    %+  expect-eq  !>(`@`0x3f00.0000)  !>((to-rs:rps:unum 0x3800.0000))   ::  0.5
-    %+  expect-eq  !>(`@`0x4000.0000)  !>((from-rs:rps:unum 0x3f80.0000)) ::  1.0
-    %+  expect-eq  !>(`@`0xb800.0000)  !>((from-rs:rps:unum 0xc000.0000)) ::  -2.0
-    %+  expect-eq  !>(`@`0x3800.0000)  !>((from-rs:rps:unum 0x3f00.0000)) ::  0.5
+    %+  expect-eq  !>(`@`0x3f80.0000)  !>((to-rs:rps:unum 0x4000.0000))
+    %+  expect-eq  !>(`@`0xc000.0000)  !>((to-rs:rps:unum 0xb800.0000))
+    %+  expect-eq  !>(`@`0x3f00.0000)  !>((to-rs:rps:unum 0x3800.0000))
+    %+  expect-eq  !>(`@`0x4000.0000)  !>((from-rs:rps:unum 0x3f80.0000))
+    %+  expect-eq  !>(`@`0xb800.0000)  !>((from-rs:rps:unum 0xc000.0000))
+    %+  expect-eq  !>(`@`0x3800.0000)  !>((from-rs:rps:unum 0x3f00.0000))
   ==
 ::
 ++  test-ieee-rph  ^-  tang
   ;:  weld
-    %+  expect-eq  !>(`@`0x3c00)  !>((to-rh:rph:unum 0x4000))   ::  posit16 1.0 -> half
-    %+  expect-eq  !>(`@`0xc000)  !>((to-rh:rph:unum 0xb800))   ::  posit16 -2.0
-    %+  expect-eq  !>(`@`0x4000)  !>((from-rh:rph:unum 0x3c00)) ::  half 1.0 -> posit16
-    %+  expect-eq  !>(`@`0xb800)  !>((from-rh:rph:unum 0xc000)) ::  -2.0
+    %+  expect-eq  !>(`@`0x3c00)  !>((to-rh:rph:unum 0x4000))
+    %+  expect-eq  !>(`@`0xc000)  !>((to-rh:rph:unum 0xb800))
+    %+  expect-eq  !>(`@`0x4000)  !>((from-rh:rph:unum 0x3c00))
+    %+  expect-eq  !>(`@`0xb800)  !>((from-rh:rph:unum 0xc000))
   ==
 ::
-::  The matrix: ANY posit width <-> ANY float width (value-based).  posits
-::  pack more accuracy per bit, so cross-width is the useful correspondence.
+::  The matrix: ANY posit width <-> ANY float width (value-based).
 ::
 ++  test-ieee-matrix  ^-  tang
   ;:  weld
-    ::  posit16 1.0 -> single 1.0
     %+  expect-eq  !>(`@`0x3f80.0000)  !>((to-rs:rph:unum 0x4000))
-    ::  posit32 1.0 -> double 1.0
     %+  expect-eq  !>(`@`0x3ff0.0000.0000.0000)  !>((to-rd:rps:unum 0x4000.0000))
-    ::  posit8  1.0 -> single 1.0
     %+  expect-eq  !>(`@`0x3f80.0000)  !>((to-rs:rpb:unum 0x40))
-    ::  single 1.0 -> posit16 1.0
     %+  expect-eq  !>(`@`0x4000)  !>((from-rs:rph:unum 0x3f80.0000))
-    ::  double 1.0 -> posit32 1.0
     %+  expect-eq  !>(`@`0x4000.0000)  !>((from-rd:rps:unum 0x3ff0.0000.0000.0000))
+  ==
+::
+::  Transcendentals (naive Taylor series, /lib/math style).  These posit8
+::  values are the series outputs, which match the SoftPosit correctly-rounded
+::  result (verified offline by a Python port of the same series).  pow-n is
+::  exact integer power.
+::
+++  test-transcendental-rpb  ^-  tang
+  =/  u  rpb:unum
+  ;:  weld
+    %+  expect-eq  !>(`@`0x40)  !>((exp:u 0x0))             ::  exp(0)=1
+    %+  expect-eq  !>(`@`0x4b)  !>((exp:u 0x40))            ::  exp(1)=e
+    %+  expect-eq  !>(`@`0x0)   !>((sin:u 0x0))             ::  sin(0)=0
+    %+  expect-eq  !>(`@`0x3d)  !>((sin:u 0x40))            ::  sin(1)~0.8415
+    %+  expect-eq  !>(`@`0x40)  !>((cos:u 0x0))             ::  cos(0)=1
+    %+  expect-eq  !>(`@`0x39)  !>((cos:u 0x40))            ::  cos(1)~0.5403
+    %+  expect-eq  !>(`@`0x44)  !>((tan:u 0x40))            ::  tan(1)~1.5574
+    %+  expect-eq  !>(`@`0x0)   !>((log:u 0x40))            ::  log(1)=0
+    %+  expect-eq  !>(`@`0x3b)  !>((log:u (sun:u 2)))       ::  log(2)~0.6931
+    %+  expect-eq  !>(`@`0x58)  !>((pow-n:u (sun:u 2) 3))   ::  2^3=8 (exact)
+    %+  expect-eq  !>(`@`0x40)  !>((pow:u (sun:u 2) 0x0))   ::  2^0=1
   ==
 --

@@ -22,6 +22,16 @@
   |=  [op=$-([ray ray] ray) b=@ c=@]  ^-  @
   =/  m1=meta  [~[1 1] 4 %unum ~]
   (get-item:la (op (fill:la m1 b) (fill:la m1 c)) ~[0 0])
+::  posit32 (bloq 5, rps)
+++  bin32
+  |=  [op=$-([ray ray] ray) b=@ c=@]  ^-  @
+  =/  m1=meta  [~[1 1] 5 %unum ~]
+  (get-item:la (op (fill:la m1 b) (fill:la m1 c)) ~[0 0])
+::  posit64 (bloq 6, rpd)
+++  bin64
+  |=  [op=$-([ray ray] ray) b=@ c=@]  ^-  @
+  =/  m1=meta  [~[1 1] 6 %unum ~]
+  (get-item:la (op (fill:la m1 b) (fill:la m1 c)) ~[0 0])
 ::
 ::  arithmetic, posit8 (correctly rounded, es=2)
 ++  test-unum-arith  ^-  tang
@@ -107,5 +117,36 @@
     %+  expect-eq  !>(`@`0x62)  !>((get-item:la c ~[0 1]))   ::  22 -> 24
     %+  expect-eq  !>(`@`0x65)  !>((get-item:la c ~[1 0]))   ::  43 -> 40
     %+  expect-eq  !>(`@`0x66)  !>((get-item:la c ~[1 1]))   ::  50 -> 48
+  ==
+::  %mod truncates the quotient toward zero (C fmod): -3.5 mod 2 = -1.5
+::  (0xbc).  A round-the-quotient implementation would give +0.5 (0x38).
+++  test-unum-mod-trunc  ^-  tang
+  %+  expect-eq  !>(`@`0xbc)  !>((bin mod:la 0xb2 0x48))     ::  -3.5 mod 2 = -1.5
+::  %pow with a negative exponent yields the reciprocal: 2^-2 = 0.25 (0x30).
+++  test-unum-pow-neg  ^-  tang
+  =/  m1=meta  [~[1 1] 3 %unum ~]
+  %+  expect-eq  !>(`@`0x30)  !>(((fun-scalar:la m1 %pow) 0x48 0xb8))  ::  2^-2 = 1/4
+::  NaR / div-by-zero guards return posit nar (0x80) instead of crashing.
+++  test-unum-guards  ^-  tang
+  =/  m1=meta  [~[1 1] 3 %unum ~]
+  ;:  weld
+    %+  expect-eq  !>(`@`0x80)  !>((bin mod:la 0x52 0x0))             ::  5 mod 0 = nar
+    %+  expect-eq  !>(`@`0x80)  !>((bin mod:la 0x80 0x4c))            ::  nar mod 3 = nar
+    %+  expect-eq  !>(`@`0x80)  !>(((fun-scalar:la m1 %pow) 0x48 0x80))  ::  2^nar = nar
+  ==
+::  posit32 (bloq 5) and posit64 (bloq 6) arithmetic dispatch
+++  test-unum-posit32  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x5200.0000)  !>((bin32 add:la 0x4800.0000 0x4c00.0000))   ::  2+3=5
+    %+  expect-eq  !>(`@`0x5c00.0000)  !>((bin32 mul:la 0x4c00.0000 0x5000.0000))   ::  3*4=12
+  ==
+++  test-unum-posit64  ^-  tang
+  ;:  weld
+    %+  expect-eq
+      !>(`@`0x5200.0000.0000.0000)
+      !>((bin64 add:la 0x4800.0000.0000.0000 0x4c00.0000.0000.0000))               ::  2+3=5
+    %+  expect-eq
+      !>(`@`0x5c00.0000.0000.0000)
+      !>((bin64 mul:la 0x4c00.0000.0000.0000 0x5000.0000.0000.0000))               ::  3*4=12
   ==
 --

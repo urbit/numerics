@@ -1,5 +1,5 @@
 /-  lagoon
-/+  twoc
+/+  twoc, unum
 =+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
@@ -66,6 +66,15 @@
         %6  %rd
         %5  %rs
         %4  %rh
+      ==
+      ::
+        %unum
+      ::  no decimal pretty-printer yet; print the raw posit aura.
+      ?+    bloq.meta  ~|(bloq.meta !!)
+        %6  %rpd
+        %5  %rps
+        %4  %rph
+        %3  %rpb
       ==
     ==
   ::
@@ -458,6 +467,14 @@
         %5  .1
         %4  .~~1
       ==
+      ::
+        %unum
+      ?+  bloq.meta  ~|(bloq.meta !!)
+        %6  one:rpd:unum
+        %5  one:rps:unum
+        %4  one:rph:unum
+        %3  one:rpb:unum
+      ==
     ==
   ::    Zeroes
   ++  zeros
@@ -481,6 +498,14 @@
           %6  .~1
           %5  .1
           %4  .~~1
+        ==
+        ::
+          %unum
+        ?+  bloq.meta  !!
+          %6  one:rpd:unum
+          %5  one:rps:unum
+          %4  one:rph:unum
+          %3  one:rpb:unum
         ==
       ==
     (fill meta one)
@@ -626,6 +651,10 @@
       (spac [meta `@ux`data])
       ::
         %int2
+      (spac [meta `@ux`data])
+      ::
+        %unum
+      ::  data is already a posit bit pattern; pack it raw, like %int2.
       (spac [meta `@ux`data])
       ::
         %i754
@@ -1124,6 +1153,74 @@
           %neq  |=([a=@rh b=@rh] ?:(.=(a b) .~~0 .~~1))
         ==
       ==  :: bloq real
+      ::
+        %unum
+      ::  posits (/lib/unum), bloq selects width: 3=rpb 4=rph 5=rps 6=rpd.
+      ::  arithmetic is correctly-rounded per the 2022 standard; comparisons
+      ::  return posit 1 / 0 (i.e. `one` / `zero`) to match the value
+      ::  convention of the other kinds.  %mod is a - b*trunc(a/b).
+      ?+    `^bloq`bloq  !!
+          %3
+        ?+  fun  !!
+          %add  add:rpb:unum
+          %sub  sub:rpb:unum
+          %mul  mul:rpb:unum
+          %div  div:rpb:unum
+          %mod  |=([a=@ b=@] (sub:rpb:unum a (mul:rpb:unum b (san:rpb:unum (need (toi:rpb:unum (div:rpb:unum a b)))))))
+          %pow  |=([a=@ b=@] (pow-n:rpb:unum a `@u`(abs:si (need (toi:rpb:unum b)))))
+          %gth  |=([a=@ b=@] ?:((gth:rpb:unum a b) one:rpb:unum zero:rpb:unum))
+          %gte  |=([a=@ b=@] ?:((gte:rpb:unum a b) one:rpb:unum zero:rpb:unum))
+          %lth  |=([a=@ b=@] ?:((lth:rpb:unum a b) one:rpb:unum zero:rpb:unum))
+          %lte  |=([a=@ b=@] ?:((lte:rpb:unum a b) one:rpb:unum zero:rpb:unum))
+          %equ  |=([a=@ b=@] ?:((equ:rpb:unum a b) one:rpb:unum zero:rpb:unum))
+          %neq  |=([a=@ b=@] ?:((neq:rpb:unum a b) one:rpb:unum zero:rpb:unum))
+        ==
+          %4
+        ?+  fun  !!
+          %add  add:rph:unum
+          %sub  sub:rph:unum
+          %mul  mul:rph:unum
+          %div  div:rph:unum
+          %mod  |=([a=@ b=@] (sub:rph:unum a (mul:rph:unum b (san:rph:unum (need (toi:rph:unum (div:rph:unum a b)))))))
+          %pow  |=([a=@ b=@] (pow-n:rph:unum a `@u`(abs:si (need (toi:rph:unum b)))))
+          %gth  |=([a=@ b=@] ?:((gth:rph:unum a b) one:rph:unum zero:rph:unum))
+          %gte  |=([a=@ b=@] ?:((gte:rph:unum a b) one:rph:unum zero:rph:unum))
+          %lth  |=([a=@ b=@] ?:((lth:rph:unum a b) one:rph:unum zero:rph:unum))
+          %lte  |=([a=@ b=@] ?:((lte:rph:unum a b) one:rph:unum zero:rph:unum))
+          %equ  |=([a=@ b=@] ?:((equ:rph:unum a b) one:rph:unum zero:rph:unum))
+          %neq  |=([a=@ b=@] ?:((neq:rph:unum a b) one:rph:unum zero:rph:unum))
+        ==
+          %5
+        ?+  fun  !!
+          %add  add:rps:unum
+          %sub  sub:rps:unum
+          %mul  mul:rps:unum
+          %div  div:rps:unum
+          %mod  |=([a=@ b=@] (sub:rps:unum a (mul:rps:unum b (san:rps:unum (need (toi:rps:unum (div:rps:unum a b)))))))
+          %pow  |=([a=@ b=@] (pow-n:rps:unum a `@u`(abs:si (need (toi:rps:unum b)))))
+          %gth  |=([a=@ b=@] ?:((gth:rps:unum a b) one:rps:unum zero:rps:unum))
+          %gte  |=([a=@ b=@] ?:((gte:rps:unum a b) one:rps:unum zero:rps:unum))
+          %lth  |=([a=@ b=@] ?:((lth:rps:unum a b) one:rps:unum zero:rps:unum))
+          %lte  |=([a=@ b=@] ?:((lte:rps:unum a b) one:rps:unum zero:rps:unum))
+          %equ  |=([a=@ b=@] ?:((equ:rps:unum a b) one:rps:unum zero:rps:unum))
+          %neq  |=([a=@ b=@] ?:((neq:rps:unum a b) one:rps:unum zero:rps:unum))
+        ==
+          %6
+        ?+  fun  !!
+          %add  add:rpd:unum
+          %sub  sub:rpd:unum
+          %mul  mul:rpd:unum
+          %div  div:rpd:unum
+          %mod  |=([a=@ b=@] (sub:rpd:unum a (mul:rpd:unum b (san:rpd:unum (need (toi:rpd:unum (div:rpd:unum a b)))))))
+          %pow  |=([a=@ b=@] (pow-n:rpd:unum a `@u`(abs:si (need (toi:rpd:unum b)))))
+          %gth  |=([a=@ b=@] ?:((gth:rpd:unum a b) one:rpd:unum zero:rpd:unum))
+          %gte  |=([a=@ b=@] ?:((gte:rpd:unum a b) one:rpd:unum zero:rpd:unum))
+          %lth  |=([a=@ b=@] ?:((lth:rpd:unum a b) one:rpd:unum zero:rpd:unum))
+          %lte  |=([a=@ b=@] ?:((lte:rpd:unum a b) one:rpd:unum zero:rpd:unum))
+          %equ  |=([a=@ b=@] ?:((equ:rpd:unum a b) one:rpd:unum zero:rpd:unum))
+          %neq  |=([a=@ b=@] ?:((neq:rpd:unum a b) one:rpd:unum zero:rpd:unum))
+        ==
+      ==  :: bloq unum
     ==  :: kind
   ::
   ++  trans-scalar
@@ -1158,6 +1255,14 @@
         ?+  fun  !!
           %abs  |=(b=@ ?:((~(gte rh rnd) b .~~0) b (~(mul rh rnd) b .~~-1)))
         ==
+      ==
+      ::
+        %unum
+      ?+    bloq  !!
+        %6  ?+(fun !! %abs abs:rpd:unum)
+        %5  ?+(fun !! %abs abs:rps:unum)
+        %4  ?+(fun !! %abs abs:rph:unum)
+        %3  ?+(fun !! %abs abs:rpb:unum)
       ==
     ==
   ::

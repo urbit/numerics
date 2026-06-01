@@ -1,17 +1,20 @@
   ::  /tests/lib/twoc
 ::::
 ::    Two's-complement integer arithmetic (modular).  The bulk of the
-::    arithmetic is checked at int8 (bloq 3); the wrap boundaries and the
-::    len/len-mod modulus are re-checked at int16 (bloq 4), int32 (bloq 5),
-::    and int64 (bloq 6) so width handling is exercised at several sizes.
+::    arithmetic is checked at int8 (bloq 3) through the +twoc facade; the
+::    wrap boundaries are re-checked at int16/32/64.  The width-keyed +twid
+::    door is exercised directly at a non-power-of-2 width (17) -- the case
+::    /lib/fixed needs -- plus a facade/width parity check.
 ::
 /+  *test,
     twoc
 ^|
-=/  t  ~(. twoc:twoc 3)            :: int8
+=/  t  ~(. twoc:twoc 3)            :: int8 (facade)
 =/  t16  ~(. twoc:twoc 4)          :: int16
 =/  t32  ~(. twoc:twoc 5)          :: int32
 =/  t64  ~(. twoc:twoc 6)          :: int64
+=/  w17  ~(. twid:twoc 17)         :: width-17 (q8.8 fixed N)
+=/  w8   ~(. twid:twoc 8)          :: width-8, should match the bloq-3 facade
 |%
 ++  test-add  ^-  tang
   ;:  weld
@@ -109,5 +112,31 @@
     %+  expect-eq  !>(`@`0x1)                    !>((mul:t64 0xffff.ffff.ffff.ffff 0xffff.ffff.ffff.ffff))  ::  -1*-1=1
     %+  expect-eq  !>(`@`0xffff.ffff.ffff.fffe)  !>((mul:t64 0xffff.ffff.ffff.ffff 0x2))   ::  -1*2=-2
     %+  expect-eq  !>(%.y)                       !>((lth:t64 0xffff.ffff.ffff.ffff 0x1))   ::  -1 < 1
+  ==
+::
+::  +twid at a non-power-of-2 width (17): the case /lib/fixed needs.
+::  Sign bit is bit 16 (0x1.0000); max positive is 0xffff, min is 0x1.0000.
+++  test-twid17  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x1.ffff)  !>((neg:w17 0x1))             ::  -1
+    %+  expect-eq  !>(`@`0x1.0000)  !>((add:w17 0xffff 0x1))      ::  maxpos+1 -> min (wrap)
+    %+  expect-eq  !>(`@`0x1.fffa)  !>((mul:w17 (neg:w17 0x3) 0x2))  ::  -3*2=-6
+    %+  expect-eq  !>(`@`0x6)       !>((mul:w17 (neg:w17 0x3) (neg:w17 0x2)))  ::  -3*-2=6
+    %+  expect-eq  !>(%.y)          !>((lth:w17 0x1.ffff 0x1))    ::  -1 < 1
+    %+  expect-eq  !>(`@`0x5)       !>((abs:w17 0x1.fffb))        ::  |-5|=5
+    %+  expect-eq  !>(`@`0x5)       !>((s-to-twoc:w17 --5))       ::  +5
+    %+  expect-eq  !>(`@`0x1.fffb)  !>((s-to-twoc:w17 -5))        ::  -5
+    %+  expect-eq  !>(`@s`-5)       !>((twoc-to-s:w17 0x1.fffb))  ::  round trip back
+    %+  expect-eq  !>(`@s`--5)      !>((twoc-to-s:w17 0x5))
+  ==
+::
+::  facade/width parity: +twoc at bloq 3 must equal +twid at width 8.
+++  test-facade-parity  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>((add:t 0x64 0x32))   !>((add:w8 0x64 0x32))
+    %+  expect-eq  !>((mul:t 0xfb 0x2))    !>((mul:w8 0xfb 0x2))
+    %+  expect-eq  !>((div:t 0xf9 0x2))    !>((div:w8 0xf9 0x2))
+    %+  expect-eq  !>((neg:t 0x1))         !>((neg:w8 0x1))
+    %+  expect-eq  !>((rem:t 0xf9 0x2))    !>((rem:w8 0xf9 0x2))
   ==
 --

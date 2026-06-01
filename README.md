@@ -1,6 +1,6 @@
 #   Numerical Libraries for Urbit
 
-**Status ~2026.1.21:  Lagoon updated for Vere64 by @matthewlevan; Saloon conversion to Chebyshev basis functions underway by @sigilante.**
+**Status ~2026.6.1:  Two's complement and unum/posit/quire support added; Lagoon updated for Vere64 by @matthewlevan; Saloon conversion to Chebyshev basis functions underway by @sigilante.**
 
 ![An evocative scene of a mysterious futuristic castle in the style of Flash Gordon](./img/hero-scene.jpg)
 
@@ -14,6 +14,7 @@ This repository organizes the core numerical computing apparatus for Urbit:
     - `/lib/lagoon` is the main library for Lagoon operations.
     - `/lib/twoc` supports two's-complement signed integers.
     - `/lib/fixed` supports fixed-precision operations.
+    - `/lib/unum` supports Gustafson-style unums (2022 Type III specification).
     - `/sur/lagoon` supplies type headers for Lagoon.
   - `/vere` contains the C jets for the Vere runtime.
 - Saloon (Scientific ALgorithms in hOON) affords transcendental functions (like NumPy's transcendental functions, optimizers, etc.).

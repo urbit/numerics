@@ -75,4 +75,37 @@
     %+  expect-eq  !>(`@`0x5200)  !>((bin16 add:la 0x4800 0x4c00))   ::  2+3=5
     %+  expect-eq  !>(`@`0x5c00)  !>((bin16 mul:la 0x4c00 0x5000))   ::  3*4=12
   ==
+::  quire-exact dot product: 0.25*5 + 3*7 = 22.25, correctly rounded to
+::  posit8 0x62 (24.0).  The naive round-each-step path would give 0x61
+::  (20.0); this asserts the fused single-rounding result.
+++  test-unum-dot  ^-  tang
+  =/  m=meta  [~[1 2] 3 %unum ~]
+  =/  a=ray  (fill:la m 0x0)
+  =.  a  (set-item:la a ~[0 0] 0x30)              ::  0.25
+  =.  a  (set-item:la a ~[0 1] 0x4c)              ::  3.0
+  =/  b=ray  (fill:la m 0x0)
+  =.  b  (set-item:la b ~[0 0] 0x52)              ::  5.0
+  =.  b  (set-item:la b ~[0 1] 0x56)              ::  7.0
+  %+  expect-eq  !>(`@`0x62)  !>((get-item:la (dot:la a b) ~[0 0]))
+::  quire-exact matrix multiply: [[1 2][3 4]] x [[5 6][7 8]] = [[19 22][43 50]],
+::  each cell correctly rounded in posit8 -> 0x61 0x62 / 0x65 0x66.
+++  test-unum-mmul  ^-  tang
+  =/  m=meta  [~[2 2] 3 %unum ~]
+  =/  a=ray  (fill:la m 0x0)
+  =.  a  (set-item:la a ~[0 0] 0x40)              ::  1
+  =.  a  (set-item:la a ~[0 1] 0x48)              ::  2
+  =.  a  (set-item:la a ~[1 0] 0x4c)              ::  3
+  =.  a  (set-item:la a ~[1 1] 0x50)              ::  4
+  =/  b=ray  (fill:la m 0x0)
+  =.  b  (set-item:la b ~[0 0] 0x52)              ::  5
+  =.  b  (set-item:la b ~[0 1] 0x54)              ::  6
+  =.  b  (set-item:la b ~[1 0] 0x56)              ::  7
+  =.  b  (set-item:la b ~[1 1] 0x58)              ::  8
+  =/  c=ray  (mmul:la a b)
+  ;:  weld
+    %+  expect-eq  !>(`@`0x61)  !>((get-item:la c ~[0 0]))   ::  19 -> 20
+    %+  expect-eq  !>(`@`0x62)  !>((get-item:la c ~[0 1]))   ::  22 -> 24
+    %+  expect-eq  !>(`@`0x65)  !>((get-item:la c ~[1 0]))   ::  43 -> 40
+    %+  expect-eq  !>(`@`0x66)  !>((get-item:la c ~[1 1]))   ::  50 -> 48
+  ==
 --

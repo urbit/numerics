@@ -710,6 +710,9 @@
     |=  a=ray
     ^-  ray
     ?>  (check a)
+    ::  %unum: exact quire sum (single rounding), see +unum-sum.
+    ?:  ?=(%unum kind.meta.a)
+      (scalar-to-ray meta.a (unum-sum bloq.meta.a (ravel a)))
     %+  scalar-to-ray  meta.a
     (reel (ravel a) |=([b=@ c=@] ((fun-scalar meta.a %add) b c)))
   ::
@@ -842,6 +845,10 @@
     |=  [a=ray b=ray]
     ^-  ray
     ?>  =(shape.meta.a shape.meta.b)
+    ::  %unum: fuse the multiply-accumulate in the quire (single rounding)
+    ::  rather than rounding each product and each partial sum.
+    ?:  ?=(%unum kind.meta.a)
+      (scalar-to-ray meta.a (unum-fdp bloq.meta.a (ravel a) (ravel b)))
     (cumsum (mul a b))
   ::
   ++  mmul
@@ -861,6 +868,8 @@
         =(2 (lent shape.meta.a))
         =((snag 1 shape.meta.a) (snag 0 shape.meta.b))
     ==
+    ::  %unum: accumulate each output cell exactly in the quire, see +mmul-unum.
+    ?:  ?=(%unum kind.meta.a)  (mmul-unum a b)
     |-
       ?:   =(i (snag 0 shape.meta.prod))
         prod
@@ -888,6 +897,27 @@
           ==
         ==
       ==
+  ::  +mmul-unum: posit matrix multiply with quire-exact accumulation.  Each
+  ::  output cell [i j] is the fused dot product of row i of a and column j of
+  ::  b, rounded once.  Assumes the shape checks in +mmul already passed.
+  ++  mmul-unum
+    ~/  %mmul-unum
+    |=  [a=ray b=ray]
+    ^-  ray
+    =/  m   (snag 0 shape.meta.a)
+    =/  nn  (snag 1 shape.meta.b)
+    =/  kk  (snag 1 shape.meta.a)
+    =/  bl  bloq.meta.a
+    =/  prod=ray  =,(meta.a (zeros [~[m nn] bloq kind ~]))
+    =/  i  0
+    |-  ^-  ray
+    ?:  =(i m)  prod
+    =/  j  0
+    |-  ^-  ray
+    ?:  =(j nn)  ^$(i +(i), prod prod)
+    =/  av=(list @)  (turn (gulf 0 (dec kk)) |=(p=@ `@`(get-item a ~[i p])))
+    =/  bv=(list @)  (turn (gulf 0 (dec kk)) |=(p=@ `@`(get-item b ~[p j])))
+    $(j +(j), prod (set-item prod ~[i j] (unum-fdp bl av bv)))
 ::
   ++  abs
     ~/  %abs
@@ -1039,6 +1069,36 @@
     |=  [a=ray]
     ^-  ?(%.y %.n)
     ?!(=(-:(ravel (min a)) 0))
+  ::
+  ::  Quire-exact posit reductions (/lib/unum fdp).  Sums of posit products
+  ::  accumulate in the 16n-bit quire and round exactly once, so dot/mmul/
+  ::  cumsum over %unum rays are correctly-rounded rather than rounding at
+  ::  every intermediate step.  bloq selects width: 3=rpb 4=rph 5=rps 6=rpd.
+  ::
+  ++  unum-one
+    |=  =bloq
+    ^-  @
+    ?+  bloq  !!
+      %3  one:rpb:unum
+      %4  one:rph:unum
+      %5  one:rps:unum
+      %6  one:rpd:unum
+    ==
+  ::  +unum-fdp: fused dot product of two equal-length posit vectors.
+  ++  unum-fdp
+    |=  [=bloq av=(list @) bv=(list @)]
+    ^-  @
+    ?+  bloq  !!
+      %3  (fdp:rpb:unum av bv)
+      %4  (fdp:rph:unum av bv)
+      %5  (fdp:rps:unum av bv)
+      %6  (fdp:rpd:unum av bv)
+    ==
+  ::  +unum-sum: exact sum of a posit vector (fdp against a vector of ones).
+  ++  unum-sum
+    |=  [=bloq v=(list @)]
+    ^-  @
+    (unum-fdp bloq v (reap (lent v) (unum-one bloq)))
   ::
   +$  ops   $?  %add
                 %sub

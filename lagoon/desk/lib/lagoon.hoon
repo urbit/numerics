@@ -1,4 +1,5 @@
 /-  lagoon
+/+  twoc
 =+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
@@ -57,7 +58,7 @@
       %ud
       ::
         %int2
-      !!
+      %sd
       ::
         %i754
       ?+    bloq.meta  ~|(bloq.meta !!)
@@ -448,7 +449,7 @@
     ?-    kind.meta
         %uint  `@`1
       ::
-        %int2  !!
+        %int2  `@`1
       ::
         %i754
       ?+  bloq.meta  ~|(bloq.meta !!)
@@ -472,7 +473,7 @@
       ?-    kind.meta
           %uint  `@`1
         ::
-          %int2  !!
+          %int2  `@`1
         ::
           %i754
         ?+  bloq.meta  !!
@@ -1046,7 +1047,23 @@
         %neq  |=([b=@ c=@] ?:(.=(b c) 0 1))
       ==
       ::
-        %int2  !!
+        %int2
+      ::  modular two's-complement (wraps on overflow), via /lib/twoc.
+      ::  comparisons return 1=true / 0=false as a value, matching %uint.
+      ?+  fun  !!
+        %add  ~(add twoc:twoc bloq)
+        %sub  ~(sub twoc:twoc bloq)
+        %mul  ~(mul twoc:twoc bloq)
+        %div  ~(div twoc:twoc bloq)
+        %mod  ~(rem twoc:twoc bloq)
+        %pow  ~(pow twoc:twoc bloq)
+        %gth  |=([b=@ c=@] ?:((~(gth twoc:twoc bloq) b c) 1 0))
+        %gte  |=([b=@ c=@] ?:((~(gte twoc:twoc bloq) b c) 1 0))
+        %lth  |=([b=@ c=@] ?:((~(lth twoc:twoc bloq) b c) 1 0))
+        %lte  |=([b=@ c=@] ?:((~(lte twoc:twoc bloq) b c) 1 0))
+        %equ  |=([b=@ c=@] ?:(.=(b c) 1 0))
+        %neq  |=([b=@ c=@] ?:(.=(b c) 0 1))
+      ==
       ::
         %i754
       ?+    `^bloq`bloq  !!
@@ -1113,12 +1130,15 @@
     |=  [=bloq =kind fun=ops]
     ^-  $-(@ @)
     ?-    kind
-        %uint  
+        %uint
       ?+  fun  !!
         %abs  |=(b=@ b)
       ==
       ::
-        %int2  !!
+        %int2
+      ?+  fun  !!
+        %abs  ~(abs twoc:twoc bloq)
+      ==
       ::
         %i754
       ?+    bloq  !!

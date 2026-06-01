@@ -29,11 +29,11 @@
     ^-  @
     ?>  (^lte `@`a (dec ~(out fe bloq)))
     %+  mix
-      (rsh 0 a) 
+      (rsh 0 a)
     (~(sum fe bloq) (not 0 len (dis a 1)) 1)
   ::
   :: 1001 is -7 in int4
-  :: 1111 - 1001 = 0110  
+  :: 1111 - 1001 = 0110
   :: 0110 + 0001 = 0111 (7)
   ++  twoc-to-s
     |=  a=@
@@ -51,8 +51,9 @@
   ::  and multiply serve signed and unsigned alike.
   ::
   ++  add  |=([a=@ b=@] ^-(@ (mod (^add a b) len-mod)))
-  ::  +neg: two's-complement negation, (~a + 1) mod 2^len.  neg(min) = min.
-  ++  neg  |=(a=@ ^-(@ (mod (^add (^sub (dec len-mod) (mod a len-mod)) 1) len-mod)))
+  ::  +neg: two's-complement negation, ~a + 1 (flip the len bits, add one),
+  ::  the standard XOR-then-increment.  neg(min) = min (wraps).
+  ++  neg  |=(a=@ ^-(@ (mod +((not 0 len (mod a len-mod))) len-mod)))
   ++  sub  |=([a=@ b=@] ^-(@ (add a (neg b))))
   ++  mul  |=([a=@ b=@] ^-(@ (mod (^mul (mod a len-mod) (mod b len-mod)) len-mod)))
   ::  +abs: |a| as a two's-complement value (abs(min) wraps back to min).
@@ -76,8 +77,8 @@
     =/  q   (^div (abs a) (abs b))
     ?:  =(sa sb)  (mod q len-mod)            :: same sign -> non-negative
     (neg q)                                  :: opposite sign -> negative
-  ::  +mod: signed remainder, sign follows the DIVIDEND (C `%` / truncated).
-  ::  a == (add (mul (div a b) b) (mod a b)).
+  ::  +rem: signed remainder, sign follows the DIVIDEND (C `%` / truncated).
+  ::  a == (add (mul (div a b) b) (rem a b)).
   ++  rem
     |=  [a=@ b=@]
     ^-  @

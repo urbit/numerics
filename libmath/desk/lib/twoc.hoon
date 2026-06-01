@@ -56,7 +56,7 @@
   ++  overflow
     |=  [a=@ b=@ c=@]
     ?|  &(=(0 (msb c)) =(1 (msb a)) =(1 (msb b)))
-        &(=(1 (msb c)) =(0 (msb a)) =(0 (msb a)))
+        &(=(1 (msb c)) =(0 (msb a)) =(0 (msb b)))
     ==
   ::
   ++  mul
@@ -99,6 +99,8 @@
     ::  if signs same, use the default gth
     (^gth a b)
   ::
-  ++  lth  |=([a=@ b=@] !(gth a b))
+  ++  lth  |=([a=@ b=@] (gth b a))
+  ++  lte  |=([a=@ b=@] !(gth a b))
+  ++  gte  |=([a=@ b=@] !(gth b a))
   --
 --

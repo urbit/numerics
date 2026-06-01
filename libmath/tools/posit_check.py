@@ -260,24 +260,31 @@ def check_quire():
     print(f"  fdp: {T - bad}/{T} random vectors match")
     return bad == 0
 
-def check_div_edge():
-    # KNOWN EDGE: div is 1 ULP off vs SoftPosit in ~0.01% of posit16/32 cases
-    # (a rounding-tie issue in the quotient-sticky path).  posit8 div is
-    # exhaustively exact.  add/sub/mul are exact at all widths.  Tracked for fix.
-    if sp is None: return
+def check_arith_wide():
+    # add/sub/mul/div sampled at posit16 and posit32 vs SoftPosit (all exact).
+    if sp is None:
+        print("  wide arith: SKIP"); return True
     import random as _r
     def mk(p, n):
         o = sp.convertDoubleToPX2(0.0, n); o.v = p << (32 - n); return o
     def pt(p, n): return p.v >> (32 - n)
-    _r.seed(1); n = 16; bad = 0; T = 100000
-    for _ in range(T):
-        a = _r.randrange(1 << n); b = _r.randrange(1 << n)
-        if div(a, b, n) != pt(sp.pX2_div(mk(a, n), mk(b, n), n), n): bad += 1
-    print(f"  div posit16 known-edge mismatches: {bad}/{T} (~0.01%, 1 ULP; TODO fix)")
+    fns = {'add': add, 'sub': sub, 'mul': mul, 'div': div}
+    spf = {'add': sp.pX2_add, 'sub': sp.pX2_sub, 'mul': sp.pX2_mul, 'div': sp.pX2_div}
+    ok = True
+    for n in (16, 32):
+        _r.seed(1); bad = {}
+        for _ in range(100000):
+            a = _r.randrange(1 << n); b = _r.randrange(1 << n)
+            for k in fns:
+                if fns[k](a, b, n) != pt(spf[k](mk(a, n), mk(b, n), n), n):
+                    bad[k] = bad.get(k, 0) + 1
+        print(f"  posit{n}: {bad or 'all add/sub/mul/div match'}")
+        ok &= (not bad)
+    return ok
 
 if __name__ == '__main__':
     c = check_consts(); a = check_arith()
     print("elementary:"); el = check_elementary()
     print("quire:"); q = check_quire()
-    print("notes:"); check_div_edge()
-    print("ALL PASS (posit8 exhaustive):", c and a and el and q)
+    print("wide arith (posit16/32 sampled):"); w = check_arith_wide()
+    print("ALL PASS:", c and a and el and q and w)

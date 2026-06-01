@@ -63,4 +63,47 @@
   =/  q  (div:fixed 0x300 q88 0x200 q88)        ::  3.0/2.0 = 1.5 in q8.8
   =/  back  (mul:fixed -.q q88 0x200 q88)       ::  1.5*2.0 = 3.0 in q17.16
   %+  expect-eq  !>(`@`0x3.0000)  !>(-.back)
+::
+++  test-abs  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x180)  !>((abs:fixed n1-5 q88))     ::  |-1.5| = 1.5
+    %+  expect-eq  !>(`@`0x180)  !>((abs:fixed 0x180 q88))    ::  |1.5|  = 1.5
+  ==
+::
+++  test-mod  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x180)     !>((mod:fixed 0x380 q88 0x200 q88))  ::  3.5 mod 2 = 1.5
+    %+  expect-eq  !>(`@`0x1.fe80)  !>((mod:fixed (neg:fixed 0x380 q88) q88 0x200 q88))  ::  -3.5 mod 2 = -1.5
+  ==
+::
+::  comparisons (signed, equal precision) return loobeans
+++  test-compare  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`?`%.y)  !>((gth:fixed 0x180 q88 0x100 q88))  ::  1.5 > 1.0
+    %+  expect-eq  !>(`?`%.n)  !>((gth:fixed n1-5 q88 0x100 q88))   ::  -1.5 > 1.0 -> no
+    %+  expect-eq  !>(`?`%.y)  !>((lth:fixed n1-5 q88 0x100 q88))   ::  -1.5 < 1.0
+    %+  expect-eq  !>(`?`%.y)  !>((gte:fixed 0x100 q88 0x100 q88))  ::  1.0 >= 1.0
+    %+  expect-eq  !>(`?`%.y)  !>((lte:fixed 0x100 q88 0x100 q88))  ::  1.0 <= 1.0
+    %+  expect-eq  !>(`?`%.y)  !>((equ:fixed 0x100 q88 0x100 q88))  ::  1.0 == 1.0
+    %+  expect-eq  !>(`?`%.n)  !>((equ:fixed 0x100 q88 0x180 q88))  ::  1.0 == 1.5 -> no
+    %+  expect-eq  !>(`?`%.y)  !>((neq:fixed 0x100 q88 0x180 q88))  ::  1.0 != 1.5
+  ==
+::
+::  constructors: integer and float -> fixed
+++  test-from-s  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x300)     !>((from-s:fixed --3 q88))   ::  3.0
+    %+  expect-eq  !>(`@`0x1.fe00)  !>((from-s:fixed -2 q88))    ::  -2.0
+    %+  expect-eq  !>(`@`0x0)       !>((from-s:fixed --0 q88))   ::  0
+  ==
+::
+::  float bridge: from-rs / to-rs (1.5, -1.5, 2.25 are exact in both)
+++  test-rs-bridge  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(`@`0x180)     !>((from-rs:fixed .1.5 q88))    ::  1.5
+    %+  expect-eq  !>(`@`0x1.fdc0)  !>((from-rs:fixed .-2.25 q88))  ::  -2.25
+    %+  expect-eq  !>(`@rs`.1.5)    !>((to-rs:fixed 0x180 q88))     ::  1.5
+    %+  expect-eq  !>(`@rs`.-1.5)   !>((to-rs:fixed n1-5 q88))      ::  -1.5
+    %+  expect-eq  !>(`@`0x180)     !>((from-rs:fixed (to-rs:fixed 0x180 q88) q88))  ::  round-trip
+  ==
 --

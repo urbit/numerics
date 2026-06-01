@@ -79,6 +79,62 @@
   =/  num  (new:si (syn:si sx) (lsh [0 b.xprec] (abs:si sx)))
   =/  qa   (fra:si num (to-s y yprec))
   [(s-to-twoc:(ng xprec) qa) xprec]
+::    +mod: [@ prec @ prec] -> @
+::
+::  Signed remainder a - b*trunc(a/b), keeping the input precision.  The sign
+::  follows the dividend (truncated division), via /lib/twoc's +rem.  Both
+::  operands share precision, so the 2^b scale cancels in the remainder.
+::    Examples
+::      > (mod 0x380 [8 8] 0x200 [8 8])   :: 3.5 mod 2.0
+::      0x180                             :: 1.5
+::  Source
+++  mod
+  |=  [x=@ xprec=prec y=@ yprec=prec]
+  ?>  =(xprec yprec)
+  (rem:(ng xprec) x y)
+::    +abs: [@ prec] -> @
+::
+::  Absolute value at the number's own width (abs of the most-negative value
+::  wraps back to itself, per two's-complement).
+::    Examples
+::      > (abs (neg 0x180 [8 8]) [8 8])   :: |-1.5|
+::      0x180
+::  Source
+++  abs
+  |=  [x=@ =prec]
+  ^-  @
+  (abs:(ng prec) x)
+::    +gth/+gte/+lth/+lte/+equ/+neq: [@ prec @ prec] -> ?
+::
+::  Signed comparisons of two equal-precision fixed-point numbers.  Because
+::  both are stored at the same 2^b scale, comparing the two's-complement
+::  values (via /lib/twoc) is order-preserving on the represented reals.
+::  +equ is bit equality (two's-complement has no negative zero).
+::  Source
+++  gth
+  |=  [x=@ xprec=prec y=@ yprec=prec]
+  ?>  =(xprec yprec)
+  (gth:(ng xprec) x y)
+++  gte
+  |=  [x=@ xprec=prec y=@ yprec=prec]
+  ?>  =(xprec yprec)
+  (gte:(ng xprec) x y)
+++  lth
+  |=  [x=@ xprec=prec y=@ yprec=prec]
+  ?>  =(xprec yprec)
+  (lth:(ng xprec) x y)
+++  lte
+  |=  [x=@ xprec=prec y=@ yprec=prec]
+  ?>  =(xprec yprec)
+  (lte:(ng xprec) x y)
+++  equ
+  |=  [x=@ xprec=prec y=@ yprec=prec]
+  ?>  =(xprec yprec)
+  .=(x y)
+++  neq
+  |=  [x=@ xprec=prec y=@ yprec=prec]
+  ?>  =(xprec yprec)
+  !.=(x y)
 ::    +to-s: [@ prec] -> @s
 ::
 ::  Decode a fixed-point bit pattern to a hoon signed integer (the stored
@@ -88,6 +144,51 @@
   |=  [x=@ =prec]
   ^-  @s
   (twoc-to-s:(ng prec) x)
+::    +from-s: [@s prec] -> @
+::
+::  Encode a (whole) signed integer as a fixed-point number at the given
+::  precision: stored value = n * 2^b.  Out-of-range n crashes (s-to-twoc).
+::    Examples
+::      > (from-s --3 [8 8])   :: 3.0
+::      0x300
+::      > (from-s -2 [8 8])    :: -2.0
+::      0x1.fe00
+::  Source
+++  from-s
+  |=  [n=@s =prec]
+  ^-  @
+  (s-to-twoc:(ng prec) (new:si (syn:si n) (lsh [0 b.prec] (abs:si n))))
+::    +from-rs: [@rs prec] -> @
+::
+::  Quantize a single-precision IEEE float to fixed-point, rounding the
+::  scaled value f * 2^b to the nearest integer (ties to even).  Out-of-range
+::  results wrap (s-to-twoc).  Use this to construct fractional constants.
+::    Examples
+::      > (from-rs .1.5 [8 8])
+::      0x180
+::  Source
+++  from-rs
+  |=  [f=@rs =prec]
+  ^-  @
+  =/  i=@s  (need (~(toi rs %n) (~(mul rs %n) f (~(sun rs %n) (bex b.prec)))))
+  (s-to-twoc:(ng prec) i)
+::    +to-rs: [@ prec] -> @rs
+::
+::  Decode a fixed-point number to a single-precision IEEE float: value =
+::  stored / 2^b.  Rounded to nearest (ties to even) where not exact.
+::    Examples
+::      > (to-rs 0x180 [8 8])
+::      .1.5
+::  Source
+++  to-rs
+  |=  [x=@ =prec]
+  ^-  @rs
+  =/  s=@s  (to-s x prec)
+  =/  fs=@rs
+    ?:  (syn:si s)
+      (~(sun rs %n) (abs:si s))
+    (~(mul rs %n) .-1 (~(sun rs %n) (abs:si s)))
+  (~(div rs %n) fs (~(sun rs %n) (bex b.prec)))
 ::    +neg: [@ prec] -> @
 ::
 ::  Two's-complement negation of a fixed-point number at its own width.
@@ -105,13 +206,13 @@
 ::  Source
 ++  hi
   |=  [x=@ =prec n=@]
-  ?>  (lte n (wid prec))
+  ?>  (^lte n (wid prec))
   (rsh [0 (^sub (wid prec) n)] x)
 ::    +lo: [@ prec @] -> @   (low n bits)
 ::  Source
 ++  lo
   |=  [x=@ =prec n=@]
-  ?>  (lte n (wid prec))
+  ?>  (^lte n (wid prec))
   (dis x (dec (bex n)))
 ::    +scale: [@ prec prec] -> @
 ::
@@ -131,7 +232,7 @@
   =/  sx  (to-s x xprec)
   =/  sg  (syn:si sx)
   =/  mg  (abs:si sx)
-  =/  mg2  ?:  (gth b.yprec b.xprec)
+  =/  mg2  ?:  (^gth b.yprec b.xprec)
              (lsh [0 (^sub b.yprec b.xprec)] mg)
            (rsh [0 (^sub b.xprec b.yprec)] mg)
   (s-to-twoc:(ng yprec) (new:si sg mg2))

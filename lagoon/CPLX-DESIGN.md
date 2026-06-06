@@ -52,14 +52,22 @@ to `complexN_t*` and calls SoftBLAS.**
 ## 2. Atom layout (the core decision)
 
 **`bloq` = log₂ of the *total* complex element width**, i.e. one Lagoon
-element = one whole complex number = one SoftBLAS `complexN_t`:
+element = one whole complex number = one SoftBLAS `complexN_t`.  Each complex
+element gets its own aura in a new **`@c` (complex) family**, paralleling `@r`
+(real): a `@c?` value is a packed pair of the corresponding `@r?` components.
 
-| `%cplx` bloq | element bits | SoftBLAS type | components | component aura | component bloq |
+| `%cplx` bloq | element aura | element bits | SoftBLAS type | components | component bloq |
 |---|---|---|---|---|---|
-| 5 | 32  | `complex16_t`  | 2 × half   | `@rh` | 4 |
-| 6 | 64  | `complex32_t`  | 2 × single | `@rs` | 5 |
-| 7 | 128 | `complex64_t`  | 2 × double | `@rd` | 6 |
-| 8 | 256 | `complex128_t` | 2 × quad   | `@rq` | 7 |
+| 5 | `@ch` | 32  | `complex16_t`  | 2 × `@rh` (half)   | 4 |
+| 6 | `@cs` | 64  | `complex32_t`  | 2 × `@rs` (single) | 5 |
+| 7 | `@cd` | 128 | `complex64_t`  | 2 × `@rd` (double) | 6 |
+| 8 | `@cq` | 256 | `complex128_t` | 2 × `@rq` (quad)   | 7 |
+
+(Naming follows IEEE component precision: `@cs` = complex-*single* = two 32-bit
+floats = a 64-bit element; `@cd` = complex-*double* = two 64-bit floats = a
+128-bit element.  These are the BLAS `c` and `z` types respectively.)  Defining
+real `@c` auras also lets `get-term` return `%ch/%cs/%cd/%cq` and a future
+printer render `re±imi` rather than raw hex.
 
 Within one element slot, **real occupies the low `2^(bloq-1)` bits, imag the
 high `2^(bloq-1)` bits**:
@@ -93,11 +101,11 @@ the low half with zero imag, i.e. just the float-one value (no shift needed).
 ## 3. `/lib/complex` (pure Hoon)
 
 A generic core specialised per width, mirroring `/lib/unum`'s `rpb/rph/rps/rpd`
-pattern.  Proposed door names by component: `++rcs` (single, `@rs`),
-`++rcd` (double, `@rd`), `++rch` (half, `@rh`), `++rcq` (quad, `@rq`); generic
-`++cx |_ [rnd=rounding-mode]` parameterised by rounding mode (like the float
-doors).  Each arm takes/returns **packed** complex atoms (low=re, high=im) so
-Lagoon dispatch is a one-liner, exactly as `add:rpb:unum` is for posits.
+pattern.  Door names match the aura: `++ch` (`@ch`), `++cs` (`@cs`),
+`++cd` (`@cd`), `++cq` (`@cq`); generic `++cx |_ [rnd=rounding-mode]`
+parameterised by rounding mode (like the float doors).  Each arm takes/returns
+**packed** `@c?` atoms (low=re, high=im) so Lagoon dispatch is a one-liner,
+exactly as `add:rpb:unum` is for posits.
 
 Pack/unpack (per the §2 formulas), then component arithmetic via the float door
 (`~(add rs rnd)` etc.):
@@ -137,8 +145,9 @@ Mirror the `%int2`/`%unum`/`%fixp` integration (same six dispatch sites):
   `one`/`zero`; **`gth`/`gte`/`lth`/`lte` crash** (no order); no `%mod`/`%pow`.
 - **`trans-scalar`**: `%abs` → modulus (as real-valued complex); propose adding
   a new `%conj` op to the `ops` union (other kinds `!!` on `%conj`).
-- **`get-term`**: `%ux` (raw hex) for now — there is no complex aura.  A future
-  `to-tank` special-case could render `re±imi`.
+- **`get-term`**: returns the element aura `%ch/%cs/%cd/%cq`.  Until a complex
+  printer is registered these render as raw hex, but the aura is now nameable
+  (vs `%unum`/`%fixp`, which fall back to `%ux`).
 - **`eye`/`ones`**: constant `one` = component-float `1.0` (imag 0).
 - **`scale`**: raw `@ux` pack, like `%int2`/`%unum`/`%fixp`.
 - **`change`/convert**: guard with `~|` for now.  Eventual map: `%i754`→`%cplx`
@@ -196,17 +205,24 @@ this work.
 
 ---
 
-## 7. Open decisions for review
+## 7. Decisions
 
-1. **Ordering**: confirm `gth`/`lth` crash (recommended) vs order-by-modulus.
-2. **`dot` conjugation**: keep Lagoon `dot` unconjugated + add `dotc`
-   (recommended), or make `%cplx`'s `dot` Hermitian to match the available
-   SoftBLAS `*dotc` primitive?
-3. **`%conj` op**: add to the shared `ops` union (needed for a clean
-   `trans-scalar` path), or expose conj only through `/lib/complex`?
-4. **Widths to ship first**: bloq 6 (`complex32`) and 7 (`complex64`) cover the
-   BLAS `c`/`z` cases; ship half/quad (5/8) too, or later?
-5. **`change` semantics**: `%cplx`→`%i754` as real-part vs modulus.
+Resolved (2026-06-05):
+
+1. **Auras** — dedicated `@c` family: `@ch`/`@cs`/`@cd`/`@cq` (§2).
+2. **Ordering** — `gth`/`gte`/`lth`/`lte` **crash**; only `equ`/`neq` defined.
+3. **`%conj` op** — **add** to the shared `ops` union (clean `trans-scalar`
+   path); also exposed through `/lib/complex`.
+4. **Widths first** — ship `@cs` (bloq 6) and `@cd` (bloq 7), the BLAS `c`/`z`
+   types; `@ch`/`@cq` (bloq 5/8) are additive follow-ups.
+
+Still under discussion:
+
+5. **`dot` conjugation** — bilinear `dot` (= numpy `@`/`dot`, consistent with
+   `mmul`) plus a separate Hermitian `dotc` (= numpy `vdot`, BLAS `*dotc`), vs
+   making `%cplx`'s `dot` itself Hermitian.  See §4.
+6. **`change` semantics** — specifically `%cplx`→real: real part (recommended,
+   = numpy `.real`) vs modulus (already available as `abs`).  See §4.
 
 ---
 

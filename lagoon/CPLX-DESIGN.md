@@ -32,8 +32,10 @@ From the vendored SoftBLAS (`vere/ext/softblas`) and the Lagoon jet C
 - **Routines present**: Level-1 complex — `c/i/z/v` prefixes for
   single/half/double/quad — `*axpy`, `*copy`, `*dotc`, `*scal`, `*swap`,
   `*rot`.  Note `*dotc` is the **conjugate** dot (Σ conj(x)·y); there is **no
-  unconjugated `*dotu`**.  **There is no complex GEMM** (no `cgemm`/`zgemm`);
-  only real `sgemm`/`dgemm`/… exist.
+  unconjugated `*dotu`**.  **There is no complex GEMM** (no `cgemm`/`zgemm`)
+  and no `*dotu` *yet* — but **we own this SoftBLAS** (it is vendored into
+  vere, but it is our fork), so the right move for the missing primitives is to
+  **add them to SoftBLAS** rather than work around them Lagoon-side.
 - **Jet marshalling**: the Lagoon jet reads the data atom with
   `u3r_bytes(0, syz, buf, atom)` where `syz = len * 2^(bloq-3)` bytes, appends
   the `0x1` pin for results, and **casts `buf` directly to `(floatN_t*)`**,
@@ -150,8 +152,13 @@ Mirror the `%int2`/`%unum`/`%fixp` integration (same six dispatch sites):
   (vs `%unum`/`%fixp`, which fall back to `%ux`).
 - **`eye`/`ones`**: constant `one` = component-float `1.0` (imag 0).
 - **`scale`**: raw `@ux` pack, like `%int2`/`%unum`/`%fixp`.
-- **`change`/convert**: guard with `~|` for now.  Eventual map: `%i754`→`%cplx`
-  (real r ↦ r+0i), `%cplx`→`%i754` (real part, or `abs`).
+- **`change`/convert**: conversions *into* complex are defined — `%i754`/
+  `%uint`/`%int2` → `%cplx` embeds `r ↦ r+0i`, and `%cplx`→`%cplx` at another
+  width re-quantizes each component float independently.  Conversion *out* of
+  complex to a real kind **refuses** (`~|('complex: lossy; use abs or an
+  explicit re/im extractor' !!)`) — it is inherently lossy, and the caller
+  should say which projection they mean (`abs` for modulus; a future
+  `re`/`im` extractor for the parts) rather than have `change` pick silently.
 
 ### Reductions
 
@@ -160,32 +167,39 @@ quire or fixed-point integer sums), so `%cplx` reductions round per operation,
 like `%i754` — do **not** claim fused exactness.
 
 - **`cumsum`**: independent float sums of the real and imag parts.
-- **`dot`**: `Σ aᵢ·bᵢ`, **unconjugated**, to stay consistent with the real
-  `dot` across kinds.  Pure-Hoon now.
-- **`dotc`** (propose as a new arm): `Σ conj(aᵢ)·bᵢ`, the Hermitian inner
-  product Saloon's eig/QR actually wants.  This is the one that maps onto
-  SoftBLAS `*dotc` for a future jet (note: there is no `*dotu`, so the
-  unconjugated `dot` jet would need pure-Hoon fallback or a `*dotu` added to
-  SoftBLAS).
-- **`mmul`**: per-cell complex dot, pure-Hoon (like `mmul-unum`).  **No complex
-  GEMM exists in SoftBLAS**, so the eventual jet must build it from real GEMMs:
-  for `A=Aᵣ+iAᵢ`, `B=Bᵣ+iBᵢ`, either the **4-real-GEMM** form
-  (`re = AᵣBᵣ − AᵢBᵢ`, `im = AᵣBᵢ + AᵢBᵣ`) or the **3-mult Karatsuba** form,
-  over `sgemm`/`dgemm`, after de-interleaving the complex array into planar
-  real/imag buffers and re-interleaving the result.
+- **`dot`**: `Σ aᵢ·bᵢ`, **bilinear / unconjugated** (= numpy `@`/`dot`, BLAS
+  `*dotu`), consistent with `mmul` and with `dot` on the real kinds.  Pure-Hoon
+  now; jet via a `*dotu` added to SoftBLAS (see below).
+- **`dotc`** (new arm): `Σ conj(aᵢ)·bᵢ`, the Hermitian inner product (= numpy
+  `vdot`, BLAS `*dotc`) — `⟨a,a⟩ = Σ|aᵢ|² = ‖a‖²`, the norm Saloon's eig/QR
+  need.  Jets directly onto SoftBLAS `*dotc`.  (For real kinds `conj` is the
+  identity, so `dotc` ≡ `dot` there.)
+- **`mmul`**: per-cell bilinear complex dot, pure-Hoon now (like `mmul-unum`).
+  For the jet, **add `cgemm`/`zgemm` to SoftBLAS** (we own it) rather than
+  decomposing Lagoon-side.  Inside that new routine the standard implementation
+  is the **4-real-GEMM** form (`re = AᵣBᵣ − AᵢBᵢ`, `im = AᵣBᵢ + AᵢBᵣ`) or the
+  **3-mult Karatsuba** form over the existing real GEMM kernels — but that
+  stays in C, behind a normal `*gemm` interface the Lagoon jet calls exactly
+  like the real `mmul` jet.
 
 ---
 
 ## 5. Jets (later; not this PR)
 
-- **Level-1** (`axpy`/`scal`/`copy`/`swap`/`dotc`): the data atom casts
-  directly to `complexN_t*` (§2), so these are thin wrappers over SoftBLAS
-  `c/i/z/v` routines — the cheapest jets in the whole numerics tree.
-- **`dot` (unconjugated)**: no SoftBLAS primitive; pure-Hoon or add `*dotu`.
-- **`mmul`**: 4-real-GEMM or 3M Karatsuba over real `sgemm`/`dgemm` (§4); needs
-  de-interleave/re-interleave helpers.
+Because we own SoftBLAS, the jet plan is to **complete the complex BLAS in C**
+and have the Lagoon jet cast-and-call, exactly as the real path does today:
+
+- **Level-1** (`axpy`/`scal`/`copy`/`swap`/`dotc`): already present; the data
+  atom casts directly to `complexN_t*` (§2), so these are thin wrappers — the
+  cheapest jets in the whole numerics tree.
+- **`dotc`**: maps onto the existing SoftBLAS `*dotc`.
+- **`dot` (bilinear)**: **add `*dotu`** to SoftBLAS (the conjugate-free dot).
+- **`mmul`**: **add `cgemm`/`zgemm`** to SoftBLAS (implemented internally via
+  the 4-real-GEMM / 3M-Karatsuba decomposition over the real GEMM kernels);
+  the Lagoon jet then calls it like the real `mmul` jet.
 - Consistent with the rest of the tree, `%cplx` (like `%unum`/`%fixp`) runs
-  pure-Hoon until a consumer needs the speed.
+  pure-Hoon until these land; the C additions are a self-contained SoftBLAS
+  task, coordinated with the SoftBLAS/vere jet work (PR #1021).
 
 ---
 
@@ -216,13 +230,15 @@ Resolved (2026-06-05):
 4. **Widths first** — ship `@cs` (bloq 6) and `@cd` (bloq 7), the BLAS `c`/`z`
    types; `@ch`/`@cq` (bloq 5/8) are additive follow-ups.
 
-Still under discussion:
+5. **`dot` conjugation** — `dot` is **bilinear** (= numpy `@`/`dot`, BLAS
+   `*dotu`, consistent with `mmul`); a separate **`dotc`** gives the Hermitian
+   inner product (= numpy `vdot`, BLAS `*dotc`) for norms / Saloon eig.
+6. **`change` out of complex** — **refuses** (lossy); conversions *into*
+   complex and between complex widths are defined.  Modulus via `abs`.
+7. **Jets** — since we own SoftBLAS, add the missing complex primitives there
+   (`*dotu`, `cgemm`/`zgemm`) rather than working around them Lagoon-side (§5).
 
-5. **`dot` conjugation** — bilinear `dot` (= numpy `@`/`dot`, consistent with
-   `mmul`) plus a separate Hermitian `dotc` (= numpy `vdot`, BLAS `*dotc`), vs
-   making `%cplx`'s `dot` itself Hermitian.  See §4.
-6. **`change` semantics** — specifically `%cplx`→real: real part (recommended,
-   = numpy `.real`) vs modulus (already available as `abs`).  See §4.
+All design decisions are now settled; the doc is ready to implement against.
 
 ---
 
@@ -231,8 +247,8 @@ Still under discussion:
 - **Phase 1** (this design → next PR): `/lib/complex` pure Hoon (add/sub/mul/div/
   neg/conj/abs/equ/neq, oracle-checked) + Lagoon `%cplx` element-wise +
   pure-Hoon `dot`/`dotc`/`mmul`/`cumsum`.  Tests mirror `/tests/lib/lagoon-fixp`.
-- **Phase 2**: SoftBLAS jets — Level-1 direct-cast; `mmul` via real-GEMM
-  decomposition.
+- **Phase 2**: complete the complex BLAS in our SoftBLAS (`*dotu`,
+  `cgemm`/`zgemm`) + Lagoon jets (Level-1 direct-cast, `dot`/`dotc`, `mmul`).
 - **Phase 3**: Saloon `eig` (Hessenberg + shifted QR) consuming `%cplx`.
 
 An offline oracle (`tools/complex_check.py`, NumPy `complex64`/`complex128`) is

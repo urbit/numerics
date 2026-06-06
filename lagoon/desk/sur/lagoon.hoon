@@ -20,7 +20,7 @@
       %uint           ::  unsigned integer
       %int2           ::  2s-complement integer (/lib/twoc)
       %unum           ::  unum/posit (/lib/unum) @rpb @rph @rps @rpd
-      :: %cplx           ::  BLAS-compatible packed floats
+      %cplx           ::  complex (/lib/complex) @cs/@cd; bloq = total width
       :: %fixp           ::  fixed-precision (/lib/fixed)
   ==
 ::

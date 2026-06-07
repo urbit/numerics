@@ -317,7 +317,7 @@
   ++  trans-scalar
     |=  [=bloq =kind fun=unary-ops]
     ^-  $-(@ @)
-    ?-    kind
+    ?+    kind  !!
         %int2  !!
         %uint
       ?-  fun
@@ -402,7 +402,7 @@
   ++  fun-scalar
     |=  [=meta fun=binary-ops]
     ^-  $-([@ @] @)
-    ?-    kind.meta
+    ?+    kind.meta  !!
         %int2  !!
         %uint
       ?-  fun
@@ -434,5 +434,171 @@
         ==  ::  fun
       ==  ::  bloq
     ==  ::  kind
+  ::
+  +|  %linalg
+  ::
+  ::  Eigendecomposition of symmetric real matrices via the cyclic Jacobi
+  ::  algorithm.  Phase A: %i754 single (bloq 5) and double (bloq 6) only.
+  ::  Real eigenvalues, orthonormal eigenvectors, no complex arithmetic.
+  ::
+  ::    Scalar float helpers, dispatched on bloq (5=@rs, 6=@rd).  Each takes
+  ::    the bloq as its first argument and operates on raw component atoms.
+  ::
+  ++  fadd  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(add rd:math [rnd rtol]) x y) (~(add rs:math [rnd rtol]) x y))))
+  ++  fsub  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(sub rd:math [rnd rtol]) x y) (~(sub rs:math [rnd rtol]) x y))))
+  ++  fmul  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(mul rd:math [rnd rtol]) x y) (~(mul rs:math [rnd rtol]) x y))))
+  ++  fdiv  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(div rd:math [rnd rtol]) x y) (~(div rs:math [rnd rtol]) x y))))
+  ++  fsqt  |=([b=@ x=@] ^-(@ ?:(=(6 b) (~(sqt rd:math [rnd rtol]) x) (~(sqt rs:math [rnd rtol]) x))))
+  ++  fabs  |=([b=@ x=@] ^-(@ ?:(=(6 b) (~(abs rd:math [rnd rtol]) x) (~(abs rs:math [rnd rtol]) x))))
+  ++  fgte  |=([b=@ x=@ y=@] ^-(? ?:(=(6 b) (~(gte rd:math [rnd rtol]) x y) (~(gte rs:math [rnd rtol]) x y))))
+  ++  flte  |=([b=@ x=@ y=@] ^-(? ?:(=(6 b) (~(lte rd:math [rnd rtol]) x y) (~(lte rs:math [rnd rtol]) x y))))
+  ++  f0    |=(b=@ ^-(@ ?:(=(6 b) .~0 .0)))
+  ++  f1    |=(b=@ ^-(@ ?:(=(6 b) .~1 .1)))
+  ++  f2    |=(b=@ ^-(@ ?:(=(6 b) .~2 .2)))
+  ++  fneg  |=([b=@ x=@] ^-(@ (fsub b (f0 b) x)))
+  ++  fsign  |=([b=@ x=@] ^-(@ ?:((fgte b x (f0 b)) (f1 b) (fneg b (f1 b)))))
+  ::    Indexed scalar access over the rounding-bound Lagoon door.
+  ++  gi  |=([m=ray:ls ix=(list @)] ^-(@ (get-item:(lake rnd) m ix)))
+  ++  si  |=([m=ray:ls ix=(list @) val=@] ^-(ray:ls (set-item:(lake rnd) m ix val)))
+  ::    +symmetric: exact equality of m and its transpose.
+  ++  symmetric
+    |=  m=ray:ls
+    ^-  ?
+    =/  n  (snag 0 shape.meta.m)
+    =/  k  0
+    |-  ^-  ?
+    ?:  =(k (^mul n n))  &
+    =/  i  (^div k n)
+    =/  j  (mod k n)
+    ?:  (^lte i j)  $(k +(k))
+    ?.  =((gi m ~[i j]) (gi m ~[j i]))  |
+    $(k +(k))
+  ::    +off-norm: Frobenius norm of the strictly off-diagonal part.
+  ++  off-norm
+    |=  m=ray:ls
+    ^-  @
+    =/  b  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    =/  acc  (f0 b)
+    =/  k  0
+    |-  ^-  @
+    ?:  =(k (^mul n n))  (fsqt b acc)
+    =/  i  (^div k n)
+    =/  j  (mod k n)
+    ?:  =(i j)  $(k +(k))
+    =/  mij  (gi m ~[i j])
+    $(k +(k), acc (fadd b acc (fmul b mij mij)))
+  ::    +frob: full Frobenius norm of m.
+  ++  frob
+    |=  m=ray:ls
+    ^-  @
+    =/  b  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    =/  acc  (f0 b)
+    =/  k  0
+    |-  ^-  @
+    ?:  =(k (^mul n n))  (fsqt b acc)
+    =/  i  (^div k n)
+    =/  j  (mod k n)
+    =/  mij  (gi m ~[i j])
+    $(k +(k), acc (fadd b acc (fmul b mij mij)))
+  ::    +diag: extract the diagonal of a square matrix as a 1-D ray.
+  ++  diag
+    |=  m=ray:ls
+    ^-  ray:ls
+    =/  b  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    =/  r  (zeros:(lake rnd) [~[n] b %i754 ~])
+    =/  i  0
+    |-  ^-  ray:ls
+    ?:  =(i n)  r
+    =.  r  (si r ~[i] (gi m ~[i i]))
+    $(i +(i))
+  ::    +rot-cols: post-multiply columns p,q of m by the Givens rotation J
+  ::    (J_pp=J_qq=c, J_pq=s, J_qp=-s), i.e. m <- m*J.
+  ++  rot-cols
+    |=  [m=ray:ls p=@ q=@ c=@ s=@]
+    ^-  ray:ls
+    =/  b  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    =/  i  0
+    |-  ^-  ray:ls
+    ?:  =(i n)  m
+    =/  mip  (gi m ~[i p])
+    =/  miq  (gi m ~[i q])
+    =.  m  (si m ~[i p] (fsub b (fmul b c mip) (fmul b s miq)))
+    =.  m  (si m ~[i q] (fadd b (fmul b s mip) (fmul b c miq)))
+    $(i +(i))
+  ::    +rot-rows: pre-multiply rows p,q of m by J-transpose, i.e. m <- J^T*m.
+  ++  rot-rows
+    |=  [m=ray:ls p=@ q=@ c=@ s=@]
+    ^-  ray:ls
+    =/  b  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    =/  j  0
+    |-  ^-  ray:ls
+    ?:  =(j n)  m
+    =/  mpj  (gi m ~[p j])
+    =/  mqj  (gi m ~[q j])
+    =.  m  (si m ~[p j] (fsub b (fmul b c mpj) (fmul b s mqj)))
+    =.  m  (si m ~[q j] (fadd b (fmul b s mpj) (fmul b c mqj)))
+    $(j +(j))
+  ::    +sweep-once: one cyclic Jacobi sweep over every p<q pair, applying a
+  ::    rotation that zeros a_pq to both the working matrix and the
+  ::    accumulated eigenvector matrix.
+  ++  sweep-once
+    |=  [m=ray:ls v=ray:ls]
+    ^-  [ray:ls ray:ls]
+    =/  b  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    ?:  (^lte n 1)  [m v]
+    =/  p  0
+    =/  q  1
+    |-  ^-  [ray:ls ray:ls]
+    =/  apq  (gi m ~[p q])
+    =/  mv=[ray:ls ray:ls]
+      ?:  =(apq (f0 b))
+        [m v]
+      =/  app  (gi m ~[p p])
+      =/  aqq  (gi m ~[q q])
+      =/  theta  (fdiv b (fsub b aqq app) (fmul b (f2 b) apq))
+      =/  t  (fdiv b (fsign b theta) (fadd b (fabs b theta) (fsqt b (fadd b (fmul b theta theta) (f1 b)))))
+      =/  c  (fdiv b (f1 b) (fsqt b (fadd b (fmul b t t) (f1 b))))
+      =/  s  (fmul b t c)
+      :-  (rot-rows (rot-cols m p q c s) p q c s)
+      (rot-cols v p q c s)
+    =.  m  -.mv
+    =.  v  +.mv
+    ?:  =(+(q) n)
+      ?:  =(+(p) (dec n))  [m v]
+      $(p +(p), q (^add p 2))
+    $(q +(q))
+  ::    +eig: eigenvalues (1-D) and eigenvectors (columns) of a symmetric
+  ::    real matrix.  Asserts squareness and exact symmetry; crashes otherwise.
+  ++  eig
+    |=  a=ray:ls
+    ^-  [vals=ray:ls vecs=ray:ls]
+    =/  b  bloq.meta.a
+    ?>  ?|(=(5 b) =(6 b))
+    ?>  =(2 (lent shape.meta.a))
+    =/  n  (snag 0 shape.meta.a)
+    ?>  =(n (snag 1 shape.meta.a))
+    ?>  (symmetric a)
+    =/  v  (eye:(lake rnd) [~[n n] b %i754 ~])
+    =/  m  a
+    =/  thresh  (fmul b `@`rtol (frob a))
+    =/  sweep  0
+    |-  ^-  [vals=ray:ls vecs=ray:ls]
+    ?:  =(60 sweep)
+      ~&  "saloon eig: hit sweep cap (60) without converging to rtol"
+      [(diag m) v]
+    ?:  (flte b (off-norm m) thresh)
+      [(diag m) v]
+    =/  mv  (sweep-once m v)
+    $(sweep +(sweep), m -.mv, v +.mv)
+  ::    +eigvals: eigenvalues only (1-D ray).
+  ++  eigvals  |=(a=ray:ls ^-(ray:ls vals:(eig a)))
+  ::    +eigvecs: eigenvectors only (square ray, columns are eigenvectors).
+  ++  eigvecs  |=(a=ray:ls ^-(ray:ls vecs:(eig a)))
   --
 --

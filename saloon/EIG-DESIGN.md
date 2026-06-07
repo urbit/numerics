@@ -154,9 +154,19 @@ Curated small cases (2×2, 3×3 symmetric with known spectra, e.g.
 
 ## 8. Phasing
 
-- **A1:** building blocks (`norm2`, `normalize`, `dagger`, off-diag-norm) + the
-  real symmetric Jacobi `eigvals`/`eigvecs`/`eig`, with invariant-based tests
-  and the NumPy `eigh` oracle. (This PR.)
-- **A2:** Hermitian (`%cplx`) Jacobi.
+- **A1 (DONE, PR #47):** real symmetric Jacobi `eigvals`/`eigvecs`/`eig`, with
+  invariant-based tests and the NumPy `eigh` oracle.
+- **A2 (DONE):** Hermitian (`%cplx`) Jacobi. `eig` now dispatches on kind
+  (`%cplx` → Hermitian, else symmetric). The complex rotation `J` that zeros
+  `a_pq` has real diagonal `c` and complex off-diagonal `b = s·(a_pq/|a_pq|)`
+  with `J[q,p] = −conj(b)`; updates are `A ← Jᴴ·A·J`, `V ← V·J`. Returns real
+  `%i754` eigenvalues and `%cplx` (unitary) eigenvectors, matching NumPy
+  `eigh`. Tested over `@cs`/`@cd` against `eigvalsh` (`tools/eigh_check.py`).
+  Two robustness notes from this work: (1) the internal Newton `sqrt` is now
+  iteration-capped (`fsqt`) — a sub-ULP `rtol` previously made it oscillate
+  forever and once OOM-crashed the ship; (2) `rtol`'s width must match the
+  component width (`@rs` for `@cs`, `@rd` for `@cd`); and (3) the exact
+  Hermitian assert is bit-exact, so `±0.0` in conjugate pairs is rejected —
+  callers should canonicalize or symmetrize.
 - **B:** general real → complex via Hessenberg + double-shift QR (own design +
   PR), once `%cplx` (PR #46) has landed and ideally its jets exist.

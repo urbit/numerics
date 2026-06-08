@@ -1344,6 +1344,14 @@
       ==
       ::
         %i754
+      ::  %mod is C fmod: a - b*trunc(a/b), truncating the quotient TOWARD ZERO
+      ::  (so the result takes the sign of the dividend), matching %unum.  A zero
+      ::  divisor or a non-finite operand makes the quotient non-representable as
+      ::  an integer (toi -> ~) and returns NaN rather than crashing.
+      ::  NOTE (Vere follow-on): the f32/f64 %mod jet in vere's lagoon.c still
+      ::  does round-nearest (IEEE remainder) and returns the dividend on /0, so
+      ::  on a jetted ship f32/f64 disagree with this Hoon (and with the
+      ::  un-jetted @rq path).  The jet must be updated to C fmod + NaN-on-/0.
       ?+    `^bloq`bloq  !!
           %7
         ?+  fun  !!
@@ -1351,7 +1359,7 @@
           %sub  ~(sub rq rnd)
           %mul  ~(mul rq rnd)
           %div  ~(div rq rnd)
-          %mod  |=([a=@rq b=@rq] (~(sub rq rnd) a (~(mul rq rnd) b (~(san rq rnd) (need (~(toi rq rnd) (~(div rq rnd) a b)))))))
+          %mod  |=([a=@rq b=@rq] ^-(@rq ?:((~(equ rq rnd) b .~~~0) `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000 =/(u (~(toi rq %z) (~(div rq rnd) a b)) ?~(u `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000 (~(sub rq rnd) a (~(mul rq rnd) b (~(san rq rnd) u.u))))))))
           %gth  |=([a=@rq b=@rq] ?:((~(gth rq rnd) a b) .~~~1 .~~~0))
           %gte  |=([a=@rq b=@rq] ?:((~(gte rq rnd) a b) .~~~1 .~~~0))
           %lth  |=([a=@rq b=@rq] ?:((~(lth rq rnd) a b) .~~~1 .~~~0))
@@ -1365,7 +1373,7 @@
           %sub  ~(sub rd rnd)
           %mul  ~(mul rd rnd)
           %div  ~(div rd rnd)
-          %mod  |=([a=@rd b=@rd] (~(sub rd rnd) a (~(mul rd rnd) b (~(san rd rnd) (need (~(toi rd rnd) (~(div rd rnd) a b)))))))
+          %mod  |=([a=@rd b=@rd] ^-(@rd ?:((~(equ rd rnd) b .~0) `@rd`0x7ff8.0000.0000.0000 =/(u (~(toi rd %z) (~(div rd rnd) a b)) ?~(u `@rd`0x7ff8.0000.0000.0000 (~(sub rd rnd) a (~(mul rd rnd) b (~(san rd rnd) u.u))))))))
           %gth  |=([a=@rd b=@rd] ?:((~(gth rd rnd) a b) .~1 .~0))
           %gte  |=([a=@rd b=@rd] ?:((~(gte rd rnd) a b) .~1 .~0))
           %lth  |=([a=@rd b=@rd] ?:((~(lth rd rnd) a b) .~1 .~0))
@@ -1379,7 +1387,7 @@
           %sub  ~(sub rs rnd)
           %mul  ~(mul rs rnd)
           %div  ~(div rs rnd)
-          %mod  |=([a=@rs b=@rs] (~(sub rs rnd) a (~(mul rs rnd) b (~(san rs rnd) (need (~(toi rs rnd) (~(div rs rnd) a b)))))))
+          %mod  |=([a=@rs b=@rs] ^-(@rs ?:((~(equ rs rnd) b .0) `@rs`0x7fc0.0000 =/(u (~(toi rs %z) (~(div rs rnd) a b)) ?~(u `@rs`0x7fc0.0000 (~(sub rs rnd) a (~(mul rs rnd) b (~(san rs rnd) u.u))))))))
           %gth  |=([a=@rs b=@rs] ?:((~(gth rs rnd) a b) .1 .0))
           %gte  |=([a=@rs b=@rs] ?:((~(gte rs rnd) a b) .1 .0))
           %lth  |=([a=@rs b=@rs] ?:((~(lth rs rnd) a b) .1 .0))
@@ -1393,7 +1401,7 @@
           %sub  ~(sub rh rnd)
           %mul  ~(mul rh rnd)
           %div  ~(div rh rnd)
-          %mod  |=([a=@rh b=@rh] (~(sub rh rnd) a (~(mul rh rnd) b (~(san rh rnd) (need (~(toi rh rnd) (~(div rh rnd) a b)))))))
+          %mod  |=([a=@rh b=@rh] ^-(@rh ?:((~(equ rh rnd) b .~~0) `@rh`0x7e00 =/(u (~(toi rh %z) (~(div rh rnd) a b)) ?~(u `@rh`0x7e00 (~(sub rh rnd) a (~(mul rh rnd) b (~(san rh rnd) u.u))))))))
           %gth  |=([a=@rh b=@rh] ?:((~(gth rh rnd) a b) .~~1 .~~0))
           %gte  |=([a=@rh b=@rh] ?:((~(gte rh rnd) a b) .~~1 .~~0))
           %lth  |=([a=@rh b=@rh] ?:((~(lth rh rnd) a b) .~~1 .~~0))

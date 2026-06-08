@@ -108,8 +108,11 @@
   |=  m=meta
   (is-equal (fill:la m 0) (mod:la (fill:la m 1) (fill:la m 1)))
 ::
-::  Regression: mod must round the quotient with the active mode (default
-::  %n, round-nearest), not truncate.  5 mod 3 = 5 - 3*round(5/3) = -1.
+::  %mod ray op is JETTED per width and the jet is inconsistent: this asserts
+::  the CURRENT f64 jet (round-nearest / IEEE remainder), 5 mod 3 = -1.  The Hoon
+::  spec (+fun-scalar) and the quad jet (test-mods-7r) are C fmod = 2.
+::  Reconciling the f32/f64 jet to C fmod + NaN-on-/0 is a Vere follow-on
+::  (lagoon.c); this test documents today's behavior, not the spec.
 ++  test-mod-nearest-6r  ^-  tang
   =/  m  `meta`[~[1 1] 6 %i754 ~]
   (is-equal (fill:la m .~-1) (mod:(lake %n) (fill:la m .~5) (fill:la m .~3)))

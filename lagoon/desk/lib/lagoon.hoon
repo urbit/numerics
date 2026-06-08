@@ -903,10 +903,20 @@
     ?:  ?=(%fixp kind.meta.a)
       (scalar-to-ray meta.a (fixp-fdp ;;([a=@ b=@] tail.meta.a) (ravel a) (ravel b)))
     (cumsum (mul a b))
-  ::  +dotc: Hermitian (conjugated) dot product, Sum conj(a_i)*b_i.  This is
+  ::    +dotc:  [$ray $ray] -> $ray
+  ::
+  ::  Returns the Hermitian (conjugated) dot product Sum conj(a_i)*b_i.  This is
   ::  the inner product whose norm <a,a> = Sum |a_i|^2 is real and nonnegative
-  ::  (what Saloon's eig/QR want).  For real kinds conj is identity, so dotc
-  ::  coincides with dot.
+  ::  (what Saloon's eig/QR want).  On real kinds conj is identity, so dotc
+  ::  coincides with +dot.
+  ::    Examples
+  ::      > =a  (en-ray:la [[~[1 2] 6 %cplx ~] ~[~[0x4000.0000.3f80.0000 0x4080.0000.4040.0000]]])  ::  [1+2i 3+4i]
+  ::      > =b  (en-ray:la [[~[1 2] 6 %cplx ~] ~[~[0x40c0.0000.40a0.0000 0x4100.0000.40e0.0000]]])  ::  [5+6i 7+8i]
+  ::      > (get-item:la (dotc:la a b) ~[0 0])
+  ::      0xc100.0000.428c.0000                                ::  Sum conj(x)*y = 70-8i
+  ::      > (get-item:la (dot:la a b) ~[0 0])
+  ::      0x4288.0000.c190.0000                                ::  Sum x*y       = -18+68i
+  ::  Source
   ++  dotc
     ~/  %dotc
     |=  [a=ray b=ray]
@@ -1011,7 +1021,14 @@
     ^-  ray
     (el-wise-op a (trans-scalar bloq.meta.a kind.meta.a %abs))
 ::
-  ::  +conj: elementwise complex conjugate (identity on real kinds).
+  ::    +conj:  $ray -> $ray
+  ::
+  ::  Returns the elementwise complex conjugate of a ray.  Identity on real
+  ::  kinds, which is what makes +dotc reduce to +dot on reals.
+  ::    Examples
+  ::      > (get-item:la (conj:la (fill:la [~[1 1] 6 %cplx ~] 0x4000.0000.3f80.0000)) ~[0 0])
+  ::      0xc000.0000.3f80.0000                                ::  conj(1+2i)=1-2i
+  ::  Source
   ++  conj
     ~/  %conj
     |=  a=ray

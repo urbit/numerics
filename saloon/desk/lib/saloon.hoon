@@ -8,7 +8,8 @@
 ::
 /-  ls=lagoon
 /+  *lagoon,
-    math
+    math,
+    complex
 ::                                                    ::
 ::::                    ++sa                          ::  (2v) vector/matrix ops
 ~%  %saloon  ..part  ~
@@ -448,15 +449,42 @@
   ++  fsub  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(sub rd:math [rnd rtol]) x y) (~(sub rs:math [rnd rtol]) x y))))
   ++  fmul  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(mul rd:math [rnd rtol]) x y) (~(mul rs:math [rnd rtol]) x y))))
   ++  fdiv  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(div rd:math [rnd rtol]) x y) (~(div rs:math [rnd rtol]) x y))))
-  ++  fsqt  |=([b=@ x=@] ^-(@ ?:(=(6 b) (~(sqt rd:math [rnd rtol]) x) (~(sqt rs:math [rnd rtol]) x))))
   ++  fabs  |=([b=@ x=@] ^-(@ ?:(=(6 b) (~(abs rd:math [rnd rtol]) x) (~(abs rs:math [rnd rtol]) x))))
   ++  fgte  |=([b=@ x=@ y=@] ^-(? ?:(=(6 b) (~(gte rd:math [rnd rtol]) x y) (~(gte rs:math [rnd rtol]) x y))))
   ++  flte  |=([b=@ x=@ y=@] ^-(? ?:(=(6 b) (~(lte rd:math [rnd rtol]) x y) (~(lte rs:math [rnd rtol]) x y))))
   ++  f0    |=(b=@ ^-(@ ?:(=(6 b) .~0 .0)))
   ++  f1    |=(b=@ ^-(@ ?:(=(6 b) .~1 .1)))
   ++  f2    |=(b=@ ^-(@ ?:(=(6 b) .~2 .2)))
+  ::    width-fixed relative epsilon for sqrt convergence (decoupled from rtol).
+  ++  feps  |=(b=@ ^-(@ ?:(=(6 b) .~1e-13 .1e-6)))
+  ::    +fsqt: iteration-capped Newton sqrt.  The 50-step cap is a durability
+  ::    backstop: a sub-ULP tolerance otherwise makes Newton oscillate forever
+  ::    (which once OOM-crashed the ship).  Convergence uses feps, not rtol.
+  ++  fsqt
+    |=  [b=@ x=@]
+    ^-  @
+    ?:  (flte b x (f0 b))  (f0 b)
+    =/  g  x
+    =/  i  0
+    |-  ^-  @
+    ?:  =(50 i)  g
+    =/  ng  (fmul b (fdiv b (f1 b) (f2 b)) (fadd b g (fdiv b x g)))
+    ?:  (flte b (fabs b (fsub b g ng)) (fmul b (feps b) g))
+      ng
+    $(i +(i), g ng)
   ++  fneg  |=([b=@ x=@] ^-(@ (fsub b (f0 b) x)))
   ++  fsign  |=([b=@ x=@] ^-(@ ?:((fgte b x (f0 b)) (f1 b) (fneg b (f1 b)))))
+  ::    Complex helpers, dispatched on the COMPLEX bloq (6=@cs, 7=@cd), over
+  ::    /lib/complex.  cb-comp maps a complex bloq to its real component bloq.
+  ++  cb-comp  |=(cb=@ ^-(@ ?:(=(7 cb) 6 5)))
+  ++  cadd  |=([cb=@ p=@ q=@] ^-(@ ?:(=(7 cb) (~(add cd:complex rnd) p q) (~(add cs:complex rnd) p q))))
+  ++  csub  |=([cb=@ p=@ q=@] ^-(@ ?:(=(7 cb) (~(sub cd:complex rnd) p q) (~(sub cs:complex rnd) p q))))
+  ++  cmul  |=([cb=@ p=@ q=@] ^-(@ ?:(=(7 cb) (~(mul cd:complex rnd) p q) (~(mul cs:complex rnd) p q))))
+  ++  cdiv  |=([cb=@ p=@ q=@] ^-(@ ?:(=(7 cb) (~(div cd:complex rnd) p q) (~(div cs:complex rnd) p q))))
+  ++  cconj  |=([cb=@ p=@] ^-(@ ?:(=(7 cb) (~(conj cd:complex rnd) p) (~(conj cs:complex rnd) p))))
+  ++  cre  |=([cb=@ p=@] ^-(@ ?:(=(7 cb) (~(re cd:complex rnd) p) (~(re cs:complex rnd) p))))
+  ++  cpak  |=([cb=@ r=@ i=@] ^-(@ ?:(=(7 cb) (~(pak cd:complex rnd) r i) (~(pak cs:complex rnd) r i))))
+  ++  cabs-re  |=([cb=@ p=@] ^-(@ (cre cb ?:(=(7 cb) (~(abs cd:complex rnd) p) (~(abs cs:complex rnd) p)))))
   ::    Indexed scalar access over the rounding-bound Lagoon door.
   ++  gi  |=([m=ray:ls ix=(list @)] ^-(@ (get-item:(lake rnd) m ix)))
   ++  si  |=([m=ray:ls ix=(list @) val=@] ^-(ray:ls (set-item:(lake rnd) m ix val)))
@@ -573,11 +601,161 @@
       ?:  =(+(p) (dec n))  [m v]
       $(p +(p), q (^add p 2))
     $(q +(q))
+  ::  Hermitian (%cplx) Jacobi.  The complex rotation J that zeros a_pq has a
+  ::  real diagonal c and complex off-diagonal b = s*(a_pq/|a_pq|), with
+  ::  J[q,p] = -conj(b); updates are A <- J^H*A*J and V <- V*J.  Eigenvalues are
+  ::  real (the diagonal at convergence), eigenvectors form a unitary matrix.
+  ::
+  ::    +hermitian: exact a_ij == conj(a_ji) (implies a real diagonal).
+  ++  hermitian
+    |=  m=ray:ls
+    ^-  ?
+    =/  cb  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    =/  k  0
+    |-  ^-  ?
+    ?:  =(k (^mul n n))  &
+    =/  i  (^div k n)
+    =/  j  (mod k n)
+    ?:  (^lth i j)  $(k +(k))
+    ?.  =((gi m ~[i j]) (cconj cb (gi m ~[j i])))  |
+    $(k +(k))
+  ::    +off-norm-h: real Frobenius norm of the strictly off-diagonal part.
+  ++  off-norm-h
+    |=  m=ray:ls
+    ^-  @
+    =/  cb  bloq.meta.m
+    =/  rb  (cb-comp cb)
+    =/  n  (snag 0 shape.meta.m)
+    =/  acc  (f0 rb)
+    =/  k  0
+    |-  ^-  @
+    ?:  =(k (^mul n n))  (fsqt rb acc)
+    =/  i  (^div k n)
+    =/  j  (mod k n)
+    ?:  =(i j)  $(k +(k))
+    =/  mag  (cabs-re cb (gi m ~[i j]))
+    $(k +(k), acc (fadd rb acc (fmul rb mag mag)))
+  ::    +frob-h: full real Frobenius norm of a complex matrix.
+  ++  frob-h
+    |=  m=ray:ls
+    ^-  @
+    =/  cb  bloq.meta.m
+    =/  rb  (cb-comp cb)
+    =/  n  (snag 0 shape.meta.m)
+    =/  acc  (f0 rb)
+    =/  k  0
+    |-  ^-  @
+    ?:  =(k (^mul n n))  (fsqt rb acc)
+    =/  i  (^div k n)
+    =/  j  (mod k n)
+    =/  mag  (cabs-re cb (gi m ~[i j]))
+    $(k +(k), acc (fadd rb acc (fmul rb mag mag)))
+  ::    +diag-real: real parts of the diagonal as a 1-D %i754 ray.
+  ++  diag-real
+    |=  m=ray:ls
+    ^-  ray:ls
+    =/  cb  bloq.meta.m
+    =/  rb  (cb-comp cb)
+    =/  n  (snag 0 shape.meta.m)
+    =/  r  (zeros:(lake rnd) [~[n] rb %i754 ~])
+    =/  i  0
+    |-  ^-  ray:ls
+    ?:  =(i n)  r
+    =.  r  (si r ~[i] (cre cb (gi m ~[i i])))
+    $(i +(i))
+  ::    +rot-cols-h: m <- m*J  (complex Givens; J[q,p] = -conj(b)).
+  ++  rot-cols-h
+    |=  [m=ray:ls p=@ q=@ cc=@ b=@]
+    ^-  ray:ls
+    =/  cb  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    =/  i  0
+    |-  ^-  ray:ls
+    ?:  =(i n)  m
+    =/  mip  (gi m ~[i p])
+    =/  miq  (gi m ~[i q])
+    =.  m  (si m ~[i p] (csub cb (cmul cb cc mip) (cmul cb (cconj cb b) miq)))
+    =.  m  (si m ~[i q] (cadd cb (cmul cb b mip) (cmul cb cc miq)))
+    $(i +(i))
+  ::    +rot-rows-h: m <- J^H*m.
+  ++  rot-rows-h
+    |=  [m=ray:ls p=@ q=@ cc=@ b=@]
+    ^-  ray:ls
+    =/  cb  bloq.meta.m
+    =/  n  (snag 0 shape.meta.m)
+    =/  j  0
+    |-  ^-  ray:ls
+    ?:  =(j n)  m
+    =/  mpj  (gi m ~[p j])
+    =/  mqj  (gi m ~[q j])
+    =.  m  (si m ~[p j] (csub cb (cmul cb cc mpj) (cmul cb b mqj)))
+    =.  m  (si m ~[q j] (cadd cb (cmul cb (cconj cb b) mpj) (cmul cb cc mqj)))
+    $(j +(j))
+  ::    +sweep-herm: one cyclic Hermitian-Jacobi sweep over every p<q pair.
+  ++  sweep-herm
+    |=  [m=ray:ls v=ray:ls]
+    ^-  [ray:ls ray:ls]
+    =/  cb  bloq.meta.m
+    =/  rb  (cb-comp cb)
+    =/  n  (snag 0 shape.meta.m)
+    ?:  (^lte n 1)  [m v]
+    =/  p  0
+    =/  q  1
+    |-  ^-  [ray:ls ray:ls]
+    =/  apq  (gi m ~[p q])
+    =/  mag  (cabs-re cb apq)
+    =/  mv=[ray:ls ray:ls]
+      ?:  =(mag (f0 rb))
+        [m v]
+      =/  app  (cre cb (gi m ~[p p]))
+      =/  aqq  (cre cb (gi m ~[q q]))
+      =/  tau  (fdiv rb (fsub rb aqq app) (fmul rb (f2 rb) mag))
+      =/  t    (fdiv rb (fsign rb tau) (fadd rb (fabs rb tau) (fsqt rb (fadd rb (fmul rb tau tau) (f1 rb)))))
+      =/  c    (fdiv rb (f1 rb) (fsqt rb (fadd rb (fmul rb t t) (f1 rb))))
+      =/  s    (fmul rb t c)
+      =/  phase  (cdiv cb apq (cpak cb mag (f0 rb)))
+      =/  b      (cmul cb (cpak cb s (f0 rb)) phase)
+      =/  cc     (cpak cb c (f0 rb))
+      :-  (rot-rows-h (rot-cols-h m p q cc b) p q cc b)
+      (rot-cols-h v p q cc b)
+    =.  m  -.mv
+    =.  v  +.mv
+    ?:  =(+(q) n)
+      ?:  =(+(p) (dec n))  [m v]
+      $(p +(p), q (^add p 2))
+    $(q +(q))
+  ::    +eig-herm: Hermitian eig.  vals real (%i754), vecs unitary (%cplx).
+  ++  eig-herm
+    |=  a=ray:ls
+    ^-  [vals=ray:ls vecs=ray:ls]
+    =/  cb  bloq.meta.a
+    ?>  ?|(=(6 cb) =(7 cb))
+    =/  rb  (cb-comp cb)
+    ?>  =(2 (lent shape.meta.a))
+    =/  n  (snag 0 shape.meta.a)
+    ?>  =(n (snag 1 shape.meta.a))
+    ?>  (hermitian a)
+    =/  v  (eye:(lake rnd) [~[n n] cb %cplx ~])
+    =/  m  a
+    =/  thresh  (fmul rb `@`rtol (frob-h a))
+    =/  sweep  0
+    |-  ^-  [vals=ray:ls vecs=ray:ls]
+    ?:  =(60 sweep)
+      ~&  "saloon eig (hermitian): hit sweep cap (60) without converging to rtol"
+      [(diag-real m) v]
+    ?:  (flte rb (off-norm-h m) thresh)
+      [(diag-real m) v]
+    =/  mv  (sweep-herm m v)
+    $(sweep +(sweep), m -.mv, v +.mv)
   ::    +eig: eigenvalues (1-D) and eigenvectors (columns) of a symmetric
-  ::    real matrix.  Asserts squareness and exact symmetry; crashes otherwise.
+  ::    (%i754) or Hermitian (%cplx) matrix.  Dispatches on kind; the %cplx
+  ::    path (Hermitian Jacobi) returns real %i754 eigenvalues and %cplx
+  ::    (unitary) eigenvectors.  Asserts squareness + exact (skew-)symmetry.
   ++  eig
     |=  a=ray:ls
     ^-  [vals=ray:ls vecs=ray:ls]
+    ?:  =(%cplx kind.meta.a)  (eig-herm a)
     =/  b  bloq.meta.a
     ?>  ?|(=(5 b) =(6 b))
     ?>  =(2 (lent shape.meta.a))
@@ -596,9 +774,10 @@
       [(diag m) v]
     =/  mv  (sweep-once m v)
     $(sweep +(sweep), m -.mv, v +.mv)
-  ::    +eigvals: eigenvalues only (1-D ray).
-  ++  eigvals  |=(a=ray:ls ^-(ray:ls vals:(eig a)))
+  ::    +eigvals: eigenvalues only (1-D ray).  Head/tail (not vals:/vecs:)
+  ::    because the kind-dispatch ?: in +eig erodes the result's faces.
+  ++  eigvals  |=(a=ray:ls ^-(ray:ls -:(eig a)))
   ::    +eigvecs: eigenvectors only (square ray, columns are eigenvectors).
-  ++  eigvecs  |=(a=ray:ls ^-(ray:ls vecs:(eig a)))
+  ++  eigvecs  |=(a=ray:ls ^-(ray:ls +:(eig a)))
   --
 --

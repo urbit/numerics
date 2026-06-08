@@ -1,5 +1,5 @@
 /-  lagoon
-/+  twoc, unum
+/+  twoc, unum, complex
 =+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
@@ -76,6 +76,15 @@
         %5  %rps
         %4  %rph
         %3  %rpb
+      ==
+      ::
+        %cplx
+      ::  packed complex; render as the @c aura (no decimal printer yet).
+      ?+    bloq.meta  ~|(bloq.meta !!)
+        %8  %cq
+        %7  %cd
+        %6  %cs
+        %5  %ch
       ==
     ==
   ::
@@ -437,6 +446,10 @@
       ::  to-r*/from-r* matrix in /lib/unum for the eventual mapping.
         %unum
       ~|('lagoon: change/convert not yet implemented for %unum' !!)
+      ::  out of complex is lossy and ambiguous (real part? modulus?); refuse
+      ::  and make the caller pick (abs for modulus).  Into-complex TODO.
+        %cplx
+      ~|('lagoon: change out of %cplx is lossy; use abs or an explicit re/im' !!)
     ==
   ::
   ::  Builders
@@ -480,6 +493,12 @@
         %4  one:rph:unum
         %3  one:rpb:unum
       ==
+      ::
+        %cplx
+      ?+  bloq.meta  ~|(bloq.meta !!)
+        %7  ~(one cd:complex rnd)
+        %6  ~(one cs:complex rnd)
+      ==
     ==
   ::    Zeroes
   ++  zeros
@@ -511,6 +530,12 @@
           %5  one:rps:unum
           %4  one:rph:unum
           %3  one:rpb:unum
+        ==
+        ::
+          %cplx
+        ?+  bloq.meta  !!
+          %7  ~(one cd:complex rnd)
+          %6  ~(one cs:complex rnd)
         ==
       ==
     (fill meta one)
@@ -660,6 +685,10 @@
       ::
         %unum
       ::  data is already a posit bit pattern; pack it raw, like %int2.
+      (spac [meta `@ux`data])
+      ::
+        %cplx
+      ::  data is already a packed complex bit pattern; pack it raw.
       (spac [meta `@ux`data])
       ::
         %i754
@@ -857,6 +886,16 @@
     ?:  ?=(%unum kind.meta.a)
       (scalar-to-ray meta.a (unum-fdp bloq.meta.a (ravel a) (ravel b)))
     (cumsum (mul a b))
+  ::  +dotc: Hermitian (conjugated) dot product, Sum conj(a_i)*b_i.  This is
+  ::  the inner product whose norm <a,a> = Sum |a_i|^2 is real and nonnegative
+  ::  (what Saloon's eig/QR want).  For real kinds conj is identity, so dotc
+  ::  coincides with dot.
+  ++  dotc
+    ~/  %dotc
+    |=  [a=ray b=ray]
+    ^-  ray
+    ?>  =(shape.meta.a shape.meta.b)
+    (dot (conj a) b)
   ::
   ++  mmul
     ~/  %mmul
@@ -931,6 +970,13 @@
     |=  a=ray
     ^-  ray
     (el-wise-op a (trans-scalar bloq.meta.a kind.meta.a %abs))
+::
+  ::  +conj: elementwise complex conjugate (identity on real kinds).
+  ++  conj
+    ~/  %conj
+    |=  a=ray
+    ^-  ray
+    (el-wise-op a (trans-scalar bloq.meta.a kind.meta.a %conj))
 ::
   ++  add-scalar
     ~/  %add-scal
@@ -1176,6 +1222,7 @@
                 %equ
                 %neq
                 %abs
+                %conj
             ==
   ::
   ++  fun-scalar
@@ -1347,20 +1394,60 @@
           %neq  |=([a=@ b=@] ?:((neq:rpd:unum a b) one:rpd:unum zero:rpd:unum))
         ==
       ==  :: bloq unum
+      ::
+        %cplx
+      ::  complex (/lib/complex), bloq selects width: 6=cs (2x@rs) 7=cd (2x@rd).
+      ::  add/sub/mul/div are per-component float ops; comparisons are equ/neq
+      ::  only (complex has no total order, so gth/gte/lth/lte crash); %conj is
+      ::  unary (see +trans-scalar).  Reductions use the generic round-each-step
+      ::  path (there is no exact complex accumulator).
+      =/  ord  |=([a=@ b=@] ^-(@ ~|('lagoon: %cplx has no total order; use abs/equ' !!)))
+      ?+    `^bloq`bloq  !!
+          %6
+        ?+  fun  !!
+          %add  ~(add cs:complex rnd)
+          %sub  ~(sub cs:complex rnd)
+          %mul  ~(mul cs:complex rnd)
+          %div  ~(div cs:complex rnd)
+          %equ  |=([a=@ b=@] ?:((~(equ cs:complex rnd) a b) ~(one cs:complex rnd) `@`0))
+          %neq  |=([a=@ b=@] ?:((~(neq cs:complex rnd) a b) ~(one cs:complex rnd) `@`0))
+          %gth  ord
+          %gte  ord
+          %lth  ord
+          %lte  ord
+        ==
+          %7
+        ?+  fun  !!
+          %add  ~(add cd:complex rnd)
+          %sub  ~(sub cd:complex rnd)
+          %mul  ~(mul cd:complex rnd)
+          %div  ~(div cd:complex rnd)
+          %equ  |=([a=@ b=@] ?:((~(equ cd:complex rnd) a b) ~(one cd:complex rnd) `@`0))
+          %neq  |=([a=@ b=@] ?:((~(neq cd:complex rnd) a b) ~(one cd:complex rnd) `@`0))
+          %gth  ord
+          %gte  ord
+          %lth  ord
+          %lte  ord
+        ==
+      ==  :: bloq cplx
     ==  :: kind
   ::
   ++  trans-scalar
     |=  [=bloq =kind fun=ops]
     ^-  $-(@ @)
+    ::  %conj is the complex conjugate; for every non-complex (real) kind it
+    ::  is the identity, which is what makes +dotc reduce to +dot on reals.
     ?-    kind
         %uint
       ?+  fun  !!
-        %abs  |=(b=@ b)
+        %abs   |=(b=@ b)
+        %conj  |=(b=@ b)
       ==
       ::
         %int2
       ?+  fun  !!
-        %abs  ~(abs twoc:twoc bloq)
+        %abs   ~(abs twoc:twoc bloq)
+        %conj  |=(b=@ b)
       ==
       ::
         %i754
@@ -1368,27 +1455,61 @@
           %7
         ?+  fun  !!
           %abs  |=(b=@ ?:((~(gte rq rnd) b .~~~0) b (~(mul rq rnd) b .~~~-1)))
+          %conj  |=(b=@ b)
         ==
           %6
         ?+  fun  !!
           %abs  |=(b=@ ?:((~(gte rd rnd) b .~0) b (~(mul rd rnd) b .~-1)))
+          %conj  |=(b=@ b)
         ==
           %5
         ?+  fun  !!
           %abs  |=(b=@ ?:((~(gte rs rnd) b .0) b (~(mul rs rnd) b .-1)))
+          %conj  |=(b=@ b)
         ==
           %4
         ?+  fun  !!
           %abs  |=(b=@ ?:((~(gte rh rnd) b .~~0) b (~(mul rh rnd) b .~~-1)))
+          %conj  |=(b=@ b)
         ==
       ==
       ::
         %unum
       ?+    bloq  !!
-        %6  ?+(fun !! %abs abs:rpd:unum)
-        %5  ?+(fun !! %abs abs:rps:unum)
-        %4  ?+(fun !! %abs abs:rph:unum)
-        %3  ?+(fun !! %abs abs:rpb:unum)
+          %6
+        ?+  fun  !!
+          %abs   abs:rpd:unum
+          %conj  |=(b=@ b)
+        ==
+          %5
+        ?+  fun  !!
+          %abs   abs:rps:unum
+          %conj  |=(b=@ b)
+        ==
+          %4
+        ?+  fun  !!
+          %abs   abs:rph:unum
+          %conj  |=(b=@ b)
+        ==
+          %3
+        ?+  fun  !!
+          %abs   abs:rpb:unum
+          %conj  |=(b=@ b)
+        ==
+      ==
+      ::
+        %cplx
+      ?+    bloq  !!
+          %7
+        ?+  fun  !!
+          %abs   ~(abs cd:complex rnd)
+          %conj  ~(conj cd:complex rnd)
+        ==
+          %6
+        ?+  fun  !!
+          %abs   ~(abs cs:complex rnd)
+          %conj  ~(conj cs:complex rnd)
+        ==
       ==
     ==
   ::

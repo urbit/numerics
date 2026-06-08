@@ -80,7 +80,7 @@
   ::  Returns the BOOLEAN comparison of two floating-point rays, greater than
   ::    Examples
   ::      > (gth:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=data=0x1.0000.0000.3f80.0000.0000.0000.0000.0000.3f80.0000]
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.0000.0000.3f80.0000.0000.0000.0000.0000.3f80.0000]
   ::      > ;;((list (list @rs)) data:(de-ray:la:la (gth:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.0] t=[i=~[.1] t=~[~[.0] ~[.0] ~[.1]]]]
   ::  Source
@@ -90,7 +90,7 @@
   ::  Returns the BOOLEAN comparison of two floating-point rays, greater than or equal to
   ::    Examples
   ::      > (gte:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=data=0x1.3f80.0000.3f80.0000.3f80.0000.0000.0000.3f80.0000]
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.3f80.0000.3f80.0000.3f80.0000.0000.0000.3f80.0000]
   ::      > ;;((list (list @rs)) data:(de-ray:la:la (gte:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.1] t=~[~[.1] ~[.0] ~[.1]]]]
   ::  Source
@@ -101,14 +101,14 @@
   ::  Alias for +gte.
   ::    Examples
   ::      > (geq:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
-  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=data=0x1.3f80.0000.3f80.0000.3f80.0000.0000.0000.3f80.0000]
+  ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.3f80.0000.3f80.0000.3f80.0000.0000.0000.3f80.0000]
   ::      > ;;((list (list @rs)) data:(de-ray:la:la (geq:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.1] t=~[~[.1] ~[.0] ~[.1]]]]
   ::  Source
   ++  geq  gte:(lake rnd)
   ::    +neq:  [$ray $ray] -> $ray
   ::
-  ::  Returns the BOOLEAN comparison of two floating-point rays, equal to
+  ::  Returns the BOOLEAN comparison of two floating-point rays, not equal to
   ::    Examples
   ::      > (neq:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
   ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.0000.0000.3f80.0000.0000.0000.3f80.0000.3f80.0000]

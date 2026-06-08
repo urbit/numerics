@@ -355,6 +355,10 @@
       (^rip a b)
     --
   ::
+  ::  +check: validate a ray's data length against its shape.  The data atom
+  ::  carries a 0x1 most-significant "pin" above the elements (so leading-zero
+  ::  elements aren't lost), hence (met bloq data) counts prod(shape)+1 blocks;
+  ::  this asserts prod(shape) == (met ...) - 1.  Every public arm calls it.
   ++  check
     |=  =ray
     ^-  ?
@@ -426,8 +430,9 @@
       ::
         %i754
       ?+    kind  !!
-          :: %i754 -> %uint
-          :: XXX will incorrectly convert negative values to %uint
+          :: %i754 -> %uint.  KNOWN LIMITATION: a negative %i754 value has no
+          :: %uint representation; +toi yields a negative @s and the (div ... 2)
+          :: wraps it rather than clamping/erroring.  Callers must pre-clamp.
           %uint
         %-  en-ray
         :-  [shape.meta.ray bloq %uint tail.meta.ray]

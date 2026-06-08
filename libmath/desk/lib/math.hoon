@@ -92,10 +92,11 @@
   ++  huge  `@rs`0x7f80.0000  ::  3.40282346638528859812e+38
   ::    +tiny:  @rs
   ::
-  ::  Returns the value of the smallest representable normal number.
+  ::  Returns the smallest representable positive (subnormal) number, 2^-149.
+  ::  (Not the smallest NORMAL, which is 2^-126 = .1.1754944e-38.)
   ::    Examples
   ::      > tiny
-  ::      .1.1754944e-38
+  ::      .1e-45
   ::  Source
   ++  tiny  `@rs`0x1          ::  1.40129846432481707092e-45
   ::
@@ -874,22 +875,20 @@
   ::    +round-bankers:  @rs -> @rs
   ::
   ::  Returns the floating-point atom rounded to the nearest integer, with
-  ::  ties rounded to the nearest even integer.
+  ::  ties rounded to the nearest even integer (banker's rounding).  This is
+  ::  exactly what +toi does under round-nearest (%n), which ties to even, so we
+  ::  force %n regardless of the door's configured mode.
   ::    Examples
-  ::      > (round-bankers .1)
-  ::      .1
   ::      > (round-bankers .1.5)
+  ::      .2
+  ::      > (round-bankers .2.5)
   ::      .2
   ::      > (round-bankers .1.49)
   ::      .1
   ::  Source
   ++  round-bankers
     |=  x=@rs  ^-  @rs
-    =/  int  (san (need (toi x)))
-    =/  dcm  (sub x int)
-    ?:  (lth dcm .0.5)
-      int
-    (add int .1)
+    (san (need (~(toi ^rs %n) x)))
   --
 ::  double precision
 ++  rd
@@ -1556,10 +1555,10 @@
     |=  z=@rd  ^-  @rd
     ::  filter out non-finite arguments
     ::    check infinities
-    ?:  =(z 0x7ff0.0000.0000.0000)  `@rd`0x7ff0.0000.0000.0000  :: exp(+inf) -> inf
-    ?:  =(z 0xfff0.0000.0000.0000)  .~0.0                       :: exp(-inf) -> 0
+    ?:  =(z 0x7ff0.0000.0000.0000)  `@rd`0x7ff0.0000.0000.0000  :: log(+inf) -> inf
+    ?:  =(z 0xfff0.0000.0000.0000)  `@rd`0x7ff8.0000.0000.0000  :: log(-inf) -> NaN
     ::    check NaN
-    ?.  (^gte (dis 0x7ff8.0000.0000.0000 z) 0)  `@rd`0x7ff8.0000.0000.0000  :: exp(NaN) -> NaN
+    ?.  (^gte (dis 0x7ff8.0000.0000.0000 z) 0)  `@rd`0x7ff8.0000.0000.0000  :: log(NaN) -> NaN
     ::  otherwise, use Taylor series
     =/  p   .~0
     =/  po  .~-1
@@ -1742,23 +1741,21 @@
     (div rnd-mantissa scaling)
   ::    +round-bankers:  @rs -> @rs
   ::
-  ::  Returns the floating-point atom rounded to the nearest integer, with
-  ::  ties rounded to the nearest even integer.
+  ::  Returns the floating-point atom rounded to the nearest integer, with ties
+  ::  rounded to the nearest even integer (banker's rounding).  This is exactly
+  ::  what +toi does under round-nearest (%n), which ties to even, so we force
+  ::  %n regardless of the door's configured mode.
   ::    Examples
-  ::      > (round-bankers .1)
-  ::      .1
-  ::      > (round-bankers .1.5)
-  ::      .2
-  ::      > (round-bankers .1.49)
-  ::      .1
+  ::      > (round-bankers .~1.5)
+  ::      .~2
+  ::      > (round-bankers .~2.5)
+  ::      .~2
+  ::      > (round-bankers .~1.49)
+  ::      .~1
   ::  Source
   ++  round-bankers
     |=  x=@rd  ^-  @rd
-    =/  int  (san (need (toi x)))
-    =/  dcm  (sub x int)
-    ?:  (lth dcm .~0.5)
-      int
-    (add int .~1)
+    (san (need (~(toi ^rd %n) x)))
   --
 ::  half precision
 ++  rh
@@ -1849,10 +1846,11 @@
   ++  huge  `@rh`0x7bff  ::  6.55e+04
   ::    +tiny:  @rh
   ::
-  ::  Returns the value of the smallest representable normal number.
+  ::  Returns the smallest representable positive (subnormal) number, 2^-24.
+  ::  (Not the smallest NORMAL, which is 2^-14 = .~~6.10e-05.)
   ::    Examples
   ::      > tiny
-  ::      .~~6.10e-05
+  ::      .~~6e-8
   ::  Source
   ++  tiny  `@rh`0x1     ::  6e-08
   ::

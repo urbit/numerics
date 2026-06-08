@@ -23,15 +23,18 @@ We envision four libraries and associated jet code living in this repository:
 
 ##  Type System
 
-- `%real` IEEE 754 float (currently supported)
-- `%cplx` IEEE 754 float/BLAS packed complex (planned)
-- `%uint` unsigned integers (currently supported)
-- `%int2` signed twos-complement integers (planned)
-- `%sint` signed ZigZag integers (planned)
-- `%unum` → subdivide into one of:
-  - `%post` posits (32-bit or 16-bit) (planned)
-  - `%vald` valids (32-bit or 16-bit) (planned)
-- `%fixp` fixed-precision (planned)
+The element `kind` lives in `/sur/lagoon` (the old `%real` is now `%i754`):
+
+- `%i754` IEEE 754 float — `@rh`/`@rs`/`@rd`/`@rq` (supported)
+- `%uint` unsigned integers (supported)
+- `%int2` signed two's-complement integers, `/lib/twoc` (supported)
+- `%unum` unum/posits — `@rpb`/`@rph`/`@rps`/`@rpd`, `/lib/unum` (supported)
+- `%cplx` BLAS-packed complex — `@ch`/`@cs`/`@cd`/`@cq`, `/lib/complex` (supported)
+- `%fixp` fixed-point Q a.b, `/lib/fixed`; precision `[a b]` in `meta.tail` (supported)
+
+(`%sint` ZigZag integers and `%vald` valids remain possible future additions.)
+Arms added since the `%real`-only release below include `++dotc` (Hermitian dot)
+and `++conj` (elementwise conjugate); Saloon adds eigendecomposition (`++eig`).
 
 ##  Fixed-Point Library `/lib/fixed`
 

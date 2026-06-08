@@ -12,7 +12,10 @@
   $:  shape=(list @)  ::  list of dimension lengths
       =bloq           ::  logarithm of bitwidth
       =kind           ::  name of data type
-      tail=*          ::  placeholder for future data (jet convenience)
+      tail=*          ::  per-kind specialization data (~ unless a kind needs
+                      ::  it).  Deliberately last and untyped so a kind can add
+                      ::  data without rewriting the jet axes.  %fixp uses it for
+                      ::  the [a=@ b=@] fixed-point precision; other kinds: ~.
   ==
 ::
 +$  kind              ::  $kind:  type of array scalars
@@ -20,7 +23,7 @@
       %uint           ::  unsigned integer
       %int2           ::  2s-complement integer (/lib/twoc)
       %unum           ::  unum/posit (/lib/unum) @rpb @rph @rps @rpd
-      %cplx           ::  complex (/lib/complex) @cs/@cd; bloq = total width
+      %cplx           ::  complex (/lib/complex) @ch/@cs/@cd/@cq; bloq=total width
       %fixp           ::  fixed-point Q a.b (/lib/fixed); prec [a b] in meta.tail
   ==
 ::

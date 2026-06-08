@@ -748,10 +748,20 @@
       [(diag-real m) v]
     =/  mv  (sweep-herm m v)
     $(sweep +(sweep), m -.mv, v +.mv)
-  ::    +eig: eigenvalues (1-D) and eigenvectors (columns) of a symmetric
-  ::    (%i754) or Hermitian (%cplx) matrix.  Dispatches on kind; the %cplx
-  ::    path (Hermitian Jacobi) returns real %i754 eigenvalues and %cplx
-  ::    (unitary) eigenvectors.  Asserts squareness + exact (skew-)symmetry.
+  ::    +eig:  $ray -> [vals=$ray vecs=$ray]
+  ::
+  ::  Returns the eigenvalues (1-D ray) and eigenvectors (columns of a square
+  ::  ray) of a symmetric (%i754) or Hermitian (%cplx) matrix, via cyclic
+  ::  Jacobi.  Dispatches on kind; the %cplx path returns real (%i754)
+  ::  eigenvalues and %cplx (unitary) eigenvectors.  Asserts squareness and
+  ::  exact (skew-)symmetry; crashes otherwise.  Convergence uses rtol (from
+  ::  +sake), which must match the component width.
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a   (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~2 .~1] ~[.~1 .~2]]])  ::  [[2 1] [1 2]]
+  ::      > ;;((list @rd) data:(de-ray:la -:(eig:sa a)))
+  ::      ~[.~1 .~2.9999999999999996]                          ::  eigenvalues {1,3}
+  ::  Source
   ++  eig
     |=  a=ray:ls
     ^-  [vals=ray:ls vecs=ray:ls]
@@ -774,10 +784,28 @@
       [(diag m) v]
     =/  mv  (sweep-once m v)
     $(sweep +(sweep), m -.mv, v +.mv)
-  ::    +eigvals: eigenvalues only (1-D ray).  Head/tail (not vals:/vecs:)
-  ::    because the kind-dispatch ?: in +eig erodes the result's faces.
+  ::    +eigvals:  $ray -> $ray
+  ::
+  ::  Returns just the eigenvalues (1-D ray) of a symmetric/Hermitian matrix;
+  ::  real (%i754) even for a Hermitian (%cplx) input.  (Head of +eig, taken by
+  ::  axis because the kind-dispatch ?: in +eig erodes the result's faces.)
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a   (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~2 .~1] ~[.~1 .~2]]])
+  ::      > ;;((list @rd) data:(de-ray:la (eigvals:sa a)))
+  ::      ~[.~1 .~2.9999999999999996]                          ::  eigenvalues {1,3}
+  ::  Source
   ++  eigvals  |=(a=ray:ls ^-(ray:ls -:(eig a)))
-  ::    +eigvecs: eigenvectors only (square ray, columns are eigenvectors).
+  ::    +eigvecs:  $ray -> $ray
+  ::
+  ::  Returns just the eigenvectors as the columns of a square ray (orthonormal
+  ::  for symmetric input, unitary for Hermitian).  (Tail of +eig, by axis.)
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a   (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~2 .~1] ~[.~1 .~2]]])
+  ::      > shape.meta:(eigvecs:sa a)
+  ::      ~[2 2]
+  ::  Source
   ++  eigvecs  |=(a=ray:ls ^-(ray:ls +:(eig a)))
   --
 --

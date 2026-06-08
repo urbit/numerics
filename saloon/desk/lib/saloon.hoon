@@ -442,21 +442,22 @@
   ::  algorithm.  Phase A: %i754 single (bloq 5) and double (bloq 6) only.
   ::  Real eigenvalues, orthonormal eigenvectors, no complex arithmetic.
   ::
-  ::    Scalar float helpers, dispatched on bloq (5=@rs, 6=@rd).  Each takes
-  ::    the bloq as its first argument and operates on raw component atoms.
+  ::    Scalar float helpers, dispatched on the component bloq (4=@rh, 5=@rs,
+  ::    6=@rd, 7=@rq).  Each takes the bloq as its first argument and operates on
+  ::    raw component atoms.
   ::
-  ++  fadd  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(add rd:math [rnd rtol]) x y) (~(add rs:math [rnd rtol]) x y))))
-  ++  fsub  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(sub rd:math [rnd rtol]) x y) (~(sub rs:math [rnd rtol]) x y))))
-  ++  fmul  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(mul rd:math [rnd rtol]) x y) (~(mul rs:math [rnd rtol]) x y))))
-  ++  fdiv  |=([b=@ x=@ y=@] ^-(@ ?:(=(6 b) (~(div rd:math [rnd rtol]) x y) (~(div rs:math [rnd rtol]) x y))))
-  ++  fabs  |=([b=@ x=@] ^-(@ ?:(=(6 b) (~(abs rd:math [rnd rtol]) x) (~(abs rs:math [rnd rtol]) x))))
-  ++  fgte  |=([b=@ x=@ y=@] ^-(? ?:(=(6 b) (~(gte rd:math [rnd rtol]) x y) (~(gte rs:math [rnd rtol]) x y))))
-  ++  flte  |=([b=@ x=@ y=@] ^-(? ?:(=(6 b) (~(lte rd:math [rnd rtol]) x y) (~(lte rs:math [rnd rtol]) x y))))
-  ++  f0    |=(b=@ ^-(@ ?:(=(6 b) .~0 .0)))
-  ++  f1    |=(b=@ ^-(@ ?:(=(6 b) .~1 .1)))
-  ++  f2    |=(b=@ ^-(@ ?:(=(6 b) .~2 .2)))
+  ++  fadd  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(add rh:math [rnd rtol]) x y) ?:(=(5 b) (~(add rs:math [rnd rtol]) x y) ?:(=(6 b) (~(add rd:math [rnd rtol]) x y) (~(add rq:math [rnd rtol]) x y))))))
+  ++  fsub  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(sub rh:math [rnd rtol]) x y) ?:(=(5 b) (~(sub rs:math [rnd rtol]) x y) ?:(=(6 b) (~(sub rd:math [rnd rtol]) x y) (~(sub rq:math [rnd rtol]) x y))))))
+  ++  fmul  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(mul rh:math [rnd rtol]) x y) ?:(=(5 b) (~(mul rs:math [rnd rtol]) x y) ?:(=(6 b) (~(mul rd:math [rnd rtol]) x y) (~(mul rq:math [rnd rtol]) x y))))))
+  ++  fdiv  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(div rh:math [rnd rtol]) x y) ?:(=(5 b) (~(div rs:math [rnd rtol]) x y) ?:(=(6 b) (~(div rd:math [rnd rtol]) x y) (~(div rq:math [rnd rtol]) x y))))))
+  ++  fabs  |=([b=@ x=@] ^-(@ ?:(=(4 b) (~(abs rh:math [rnd rtol]) x) ?:(=(5 b) (~(abs rs:math [rnd rtol]) x) ?:(=(6 b) (~(abs rd:math [rnd rtol]) x) (~(abs rq:math [rnd rtol]) x))))))
+  ++  fgte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(gte rh:math [rnd rtol]) x y) ?:(=(5 b) (~(gte rs:math [rnd rtol]) x y) ?:(=(6 b) (~(gte rd:math [rnd rtol]) x y) (~(gte rq:math [rnd rtol]) x y))))))
+  ++  flte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(lte rh:math [rnd rtol]) x y) ?:(=(5 b) (~(lte rs:math [rnd rtol]) x y) ?:(=(6 b) (~(lte rd:math [rnd rtol]) x y) (~(lte rq:math [rnd rtol]) x y))))))
+  ++  f0    |=(b=@ ^-(@ ?:(=(4 b) .~~0 ?:(=(5 b) .0 ?:(=(6 b) .~0 .~~~0)))))
+  ++  f1    |=(b=@ ^-(@ ?:(=(4 b) .~~1 ?:(=(5 b) .1 ?:(=(6 b) .~1 .~~~1)))))
+  ++  f2    |=(b=@ ^-(@ ?:(=(4 b) .~~2 ?:(=(5 b) .2 ?:(=(6 b) .~2 .~~~2)))))
   ::    width-fixed relative epsilon for sqrt convergence (decoupled from rtol).
-  ++  feps  |=(b=@ ^-(@ ?:(=(6 b) .~1e-13 .1e-6)))
+  ++  feps  |=(b=@ ^-(@ ?:(=(4 b) .~~1e-2 ?:(=(5 b) .1e-6 ?:(=(6 b) .~1e-13 .~~~1e-30)))))
   ::    +fsqt: iteration-capped Newton sqrt.  The 50-step cap is a durability
   ::    backstop: a sub-ULP tolerance otherwise makes Newton oscillate forever
   ::    (which once OOM-crashed the ship).  Convergence uses feps, not rtol.
@@ -474,17 +475,17 @@
     $(i +(i), g ng)
   ++  fneg  |=([b=@ x=@] ^-(@ (fsub b (f0 b) x)))
   ++  fsign  |=([b=@ x=@] ^-(@ ?:((fgte b x (f0 b)) (f1 b) (fneg b (f1 b)))))
-  ::    Complex helpers, dispatched on the COMPLEX bloq (6=@cs, 7=@cd), over
-  ::    /lib/complex.  cb-comp maps a complex bloq to its real component bloq.
-  ++  cb-comp  |=(cb=@ ^-(@ ?:(=(7 cb) 6 5)))
-  ++  cadd  |=([cb=@ p=@ q=@] ^-(@ ?:(=(7 cb) (~(add cd:complex rnd) p q) (~(add cs:complex rnd) p q))))
-  ++  csub  |=([cb=@ p=@ q=@] ^-(@ ?:(=(7 cb) (~(sub cd:complex rnd) p q) (~(sub cs:complex rnd) p q))))
-  ++  cmul  |=([cb=@ p=@ q=@] ^-(@ ?:(=(7 cb) (~(mul cd:complex rnd) p q) (~(mul cs:complex rnd) p q))))
-  ++  cdiv  |=([cb=@ p=@ q=@] ^-(@ ?:(=(7 cb) (~(div cd:complex rnd) p q) (~(div cs:complex rnd) p q))))
-  ++  cconj  |=([cb=@ p=@] ^-(@ ?:(=(7 cb) (~(conj cd:complex rnd) p) (~(conj cs:complex rnd) p))))
-  ++  cre  |=([cb=@ p=@] ^-(@ ?:(=(7 cb) (~(re cd:complex rnd) p) (~(re cs:complex rnd) p))))
-  ++  cpak  |=([cb=@ r=@ i=@] ^-(@ ?:(=(7 cb) (~(pak cd:complex rnd) r i) (~(pak cs:complex rnd) r i))))
-  ++  cabs-re  |=([cb=@ p=@] ^-(@ (cre cb ?:(=(7 cb) (~(abs cd:complex rnd) p) (~(abs cs:complex rnd) p)))))
+  ::    Complex helpers, dispatched on the COMPLEX bloq (5=@ch, 6=@cs, 7=@cd,
+  ::    8=@cq), over /lib/complex.  The real component bloq is always (dec cb).
+  ++  cb-comp  |=(cb=@ ^-(@ (dec cb)))
+  ++  cadd  |=([cb=@ p=@ q=@] ^-(@ ?:(=(5 cb) (~(add ch:complex rnd) p q) ?:(=(6 cb) (~(add cs:complex rnd) p q) ?:(=(7 cb) (~(add cd:complex rnd) p q) (~(add cq:complex rnd) p q))))))
+  ++  csub  |=([cb=@ p=@ q=@] ^-(@ ?:(=(5 cb) (~(sub ch:complex rnd) p q) ?:(=(6 cb) (~(sub cs:complex rnd) p q) ?:(=(7 cb) (~(sub cd:complex rnd) p q) (~(sub cq:complex rnd) p q))))))
+  ++  cmul  |=([cb=@ p=@ q=@] ^-(@ ?:(=(5 cb) (~(mul ch:complex rnd) p q) ?:(=(6 cb) (~(mul cs:complex rnd) p q) ?:(=(7 cb) (~(mul cd:complex rnd) p q) (~(mul cq:complex rnd) p q))))))
+  ++  cdiv  |=([cb=@ p=@ q=@] ^-(@ ?:(=(5 cb) (~(div ch:complex rnd) p q) ?:(=(6 cb) (~(div cs:complex rnd) p q) ?:(=(7 cb) (~(div cd:complex rnd) p q) (~(div cq:complex rnd) p q))))))
+  ++  cconj  |=([cb=@ p=@] ^-(@ ?:(=(5 cb) (~(conj ch:complex rnd) p) ?:(=(6 cb) (~(conj cs:complex rnd) p) ?:(=(7 cb) (~(conj cd:complex rnd) p) (~(conj cq:complex rnd) p))))))
+  ++  cre  |=([cb=@ p=@] ^-(@ ?:(=(5 cb) (~(re ch:complex rnd) p) ?:(=(6 cb) (~(re cs:complex rnd) p) ?:(=(7 cb) (~(re cd:complex rnd) p) (~(re cq:complex rnd) p))))))
+  ++  cpak  |=([cb=@ r=@ i=@] ^-(@ ?:(=(5 cb) (~(pak ch:complex rnd) r i) ?:(=(6 cb) (~(pak cs:complex rnd) r i) ?:(=(7 cb) (~(pak cd:complex rnd) r i) (~(pak cq:complex rnd) r i))))))
+  ++  cabs-re  |=([cb=@ p=@] ^-(@ (cre cb ?:(=(5 cb) (~(abs ch:complex rnd) p) ?:(=(6 cb) (~(abs cs:complex rnd) p) ?:(=(7 cb) (~(abs cd:complex rnd) p) (~(abs cq:complex rnd) p)))))))
   ::    Indexed scalar access over the rounding-bound Lagoon door.
   ++  gi  |=([m=ray:ls ix=(list @)] ^-(@ (get-item:(lake rnd) m ix)))
   ++  si  |=([m=ray:ls ix=(list @) val=@] ^-(ray:ls (set-item:(lake rnd) m ix val)))
@@ -730,7 +731,7 @@
     |=  a=ray:ls
     ^-  [vals=ray:ls vecs=ray:ls]
     =/  cb  bloq.meta.a
-    ?>  ?|(=(6 cb) =(7 cb))
+    ?>  ?|(=(5 cb) =(6 cb) =(7 cb) =(8 cb))
     =/  rb  (cb-comp cb)
     ?>  =(2 (lent shape.meta.a))
     =/  n  (snag 0 shape.meta.a)
@@ -767,7 +768,7 @@
     ^-  [vals=ray:ls vecs=ray:ls]
     ?:  =(%cplx kind.meta.a)  (eig-herm a)
     =/  b  bloq.meta.a
-    ?>  ?|(=(5 b) =(6 b))
+    ?>  ?|(=(4 b) =(5 b) =(6 b) =(7 b))
     ?>  =(2 (lent shape.meta.a))
     =/  n  (snag 0 shape.meta.a)
     ?>  =(n (snag 1 shape.meta.a))

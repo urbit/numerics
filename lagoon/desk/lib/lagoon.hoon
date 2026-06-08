@@ -502,8 +502,10 @@
       ::
         %cplx
       ?+  bloq.meta  ~|(bloq.meta !!)
+        %8  ~(one cq:complex rnd)
         %7  ~(one cd:complex rnd)
         %6  ~(one cs:complex rnd)
+        %5  ~(one ch:complex rnd)
       ==
       ::  fixed-point 1.0 = 2^b, with b the fractional bits from meta.tail.
         %fixp  (bex +:;;([a=@ b=@] tail.meta))
@@ -542,8 +544,10 @@
         ::
           %cplx
         ?+  bloq.meta  !!
+          %8  ~(one cq:complex rnd)
           %7  ~(one cd:complex rnd)
           %6  ~(one cs:complex rnd)
+          %5  ~(one ch:complex rnd)
         ==
         ::  fixed-point 1.0 = 2^b (b = fractional bits from meta.tail).
           %fixp  (bex +:;;([a=@ b=@] tail.meta))
@@ -1471,13 +1475,26 @@
       ==  :: bloq unum
       ::
         %cplx
-      ::  complex (/lib/complex), bloq selects width: 6=cs (2x@rs) 7=cd (2x@rd).
-      ::  add/sub/mul/div are per-component float ops; comparisons are equ/neq
-      ::  only (complex has no total order, so gth/gte/lth/lte crash); %conj is
-      ::  unary (see +trans-scalar).  Reductions use the generic round-each-step
-      ::  path (there is no exact complex accumulator).
+      ::  complex (/lib/complex), bloq selects width: 5=ch (2x@rh) 6=cs (2x@rs)
+      ::  7=cd (2x@rd) 8=cq (2x@rq).  add/sub/mul/div are per-component float ops;
+      ::  comparisons are equ/neq only (complex has no total order, so
+      ::  gth/gte/lth/lte crash); %conj is unary (see +trans-scalar).  Reductions
+      ::  use the generic round-each-step path (no exact complex accumulator).
       =/  ord  |=([a=@ b=@] ^-(@ ~|('lagoon: %cplx has no total order; use abs/equ' !!)))
       ?+    `^bloq`bloq  !!
+          %5
+        ?+  fun  !!
+          %add  ~(add ch:complex rnd)
+          %sub  ~(sub ch:complex rnd)
+          %mul  ~(mul ch:complex rnd)
+          %div  ~(div ch:complex rnd)
+          %equ  |=([a=@ b=@] ?:((~(equ ch:complex rnd) a b) ~(one ch:complex rnd) `@`0))
+          %neq  |=([a=@ b=@] ?:((~(neq ch:complex rnd) a b) ~(one ch:complex rnd) `@`0))
+          %gth  ord
+          %gte  ord
+          %lth  ord
+          %lte  ord
+        ==
           %6
         ?+  fun  !!
           %add  ~(add cs:complex rnd)
@@ -1499,6 +1516,19 @@
           %div  ~(div cd:complex rnd)
           %equ  |=([a=@ b=@] ?:((~(equ cd:complex rnd) a b) ~(one cd:complex rnd) `@`0))
           %neq  |=([a=@ b=@] ?:((~(neq cd:complex rnd) a b) ~(one cd:complex rnd) `@`0))
+          %gth  ord
+          %gte  ord
+          %lth  ord
+          %lte  ord
+        ==
+          %8
+        ?+  fun  !!
+          %add  ~(add cq:complex rnd)
+          %sub  ~(sub cq:complex rnd)
+          %mul  ~(mul cq:complex rnd)
+          %div  ~(div cq:complex rnd)
+          %equ  |=([a=@ b=@] ?:((~(equ cq:complex rnd) a b) ~(one cq:complex rnd) `@`0))
+          %neq  |=([a=@ b=@] ?:((~(neq cq:complex rnd) a b) ~(one cq:complex rnd) `@`0))
           %gth  ord
           %gte  ord
           %lth  ord
@@ -1598,6 +1628,11 @@
       ::
         %cplx
       ?+    bloq  !!
+          %8
+        ?+  fun  !!
+          %abs   ~(abs cq:complex rnd)
+          %conj  ~(conj cq:complex rnd)
+        ==
           %7
         ?+  fun  !!
           %abs   ~(abs cd:complex rnd)
@@ -1607,6 +1642,11 @@
         ?+  fun  !!
           %abs   ~(abs cs:complex rnd)
           %conj  ~(conj cs:complex rnd)
+        ==
+          %5
+        ?+  fun  !!
+          %abs   ~(abs ch:complex rnd)
+          %conj  ~(conj ch:complex rnd)
         ==
       ==
       ::  fixed-point abs is two's-complement abs at the element width.

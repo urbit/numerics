@@ -89,4 +89,16 @@
     %+  expect-eq  !>(`@`0x0)  !>((get-item:la c ~[1 0]))   ::  0.0
     %+  expect-eq  !>(`@`0x10)  !>((get-item:la c ~[1 1]))   ::  1.0
   ==
+::  conj is identity on %fixp (real); dotc therefore coincides with dot.
+::  q3.4: 1.5=0x18 2.0=0x20 1.0=0x10 0.5=0x8; [1.5 2.0].[1.0 0.5]=2.5=0x28.
+++  test-fixp-conj-dotc  ^-  tang
+  =/  m2=meta  [~[1 2] 3 %fixp [3 4]]
+  =/  a=ray  (set-item:la (set-item:la (fill:la m2 0x0) ~[0 0] 0x18) ~[0 1] 0x20)
+  =/  b=ray  (set-item:la (set-item:la (fill:la m2 0x0) ~[0 0] 0x10) ~[0 1] 0x8)
+  ;:  weld
+    %+  expect-eq  !>(`@`0x18)
+      !>((get-item:la (conj:la (fill:la [~[1 1] 3 %fixp [3 4]] 0x18)) ~[0 0]))   ::  conj(1.5)=1.5
+    %+  expect-eq  !>(`@`0x28)  !>((get-item:la (dotc:la a b) ~[0 0]))   ::  Sum conj(x)*y=2.5
+    %+  expect-eq  !>(`@`0x28)  !>((get-item:la (dot:la a b) ~[0 0]))    ::  =dot (real)
+  ==
 --

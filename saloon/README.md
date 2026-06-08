@@ -36,6 +36,17 @@ Logical functions:
 - `all-close` (pass-through from Lagoon `++all`)
 - `any-close` (pass-through from Lagoon `++any`)
 
+Linear algebra (over Lagoon arrays):
+
+- `++eig`, eigendecomposition of a **symmetric** (`%i754`) or **Hermitian**
+  (`%cplx`) matrix via cyclic Jacobi → `[vals=ray vecs=ray]` (real eigenvalues,
+  orthonormal/unitary eigenvectors as columns).  Dispatches on `kind`.
+- `++eigvals`, eigenvalues only (1-D ray).
+- `++eigvecs`, eigenvectors only.
+
+Set rounding mode and tolerance with `++sake` before calling `++eig` (the bare
+`++sa` default `rtol` is unusable); `rtol`'s width must match the component.
+
 ##  References
 
 - Milton Abramowitz & Irene Stegun, _Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables_.  1964–2010.

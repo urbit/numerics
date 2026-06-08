@@ -1,5 +1,5 @@
 /-  lagoon
-/+  twoc, unum, complex
+/+  twoc, unum, complex, fixed
 =+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
@@ -86,6 +86,9 @@
         %6  %cs
         %5  %ch
       ==
+        %fixp
+      ::  no fixed-point printer; render the raw stored bits as hex.
+      %ux
     ==
   ::
   ++  squeeze  |*(a=* `(list _a)`~[a])
@@ -450,6 +453,9 @@
       ::  and make the caller pick (abs for modulus).  Into-complex TODO.
         %cplx
       ~|('lagoon: change out of %cplx is lossy; use abs or an explicit re/im' !!)
+      ::  %fixp conversion not yet wired; use /lib/fixed's to-rs/from-rs.
+        %fixp
+      ~|('lagoon: change/convert not yet implemented for %fixp' !!)
     ==
   ::
   ::  Builders
@@ -499,6 +505,8 @@
         %7  ~(one cd:complex rnd)
         %6  ~(one cs:complex rnd)
       ==
+      ::  fixed-point 1.0 = 2^b, with b the fractional bits from meta.tail.
+        %fixp  (bex +:;;([a=@ b=@] tail.meta))
     ==
   ::    Zeroes
   ++  zeros
@@ -537,6 +545,8 @@
           %7  ~(one cd:complex rnd)
           %6  ~(one cs:complex rnd)
         ==
+        ::  fixed-point 1.0 = 2^b (b = fractional bits from meta.tail).
+          %fixp  (bex +:;;([a=@ b=@] tail.meta))
       ==
     (fill meta one)
   ::  Produce a 1-dimensional index array.
@@ -689,6 +699,10 @@
       ::
         %cplx
       ::  data is already a packed complex bit pattern; pack it raw.
+      (spac [meta `@ux`data])
+      ::
+        %fixp
+      ::  data is already a fixed-point bit pattern; pack it raw.
       (spac [meta `@ux`data])
       ::
         %i754
@@ -885,6 +899,9 @@
     ::  rather than rounding each product and each partial sum.
     ?:  ?=(%unum kind.meta.a)
       (scalar-to-ray meta.a (unum-fdp bloq.meta.a (ravel a) (ravel b)))
+    ::  %fixp: accumulate the integer products exactly, rescale once.
+    ?:  ?=(%fixp kind.meta.a)
+      (scalar-to-ray meta.a (fixp-fdp ;;([a=@ b=@] tail.meta.a) (ravel a) (ravel b)))
     (cumsum (mul a b))
   ::  +dotc: Hermitian (conjugated) dot product, Sum conj(a_i)*b_i.  This is
   ::  the inner product whose norm <a,a> = Sum |a_i|^2 is real and nonnegative
@@ -916,6 +933,8 @@
     ==
     ::  %unum: accumulate each output cell exactly in the quire, see +mmul-unum.
     ?:  ?=(%unum kind.meta.a)  (mmul-unum a b)
+    ::  %fixp: accumulate each output cell's integer products exactly.
+    ?:  ?=(%fixp kind.meta.a)  (mmul-fixp a b)
     |-
       ?:   =(i (snag 0 shape.meta.prod))
         prod
@@ -964,6 +983,27 @@
     =/  av=(list @)  (turn (gulf 0 (dec kk)) |=(p=@ `@`(get-item a ~[i p])))
     =/  bv=(list @)  (turn (gulf 0 (dec kk)) |=(p=@ `@`(get-item b ~[p j])))
     $(j +(j), prod (set-item prod ~[i j] (unum-fdp bl av bv)))
+  ::  +mmul-fixp: fixed-point matrix multiply, each cell an exact integer
+  ::  dot product rescaled once (see +fixp-fdp), preserving the array
+  ::  precision (meta.tail).  Assumes +mmul's shape checks already passed.
+  ++  mmul-fixp
+    ~/  %mmul-fixp
+    |=  [a=ray b=ray]
+    ^-  ray
+    =/  prc  ;;([a=@ b=@] tail.meta.a)
+    =/  m   (snag 0 shape.meta.a)
+    =/  nn  (snag 1 shape.meta.b)
+    =/  kk  (snag 1 shape.meta.a)
+    =/  prod=ray  =,(meta.a (zeros [~[m nn] bloq kind tail]))
+    =/  i  0
+    |-  ^-  ray
+    ?:  =(i m)  prod
+    =/  j  0
+    |-  ^-  ray
+    ?:  =(j nn)  ^$(i +(i), prod prod)
+    =/  av=(list @)  (turn (gulf 0 (dec kk)) |=(p=@ `@`(get-item a ~[i p])))
+    =/  bv=(list @)  (turn (gulf 0 (dec kk)) |=(p=@ `@`(get-item b ~[p j])))
+    $(j +(j), prod (set-item prod ~[i j] (fixp-fdp prc av bv)))
 ::
   ++  abs
     ~/  %abs
@@ -1152,6 +1192,24 @@
     |=  [=bloq v=(list @)]
     ^-  @
     (unum-fdp bloq v (reap (lent v) (unum-one bloq)))
+  ::  +fixp-fdp: exact fixed-point dot product at precision [a b].  Decode each
+  ::  operand to its stored signed integer, accumulate the integer products
+  ::  exactly (no per-product truncation), then rescale by 2^b once and
+  ::  re-encode at the element width N = a+b+1.
+  ++  fixp-fdp
+    |=  [prc=[a=@ b=@] av=(list @) bv=(list @)]
+    ^-  @
+    =/  sm=@s
+      =|  sm=@s
+      |-  ^-  @s
+      ?~  av  sm
+      ?~  bv  sm
+      %=  $
+        av  t.av
+        bv  t.bv
+        sm  (sum:si sm (pro:si (to-s:fixed i.av prc) (to-s:fixed i.bv prc)))
+      ==
+    (s-to-twoc:(ng:fixed prc) (fra:si sm (sun:si (bex b.prc))))
   ::  +unum-mod: posit remainder a - b*trunc(a/b), the quotient truncated
   ::  TOWARD ZERO (C fmod / remainder-with-sign-of-dividend).  Returns nar on
   ::  a NaR operand or division by zero (b = posit 0) rather than crashing.
@@ -1430,6 +1488,29 @@
           %lte  ord
         ==
       ==  :: bloq cplx
+      ::
+        %fixp
+      ::  fixed-point Q a.b (/lib/fixed), prec [a b] from meta.tail, element
+      ::  width N = 2^bloq.  add/sub/mod and comparisons need only the width
+      ::  and reuse /lib/twoc (identical to %int2 on the stored integer);
+      ::  mul/div rescale by 2^b through /lib/fixed.  Comparisons return the
+      ::  fixed value 1.0 (= 2^b) for true, 0.0 for false.  Divide-by-zero
+      ::  crashes (fixed-point has no NaN).
+      =/  prc  ;;([a=@ b=@] tail)
+      =/  one  (bex b.prc)
+      ?+  fun  !!
+        %add  ~(add twoc:twoc bloq)
+        %sub  ~(sub twoc:twoc bloq)
+        %mul  |=([x=@ y=@] =/(p (mul:fixed x prc y prc) (scale:fixed -.p +.p prc)))
+        %div  |=([x=@ y=@] -:(div:fixed x prc y prc))
+        %mod  ~(rem twoc:twoc bloq)
+        %gth  |=([x=@ y=@] ?:((~(gth twoc:twoc bloq) x y) one 0x0))
+        %gte  |=([x=@ y=@] ?:((~(gte twoc:twoc bloq) x y) one 0x0))
+        %lth  |=([x=@ y=@] ?:((~(lth twoc:twoc bloq) x y) one 0x0))
+        %lte  |=([x=@ y=@] ?:((~(lte twoc:twoc bloq) x y) one 0x0))
+        %equ  |=([x=@ y=@] ?:(.=(x y) one 0x0))
+        %neq  |=([x=@ y=@] ?:(.=(x y) 0x0 one))
+      ==
     ==  :: kind
   ::
   ++  trans-scalar
@@ -1510,6 +1591,11 @@
           %abs   ~(abs cs:complex rnd)
           %conj  ~(conj cs:complex rnd)
         ==
+      ==
+      ::  fixed-point abs is two's-complement abs at the element width.
+        %fixp
+      ?+  fun  !!
+        %abs  ~(abs twoc:twoc bloq)
       ==
     ==
   ::

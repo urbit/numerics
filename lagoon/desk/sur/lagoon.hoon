@@ -21,7 +21,7 @@
       %int2           ::  2s-complement integer (/lib/twoc)
       %unum           ::  unum/posit (/lib/unum) @rpb @rph @rps @rpd
       %cplx           ::  complex (/lib/complex) @cs/@cd; bloq = total width
-      :: %fixp           ::  fixed-precision (/lib/fixed)
+      %fixp           ::  fixed-point Q a.b (/lib/fixed); prec [a b] in meta.tail
   ==
 ::
 +$  baum              ::  $baum:  ndray with metadata

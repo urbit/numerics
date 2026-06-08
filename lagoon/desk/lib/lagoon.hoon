@@ -1649,10 +1649,12 @@
           %conj  ~(conj ch:complex rnd)
         ==
       ==
-      ::  fixed-point abs is two's-complement abs at the element width.
+      ::  fixed-point abs is two's-complement abs at the element width; conj is
+      ::  the identity (fixed-point is real), so +dotc reduces to +dot.
         %fixp
       ?+  fun  !!
-        %abs  ~(abs twoc:twoc bloq)
+        %abs   ~(abs twoc:twoc bloq)
+        %conj  |=(b=@ b)
       ==
     ==
   ::

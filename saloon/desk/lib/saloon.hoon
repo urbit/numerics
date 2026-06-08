@@ -489,10 +489,25 @@
   ::    Indexed scalar access over the rounding-bound Lagoon door.
   ++  gi  |=([m=ray:ls ix=(list @)] ^-(@ (get-item:(lake rnd) m ix)))
   ++  si  |=([m=ray:ls ix=(list @) val=@] ^-(ray:ls (set-item:(lake rnd) m ix val)))
-  ::    +symmetric: exact equality of m and its transpose.
+  ::    +stol/+near/+cnear: (skew-)symmetry tolerance.  An eig input is accepted
+  ::    if it is symmetric/Hermitian WITHIN a relative tolerance, so a matrix
+  ::    that is symmetric only up to rounding (e.g. a Gram matrix M^T*M from
+  ::    Lagoon mmul, whose [i,j] and [j,i] accumulate in different orders) is not
+  ::    rejected, while a genuinely asymmetric matrix (entries differing by O(1))
+  ::    still crashes.  The check is magnitude-based, so a +-0.0 sign difference
+  ::    in conjugate pairs (which arises under %d/%u rounding) also passes.
+  ++  stol  |=(b=@ ^-(@ ?:(=(4 b) .~~1e-2 ?:(=(5 b) .1e-4 ?:(=(6 b) .~1e-9 .~~~1e-18)))))
+  ++  near  |=([b=@ x=@ y=@] ^-(? (flte b (fabs b (fsub b x y)) (fadd b (stol b) (fmul b (stol b) (fadd b (fabs b x) (fabs b y)))))))
+  ++  cnear
+    |=  [cb=@ x=@ y=@]
+    ^-  ?
+    =/  rb  (cb-comp cb)
+    (flte rb (cabs-re cb (csub cb x (cconj cb y))) (fadd rb (stol rb) (fmul rb (stol rb) (fadd rb (cabs-re cb x) (cabs-re cb y)))))
+  ::    +symmetric: m equals its transpose within the symmetry tolerance (+near).
   ++  symmetric
     |=  m=ray:ls
     ^-  ?
+    =/  b  bloq.meta.m
     =/  n  (snag 0 shape.meta.m)
     =/  k  0
     |-  ^-  ?
@@ -500,7 +515,7 @@
     =/  i  (^div k n)
     =/  j  (mod k n)
     ?:  (^lte i j)  $(k +(k))
-    ?.  =((gi m ~[i j]) (gi m ~[j i]))  |
+    ?.  (near b (gi m ~[i j]) (gi m ~[j i]))  |
     $(k +(k))
   ::    +off-norm: Frobenius norm of the strictly off-diagonal part.
   ++  off-norm
@@ -607,7 +622,9 @@
   ::  J[q,p] = -conj(b); updates are A <- J^H*A*J and V <- V*J.  Eigenvalues are
   ::  real (the diagonal at convergence), eigenvectors form a unitary matrix.
   ::
-  ::    +hermitian: exact a_ij == conj(a_ji) (implies a real diagonal).
+  ::    +hermitian: a_ij == conj(a_ji) within the symmetry tolerance (+cnear),
+  ::    which implies a (near-)real diagonal.  Magnitude-based, so a real
+  ::    diagonal stored with -0.0 imaginary parts is accepted.
   ++  hermitian
     |=  m=ray:ls
     ^-  ?
@@ -619,7 +636,7 @@
     =/  i  (^div k n)
     =/  j  (mod k n)
     ?:  (^lth i j)  $(k +(k))
-    ?.  =((gi m ~[i j]) (cconj cb (gi m ~[j i])))  |
+    ?.  (cnear cb (gi m ~[i j]) (gi m ~[j i]))  |
     $(k +(k))
   ::    +off-norm-h: real Frobenius norm of the strictly off-diagonal part.
   ++  off-norm-h
@@ -754,9 +771,17 @@
   ::  Returns the eigenvalues (1-D ray) and eigenvectors (columns of a square
   ::  ray) of a symmetric (%i754) or Hermitian (%cplx) matrix, via cyclic
   ::  Jacobi.  Dispatches on kind; the %cplx path returns real (%i754)
-  ::  eigenvalues and %cplx (unitary) eigenvectors.  Asserts squareness and
-  ::  exact (skew-)symmetry; crashes otherwise.  Convergence uses rtol (from
-  ::  +sake), which must match the component width.
+  ::  eigenvalues and %cplx (unitary) eigenvectors.
+  ::
+  ::  Asserts squareness and symmetry/Hermitian-ness WITHIN a relative tolerance
+  ::  (+near/+cnear) -- a matrix symmetric only up to rounding (e.g. a Gram
+  ::  matrix from +mmul) is accepted; a genuinely asymmetric one crashes.
+  ::
+  ::  CALLERS: set rtol via +sake, and match its WIDTH to the component (@rs for
+  ::  @cs etc.) -- a mismatched width silently mis-scales the threshold.  The
+  ::  bare `sa` default rtol=0x1 is a denormal, not 1.0: it never satisfies the
+  ::  convergence test, so the 60-sweep cap fires and a "~&" warning is emitted
+  ::  (the result is still returned, not silently wrong) -- always call +sake.
   ::    Examples
   ::      > =sa  (sake %n .~1e-12)
   ::      > =a   (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~2 .~1] ~[.~1 .~2]]])  ::  [[2 1] [1 2]]

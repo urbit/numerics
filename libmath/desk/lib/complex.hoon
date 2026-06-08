@@ -358,4 +358,337 @@
   ::  Source
   ++  neq   |=([p=@ q=@] =(| (equ p q)))
   --
+::    +ch:  complex-half (@ch), two @rh (16-bit) components.
+::
+::  The @rh/@ch analogue of +cs over half-precision components (32-bit element).
+::  Here 1+2i packs to 0x4000.3c00 and 3+4i to 0x4400.4200.
+::
+++  ch
+  |_  rnd=rounding-mode
+  ::
+  ::  Components
+  ::
+  ::    +re:  @ch -> @rh
+  ::
+  ::  Returns the real component (low 16 bits) of a packed @ch value.
+  ::    Examples
+  ::      > (~(re ch:complex %n) 0x4000.3c00)  ::  re(1+2i)
+  ::      .~~1
+  ::  Source
+  ++  re    |=(p=@ `@rh`(end [0 16] p))
+  ::    +im:  @ch -> @rh
+  ::
+  ::  Returns the imaginary component (high 16 bits) of a packed @ch value.
+  ::    Examples
+  ::      > (~(im ch:complex %n) 0x4000.3c00)  ::  im(1+2i)
+  ::      .~~2
+  ::  Source
+  ++  im    |=(p=@ `@rh`(rsh [0 16] p))
+  ::    +pak:  [@rh @rh] -> @ch
+  ::
+  ::  Packs real and imaginary @rh components into one @ch atom (real low).
+  ::    Examples
+  ::      > (~(pak ch:complex %n) .~~1 .~~2)
+  ::      0x4000.3c00
+  ::  Source
+  ++  pak   |=([r=@rh i=@rh] ^-(@ (con `@`r (lsh [0 16] `@`i))))
+  ::  component helpers (internal)
+  ++  fneg  |=(x=@rh (~(sub rh rnd) .~~0 x))
+  ++  fabs  |=(x=@rh ?:((~(lth rh rnd) x .~~0) (~(sub rh rnd) .~~0 x) x))
+  ::
+  ::  Constants
+  ::
+  ::    +zero:  @ch
+  ::
+  ::  The additive identity 0+0i.
+  ::    Examples
+  ::      > ~(zero ch:complex %n)
+  ::      0x0
+  ::  Source
+  ++  zero  ^-(@ 0)
+  ::    +one:  @ch
+  ::
+  ::  The multiplicative identity 1+0i.
+  ::    Examples
+  ::      > ~(one ch:complex %n)
+  ::      0x3c00
+  ::  Source
+  ++  one   (pak .~~1 .~~0)
+  ::
+  ::  Arithmetic
+  ::
+  ::    +add:  [@ch @ch] -> @ch
+  ::
+  ::  Returns the sum of two complex values (component-wise).
+  ::    Examples
+  ::      > (~(add ch:complex %n) 0x4000.3c00 0x4400.4200)  ::  (1+2i)+(3+4i)=4+6i
+  ::      0x4600.4400
+  ::  Source
+  ++  add   |=([p=@ q=@] (pak (~(add rh rnd) (re p) (re q)) (~(add rh rnd) (im p) (im q))))
+  ::    +sub:  [@ch @ch] -> @ch
+  ::
+  ::  Returns the difference of two complex values (component-wise).
+  ::    Examples
+  ::      > (~(sub ch:complex %n) 0x4000.3c00 0x4400.4200)  ::  =-2-2i
+  ::      0xc000.c000
+  ::  Source
+  ++  sub   |=([p=@ q=@] (pak (~(sub rh rnd) (re p) (re q)) (~(sub rh rnd) (im p) (im q))))
+  ::    +neg:  @ch -> @ch
+  ::
+  ::  Returns the additive inverse -z.
+  ::    Examples
+  ::      > (~(neg ch:complex %n) 0x4000.3c00)  ::  -(1+2i)
+  ::      0xc000.bc00
+  ::  Source
+  ++  neg   |=(p=@ (pak (fneg (re p)) (fneg (im p))))
+  ::    +conj:  @ch -> @ch
+  ::
+  ::  Returns the complex conjugate (negate the imaginary component).
+  ::    Examples
+  ::      > (~(conj ch:complex %n) 0x4000.3c00)  ::  conj(1+2i)=1-2i
+  ::      0xc000.3c00
+  ::  Source
+  ++  conj  |=(p=@ (pak (re p) (fneg (im p))))
+  ::    +mul:  [@ch @ch] -> @ch
+  ::
+  ::  Returns the complex product (ar+ai i)(br+bi i), rounded per component.
+  ::    Examples
+  ::      > (~(mul ch:complex %n) 0x4000.3c00 0x4400.4200)  ::  (1+2i)(3+4i)=-5+10i
+  ::      0x4900.c500
+  ::  Source
+  ++  mul
+    |=  [p=@ q=@]
+    =/  ar  (re p)  =/  ai  (im p)
+    =/  br  (re q)  =/  bi  (im q)
+    %+  pak
+      (~(sub rh rnd) (~(mul rh rnd) ar br) (~(mul rh rnd) ai bi))
+    (~(add rh rnd) (~(mul rh rnd) ar bi) (~(mul rh rnd) ai br))
+  ::    +div:  [@ch @ch] -> @ch
+  ::
+  ::  Returns the complex quotient via Smith's algorithm (scale by the larger
+  ::  denominator component for numerical stability).
+  ::    Examples
+  ::      > (~(div ch:complex %n) 0x4000.4000 0x3c00.3c00)  ::  (2+2i)/(1+1i)=2
+  ::      0x4000
+  ::  Source
+  ++  div
+    |=  [p=@ q=@]
+    =/  ar  (re p)  =/  ai  (im p)
+    =/  br  (re q)  =/  bi  (im q)
+    ?:  (~(gte rh rnd) (fabs br) (fabs bi))
+      =/  r   (~(div rh rnd) bi br)
+      =/  dn  (~(add rh rnd) br (~(mul rh rnd) bi r))
+      %+  pak
+        (~(div rh rnd) (~(add rh rnd) ar (~(mul rh rnd) ai r)) dn)
+      (~(div rh rnd) (~(sub rh rnd) ai (~(mul rh rnd) ar r)) dn)
+    =/  r   (~(div rh rnd) br bi)
+    =/  dn  (~(add rh rnd) (~(mul rh rnd) br r) bi)
+    %+  pak
+      (~(div rh rnd) (~(add rh rnd) (~(mul rh rnd) ar r) ai) dn)
+    (~(div rh rnd) (~(sub rh rnd) (~(mul rh rnd) ai r) ar) dn)
+  ::    +abs:  @ch -> @ch
+  ::
+  ::  Returns the modulus |z| as a real-valued complex [|z|, 0], via hypot.
+  ::    Examples
+  ::      > (~(abs ch:complex %n) 0x4400.4200)  ::  |3+4i|=5
+  ::      0x4500
+  ::  Source
+  ++  abs
+    |=  p=@
+    =/  xr  (fabs (re p))  =/  xi  (fabs (im p))
+    ?:  &(=(`@rh`.~~0 xr) =(`@rh`.~~0 xi))  (pak .~~0 .~~0)
+    ?:  (~(gte rh rnd) xr xi)
+      =/  t  (~(div rh rnd) xi xr)
+      (pak (~(mul rh rnd) xr (~(sqt rh rnd) (~(add rh rnd) .~~1 (~(mul rh rnd) t t)))) .~~0)
+    =/  t  (~(div rh rnd) xr xi)
+    (pak (~(mul rh rnd) xi (~(sqt rh rnd) (~(add rh rnd) .~~1 (~(mul rh rnd) t t)))) .~~0)
+  ::
+  ::  Comparison (no total order on complex -- only equality)
+  ::
+  ::    +equ:  [@ch @ch] -> ?
+  ::
+  ::  Loobean: bit-equality of both components.
+  ::    Examples
+  ::      > (~(equ ch:complex %n) 0x4000.3c00 0x4000.3c00)
+  ::      %.y
+  ::      > (~(equ ch:complex %n) 0x4000.3c00 0x4400.4200)
+  ::      %.n
+  ::  Source
+  ++  equ   |=([p=@ q=@] &(=((re p) (re q)) =((im p) (im q))))
+  ::    +neq:  [@ch @ch] -> ?
+  ::
+  ::  Loobean negation of +equ.
+  ::    Examples
+  ::      > (~(neq ch:complex %n) 0x4000.3c00 0x4400.4200)
+  ::      %.y
+  ::  Source
+  ++  neq   |=([p=@ q=@] =(| (equ p q)))
+  --
+::    +cq:  complex-quad (@cq), two @rq (128-bit) components.
+::
+::  The @rq/@cq analogue of +cs over quad-precision components (256-bit element).
+::  Here 1+2i packs to
+::  0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000
+::  and 3+4i to
+::  0x4001.0000.0000.0000.0000.0000.0000.0000.4000.8000.0000.0000.0000.0000.0000.0000.
+::
+++  cq
+  |_  rnd=rounding-mode
+  ::
+  ::  Components
+  ::
+  ::    +re:  @cq -> @rq
+  ::
+  ::  Returns the real component (low 128 bits) of a packed @cq value.
+  ::    Examples
+  ::      > (~(re cq:complex %n) 0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000)
+  ::      .~~~1
+  ::  Source
+  ++  re    |=(p=@ `@rq`(end [0 128] p))
+  ::    +im:  @cq -> @rq
+  ::
+  ::  Returns the imaginary component (high 128 bits) of a packed @cq value.
+  ::    Examples
+  ::      > (~(im cq:complex %n) 0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000)
+  ::      .~~~2
+  ::  Source
+  ++  im    |=(p=@ `@rq`(rsh [0 128] p))
+  ::    +pak:  [@rq @rq] -> @cq
+  ::
+  ::  Packs real and imaginary @rq components into one @cq atom (real low).
+  ::    Examples
+  ::      > (~(pak cq:complex %n) .~~~1 .~~~2)
+  ::      0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  pak   |=([r=@rq i=@rq] ^-(@ (con `@`r (lsh [0 128] `@`i))))
+  ::  component helpers (internal)
+  ++  fneg  |=(x=@rq (~(sub rq rnd) .~~~0 x))
+  ++  fabs  |=(x=@rq ?:((~(lth rq rnd) x .~~~0) (~(sub rq rnd) .~~~0 x) x))
+  ::
+  ::  Constants
+  ::
+  ::    +zero:  @cq
+  ::
+  ::  The additive identity 0+0i.
+  ::    Examples
+  ::      > ~(zero cq:complex %n)
+  ::      0x0
+  ::  Source
+  ++  zero  ^-(@ 0)
+  ::    +one:  @cq
+  ::
+  ::  The multiplicative identity 1+0i.
+  ::    Examples
+  ::      > ~(one cq:complex %n)
+  ::      0x3fff.0000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  one   (pak .~~~1 .~~~0)
+  ::
+  ::  Arithmetic
+  ::
+  ::    +add:  [@cq @cq] -> @cq
+  ::
+  ::  Returns the sum of two complex values (component-wise).  (1+2i)+(3+4i)=4+6i.
+  ::    Examples
+  ::      > (~(add cq:complex %n) `@`0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000 0x4001.0000.0000.0000.0000.0000.0000.0000.4000.8000.0000.0000.0000.0000.0000.0000)
+  ::      0x4001.8000.0000.0000.0000.0000.0000.0000.4001.0000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  add   |=([p=@ q=@] (pak (~(add rq rnd) (re p) (re q)) (~(add rq rnd) (im p) (im q))))
+  ::    +sub:  [@cq @cq] -> @cq
+  ::
+  ::  Returns the difference of two complex values (component-wise).  =-2-2i.
+  ::    Examples
+  ::      > (~(sub cq:complex %n) `@`0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000 0x4001.0000.0000.0000.0000.0000.0000.0000.4000.8000.0000.0000.0000.0000.0000.0000)
+  ::      0xc000.0000.0000.0000.0000.0000.0000.0000.c000.0000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  sub   |=([p=@ q=@] (pak (~(sub rq rnd) (re p) (re q)) (~(sub rq rnd) (im p) (im q))))
+  ::    +neg:  @cq -> @cq
+  ::
+  ::  Returns the additive inverse -z.  -(1+2i)=-1-2i.
+  ::    Examples
+  ::      > (~(neg cq:complex %n) 0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000)
+  ::      0xc000.0000.0000.0000.0000.0000.0000.0000.bfff.0000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  neg   |=(p=@ (pak (fneg (re p)) (fneg (im p))))
+  ::    +conj:  @cq -> @cq
+  ::
+  ::  Returns the complex conjugate (negate the imaginary component).  conj(1+2i)=1-2i.
+  ::    Examples
+  ::      > (~(conj cq:complex %n) 0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000)
+  ::      0xc000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  conj  |=(p=@ (pak (re p) (fneg (im p))))
+  ::    +mul:  [@cq @cq] -> @cq
+  ::
+  ::  Returns the complex product, rounded per component.  (1+2i)(3+4i)=-5+10i.
+  ::    Examples
+  ::      > (~(mul cq:complex %n) `@`0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000 0x4001.0000.0000.0000.0000.0000.0000.0000.4000.8000.0000.0000.0000.0000.0000.0000)
+  ::      0x4002.4000.0000.0000.0000.0000.0000.0000.c001.4000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  mul
+    |=  [p=@ q=@]
+    =/  ar  (re p)  =/  ai  (im p)
+    =/  br  (re q)  =/  bi  (im q)
+    %+  pak
+      (~(sub rq rnd) (~(mul rq rnd) ar br) (~(mul rq rnd) ai bi))
+    (~(add rq rnd) (~(mul rq rnd) ar bi) (~(mul rq rnd) ai br))
+  ::    +div:  [@cq @cq] -> @cq
+  ::
+  ::  Returns the complex quotient via Smith's algorithm.  (2+2i)/(1+1i)=2.
+  ::    Examples
+  ::      > (~(div cq:complex %n) `@`0x4000.0000.0000.0000.0000.0000.0000.0000.4000.0000.0000.0000.0000.0000.0000.0000 0x3fff.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000)
+  ::      0x4000.0000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  div
+    |=  [p=@ q=@]
+    =/  ar  (re p)  =/  ai  (im p)
+    =/  br  (re q)  =/  bi  (im q)
+    ?:  (~(gte rq rnd) (fabs br) (fabs bi))
+      =/  r   (~(div rq rnd) bi br)
+      =/  dn  (~(add rq rnd) br (~(mul rq rnd) bi r))
+      %+  pak
+        (~(div rq rnd) (~(add rq rnd) ar (~(mul rq rnd) ai r)) dn)
+      (~(div rq rnd) (~(sub rq rnd) ai (~(mul rq rnd) ar r)) dn)
+    =/  r   (~(div rq rnd) br bi)
+    =/  dn  (~(add rq rnd) (~(mul rq rnd) br r) bi)
+    %+  pak
+      (~(div rq rnd) (~(add rq rnd) (~(mul rq rnd) ar r) ai) dn)
+    (~(div rq rnd) (~(sub rq rnd) (~(mul rq rnd) ai r) ar) dn)
+  ::    +abs:  @cq -> @cq
+  ::
+  ::  Returns the modulus |z| as a real-valued complex [|z|, 0], via hypot.  |3+4i|=5.
+  ::    Examples
+  ::      > (~(abs cq:complex %n) 0x4001.0000.0000.0000.0000.0000.0000.0000.4000.8000.0000.0000.0000.0000.0000.0000)
+  ::      0x4001.4000.0000.0000.0000.0000.0000.0000
+  ::  Source
+  ++  abs
+    |=  p=@
+    =/  xr  (fabs (re p))  =/  xi  (fabs (im p))
+    ?:  &(=(`@rq`.~~~0 xr) =(`@rq`.~~~0 xi))  (pak .~~~0 .~~~0)
+    ?:  (~(gte rq rnd) xr xi)
+      =/  t  (~(div rq rnd) xi xr)
+      (pak (~(mul rq rnd) xr (~(sqt rq rnd) (~(add rq rnd) .~~~1 (~(mul rq rnd) t t)))) .~~~0)
+    =/  t  (~(div rq rnd) xr xi)
+    (pak (~(mul rq rnd) xi (~(sqt rq rnd) (~(add rq rnd) .~~~1 (~(mul rq rnd) t t)))) .~~~0)
+  ::
+  ::  Comparison (no total order on complex -- only equality)
+  ::
+  ::    +equ:  [@cq @cq] -> ?
+  ::
+  ::  Loobean: bit-equality of both components.
+  ::    Examples
+  ::      > =z  0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000  ::  1+2i
+  ::      > (~(equ cq:complex %n) z z)
+  ::      %.y
+  ::  Source
+  ++  equ   |=([p=@ q=@] &(=((re p) (re q)) =((im p) (im q))))
+  ::    +neq:  [@cq @cq] -> ?
+  ::
+  ::  Loobean negation of +equ.
+  ::    Examples
+  ::      > (~(neq cq:complex %n) `@`0x4000.0000.0000.0000.0000.0000.0000.0000.3fff.0000.0000.0000.0000.0000.0000.0000 0x4001.0000.0000.0000.0000.0000.0000.0000.4000.8000.0000.0000.0000.0000.0000.0000)
+  ::      %.y
+  ::  Source
+  ++  neq   |=([p=@ q=@] =(| (equ p q)))
+  --
 --

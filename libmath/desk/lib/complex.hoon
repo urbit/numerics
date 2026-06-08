@@ -192,29 +192,103 @@
   --
 ::    +cd:  complex-double (@cd), two @rd (64-bit) components.
 ::
-::  The @rd/@cd analogue of +cs: identical API and semantics over double-
-::  precision components.  Same arms (re/im/pak/zero/one/add/sub/neg/conj/mul/
-::  div/abs/equ/neq); see +cs for per-arm documentation.  Here 1+2i packs to
-::  0x4000.0000.0000.0000.3ff0.0000.0000.0000.
-::    Examples
-::      > (~(mul cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000 0x4010.0000.0000.0000.4008.0000.0000.0000)
-::      0x4024.0000.0000.0000.c014.0000.0000.0000               ::  (1+2i)(3+4i)=-5+10i
-::      > ~(one cd:complex %n)
-::      0x3ff0.0000.0000.0000                                   ::  1+0i
-::  Source
+::  The @rd/@cd analogue of +cs over double-precision components.  Here 1+2i
+::  packs to 0x4000.0000.0000.0000.3ff0.0000.0000.0000 and 3+4i to
+::  0x4010.0000.0000.0000.4008.0000.0000.0000 (real in the low 64 bits).
+::
 ++  cd
   |_  rnd=rounding-mode
+  ::
+  ::  Components
+  ::
+  ::    +re:  @cd -> @rd
+  ::
+  ::  Returns the real component (low 64 bits) of a packed @cd value.
+  ::    Examples
+  ::      > (~(re cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000)  ::  re(1+2i)
+  ::      .~1
+  ::  Source
   ++  re    |=(p=@ `@rd`(end [0 64] p))
+  ::    +im:  @cd -> @rd
+  ::
+  ::  Returns the imaginary component (high 64 bits) of a packed @cd value.
+  ::    Examples
+  ::      > (~(im cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000)  ::  im(1+2i)
+  ::      .~2
+  ::  Source
   ++  im    |=(p=@ `@rd`(rsh [0 64] p))
+  ::    +pak:  [@rd @rd] -> @cd
+  ::
+  ::  Packs real and imaginary @rd components into one @cd atom (real low).
+  ::    Examples
+  ::      > (~(pak cd:complex %n) .~1 .~2)
+  ::      0x4000.0000.0000.0000.3ff0.0000.0000.0000
+  ::  Source
   ++  pak   |=([r=@rd i=@rd] ^-(@ (con `@`r (lsh [0 64] `@`i))))
+  ::  component helpers (internal)
   ++  fneg  |=(x=@rd (~(sub rd rnd) .~0 x))
   ++  fabs  |=(x=@rd ?:((~(lth rd rnd) x .~0) (~(sub rd rnd) .~0 x) x))
+  ::
+  ::  Constants
+  ::
+  ::    +zero:  @cd
+  ::
+  ::  The additive identity 0+0i.
+  ::    Examples
+  ::      > ~(zero cd:complex %n)
+  ::      0x0
+  ::  Source
   ++  zero  ^-(@ 0)
+  ::    +one:  @cd
+  ::
+  ::  The multiplicative identity 1+0i.
+  ::    Examples
+  ::      > ~(one cd:complex %n)
+  ::      0x3ff0.0000.0000.0000
+  ::  Source
   ++  one   (pak .~1 .~0)
+  ::
+  ::  Arithmetic
+  ::
+  ::    +add:  [@cd @cd] -> @cd
+  ::
+  ::  Returns the sum of two complex values (component-wise).
+  ::    Examples
+  ::      > (~(add cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000 0x4010.0000.0000.0000.4008.0000.0000.0000)
+  ::      0x4018.0000.0000.0000.4010.0000.0000.0000
+  ::  Source
   ++  add   |=([p=@ q=@] (pak (~(add rd rnd) (re p) (re q)) (~(add rd rnd) (im p) (im q))))
+  ::    +sub:  [@cd @cd] -> @cd
+  ::
+  ::  Returns the difference of two complex values (component-wise).
+  ::    Examples
+  ::      > (~(sub cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000 0x4010.0000.0000.0000.4008.0000.0000.0000)
+  ::      0xc000.0000.0000.0000.c000.0000.0000.0000
+  ::  Source
   ++  sub   |=([p=@ q=@] (pak (~(sub rd rnd) (re p) (re q)) (~(sub rd rnd) (im p) (im q))))
+  ::    +neg:  @cd -> @cd
+  ::
+  ::  Returns the additive inverse -z.
+  ::    Examples
+  ::      > (~(neg cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000)  ::  -(1+2i)
+  ::      0xc000.0000.0000.0000.bff0.0000.0000.0000
+  ::  Source
   ++  neg   |=(p=@ (pak (fneg (re p)) (fneg (im p))))
+  ::    +conj:  @cd -> @cd
+  ::
+  ::  Returns the complex conjugate (negate the imaginary component).
+  ::    Examples
+  ::      > (~(conj cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000)  ::  conj(1+2i)=1-2i
+  ::      0xc000.0000.0000.0000.3ff0.0000.0000.0000
+  ::  Source
   ++  conj  |=(p=@ (pak (re p) (fneg (im p))))
+  ::    +mul:  [@cd @cd] -> @cd
+  ::
+  ::  Returns the complex product (ar+ai i)(br+bi i), rounded per component.
+  ::    Examples
+  ::      > (~(mul cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000 0x4010.0000.0000.0000.4008.0000.0000.0000)
+  ::      0x4024.0000.0000.0000.c014.0000.0000.0000               ::  (1+2i)(3+4i)=-5+10i
+  ::  Source
   ++  mul
     |=  [p=@ q=@]
     =/  ar  (re p)  =/  ai  (im p)
@@ -222,6 +296,14 @@
     %+  pak
       (~(sub rd rnd) (~(mul rd rnd) ar br) (~(mul rd rnd) ai bi))
     (~(add rd rnd) (~(mul rd rnd) ar bi) (~(mul rd rnd) ai br))
+  ::    +div:  [@cd @cd] -> @cd
+  ::
+  ::  Returns the complex quotient via Smith's algorithm (scale by the larger
+  ::  denominator component for numerical stability).
+  ::    Examples
+  ::      > (~(div cd:complex %n) 0x4000.0000.0000.0000.4000.0000.0000.0000 0x3ff0.0000.0000.0000.3ff0.0000.0000.0000)
+  ::      0x4000.0000.0000.0000                                   ::  (2+2i)/(1+1i)=2
+  ::  Source
   ++  div
     |=  [p=@ q=@]
     =/  ar  (re p)  =/  ai  (im p)
@@ -237,6 +319,14 @@
     %+  pak
       (~(div rd rnd) (~(add rd rnd) (~(mul rd rnd) ar r) ai) dn)
     (~(div rd rnd) (~(sub rd rnd) (~(mul rd rnd) ai r) ar) dn)
+  ::    +abs:  @cd -> @cd
+  ::
+  ::  Returns the modulus |z| as a real-valued complex [|z|, 0], computed via
+  ::  hypot (scale by the larger component to avoid overflow).
+  ::    Examples
+  ::      > (~(abs cd:complex %n) 0x4010.0000.0000.0000.4008.0000.0000.0000)  ::  |3+4i|=5
+  ::      0x4014.0000.0000.0000
+  ::  Source
   ++  abs
     |=  p=@
     =/  xr  (fabs (re p))  =/  xi  (fabs (im p))
@@ -246,7 +336,26 @@
       (pak (~(mul rd rnd) xr (~(sqt rd rnd) (~(add rd rnd) .~1 (~(mul rd rnd) t t)))) .~0)
     =/  t  (~(div rd rnd) xr xi)
     (pak (~(mul rd rnd) xi (~(sqt rd rnd) (~(add rd rnd) .~1 (~(mul rd rnd) t t)))) .~0)
+  ::
+  ::  Comparison (no total order on complex -- only equality)
+  ::
+  ::    +equ:  [@cd @cd] -> ?
+  ::
+  ::  Loobean: bit-equality of both components (matches the %i754 convention).
+  ::    Examples
+  ::      > (~(equ cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000 0x4000.0000.0000.0000.3ff0.0000.0000.0000)
+  ::      %.y
+  ::      > (~(equ cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000 0x4010.0000.0000.0000.4008.0000.0000.0000)
+  ::      %.n
+  ::  Source
   ++  equ   |=([p=@ q=@] &(=((re p) (re q)) =((im p) (im q))))
+  ::    +neq:  [@cd @cd] -> ?
+  ::
+  ::  Loobean negation of +equ.
+  ::    Examples
+  ::      > (~(neq cd:complex %n) 0x4000.0000.0000.0000.3ff0.0000.0000.0000 0x4010.0000.0000.0000.4008.0000.0000.0000)
+  ::      %.y
+  ::  Source
   ++  neq   |=([p=@ q=@] =(| (equ p q)))
   --
 --

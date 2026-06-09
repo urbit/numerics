@@ -5,21 +5,28 @@
 ::::                    ++la                          ::  (2v) vector/matrix ops
 ~%  %non  ..part  ~  :: nest non in hex for now
 |%
-::  +lake: set +la params
+::    +$rounding-mode:  the four IEEE modes the @r precision doors accept
 ::
-::    rnd: rounding mode
-::
-::  Limited to the four modes the hoon @rs/@rd/@rq/@rh precision doors
-::  accept: %n (nearest, ties to even), %u (toward +inf), %d (toward
-::  -inf), %z (toward zero).  The underlying ++fl engine — and the C
-::  jets' _set_rounding — also implement %a (nearest, ties away from
-::  zero), but the precision doors do not expose it, so %a is
-::  intentionally excluded here; the jets handle it defensively only.
+::  %n (nearest, ties to even), %u (toward +inf), %d (toward -inf), %z (toward
+::  zero).  The ++fl engine and the C jets' _set_rounding also implement %a
+::  (nearest, ties away from zero), but the @rs/@rd/@rq/@rh precision doors do
+::  not expose it, so %a is excluded here; the jets handle it defensively only.
 +$  rounding-mode  ?(%n %u %d %z)
+::    +lake:  rounding-mode -> _la
+::
+::  A copy of the +la core with its rounding mode set to .inrnd (so subsequent
+::  ops round in that mode); the bare +la defaults to %n.
+::  Source
 ++  lake
   |=  [inrnd=rounding-mode]
   %*(. la rnd inrnd)
 ::
+::    +la:  Lagoon's array-operations core, a door on rnd=rounding-mode
+::
+::  Holds every +$ray operation (constructors, indexing, elementwise math,
+::  reductions, linear algebra).  Use bare for %n rounding, or +lake to pick a
+::  mode.  Operations dispatch per-scalar on the ray's kind and bloq.
+::  Source
 ++  la
   ^|
   =+  [rnd=*rounding-mode]
@@ -28,11 +35,26 @@
   ::
   ::  Utilities
   ::
+  ::    +print:  ray -> ~
+  ::
+  ::  Pretty-prints .a to the console (via the prioritized %slog.1 hint) as a
+  ::  nested tank in the kind's aura, and produces ~.
+  ::  Source
   ++  print  |=(a=ray ~>(%slog.1^(to-tank (ravel a) shape.meta.a kind.meta.a) ~))
   ::
+  ::    +slog:  ray -> ~
+  ::
+  ::  Like +print, but emits through the plain +slog (no priority hint).
+  ::  Source
   ++  slog   |=(a=ray (^slog (to-tank (ravel a) shape.meta.a kind.meta.a) ~))
   ::
   ::
+  ::    +to-tank:  [dat=(list @) shape=(list @) =kind] -> tank
+  ::
+  ::  Renders flat row-major .dat of the given .shape and .kind as a nested
+  ::  %rose tank (a 1-D vector as a bracketed row, higher ranks recursively).
+  ::  Backs +print/+slog.
+  ::  Source
   ++  to-tank
     |=  [dat=(list @) shape=(list @) =kind]
     ^-  tank
@@ -51,6 +73,12 @@
     |=  i=@
     (to-tank (swag [(^mul width i) width] dat) +.shape kind)
   ::
+  ::    +get-term:  meta -> @tas
+  ::
+  ::  The Hoon aura term for a ray's scalars given its kind and bloq (e.g. %rd
+  ::  for %i754 bloq 6, %ud for %uint), used by the pretty-printer.  Crashes on
+  ::  an unsupported bloq.
+  ::  Source
   ++  get-term
     |=  =meta
     ?-    kind.meta
@@ -92,11 +120,13 @@
     ==
   ::
   ++  squeeze  |*(a=* `(list _a)`~[a])
+  ::    +submatrix:  [sli=(list slice) a=ray] -> ray
+  ::
+  ::  Extracts a submatrix of .a using numpy-style slice notation, except the
+  ::  indices are INCLUSIVE.  Trailing omitted dimensions are padded with full
+  ::  slices, so sli=~[`[`1 `3] `[`1 ~] ~] means a[1:3, 1:, :].  Not jetted.
+  ::  Source
   ++  submatrix
-    ::
-    ::  +submatrix: grab a submatrix using numpy slice notation, except indices are inclusive.
-    ::  If you aren't slicing the last few dimensions, you can omit them.
-    ::
     ~/  %submatrix
     |=  [sli=(list slice) a=ray]
     ::
@@ -166,7 +196,11 @@
       c
     $(i +(i), c `(list (list @))`(product c (snag i a)))
   ::
-  ++  get-item  ::  extract item at index .dex
+  ::    +get-item:  [=ray dex=(list @)] -> @ux
+  ::
+  ::  The raw scalar bits at n-dimensional index .dex (row-major order), as @ux.
+  ::  Source
+  ++  get-item
     |=  [=ray dex=(list @)]
     ^-  @ux
     =/  len  (^sub (roll shape.meta.ray ^mul) 1)
@@ -176,7 +210,11 @@
       [(get-bloq-offset meta.ray dex) 1]
     data.ray
   ::
-  ++  set-item  ::  set item at index .dex to .val
+  ::    +set-item:  [=ray dex=(list @) val=@] -> ray
+  ::
+  ::  .ray with the scalar at n-dimensional index .dex replaced by raw bits .val.
+  ::  Source
+  ++  set-item
     |=  [=ray dex=(list @) val=@]
     ^+  ray
     =/  len  (^sub (roll shape.meta.ray ^mul) 1)
@@ -187,6 +225,11 @@
       [(get-bloq-offset meta.ray dex) 1 val]
     data.ray
   ::
+  ::    +get-row:  [a=ray dex=(list @)] -> ray
+  ::
+  ::  The row of .a selected by the leading indices .dex, as a 1xN ray (the
+  ::  scalar at .dex when .a is 1-D).
+  ::  Source
   ++  get-row
     |=  [a=ray dex=(list @)]
     ^-  ray
@@ -207,6 +250,10 @@
     =/  val  (get-item a (weld dex ~[idx]))
     $(idx +(idx), res (set-item res ~[0 idx] val))
   ::
+  ::    +set-row:  [a=ray dex=(list @) row=ray] -> ray
+  ::
+  ::  .a with the row selected by .dex replaced by the 1xN ray .row.
+  ::  Source
   ++  set-row
     |=  [a=ray dex=(list @) row=ray]
     ^-  ray
@@ -222,12 +269,19 @@
       idx  +(idx)
       a    (set-item a (weld dex ~[idx]) (get-item row ~[0 idx]))
     ==
-  :: only works for 2D
+  ::    +get-col:  [a=ray dex=(list @)] -> ray
+  ::
+  ::  The column of a 2-D .a selected by .dex, as a 1xN ray (via +transpose).
+  ::  Source
   ++  get-col
     |=  [a=ray dex=(list @)]
     ^-  ray
     (get-row (transpose a) dex)
   ::
+  ::    +set-col:  [a=ray dex=(list @) col=ray] -> ray
+  ::
+  ::  2-D .a with the column selected by .dex replaced by .col (via +transpose).
+  ::  Source
   ++  set-col
     |=  [a=ray dex=(list @) col=ray]
     ^-  ray
@@ -296,13 +350,22 @@
     |=  wid=@
     (^mod (^div len wid) num)
   ::
+  ::    +ravel:  ray -> (list @)
+  ::
+  ::  The scalars of .a as a flat row-major list (with the 0x1 pin removed).
+  ::  Source
   ++  ravel
     :: ~/  %ravel
     |=  a=ray
     ^-  (list @)
     (snip (rip bloq.meta.a data.a))
   ::
-  ++  en-ray    :: baum to ray
+  ::    +en-ray:  baum -> ray
+  ::
+  ::  Packs a $baum (meta + nested-list values) into a $ray with row-major,
+  ::  0x1-pinned data.  The inverse of +de-ray.
+  ::  Source
+  ++  en-ray
     |=  =baum
     ^-  ray
     =/  a=ray  (zeros meta.baum)
@@ -320,7 +383,12 @@
         (get-item-baum baum (get-dim shape.meta.a i))
     ==
   ::
-  ++  de-ray    :: ray to baum
+  ::    +de-ray:  ray -> baum
+  ::
+  ::  Unpacks .ray into a $baum (meta + nested-list values), the inverse of
+  ::  +en-ray.  Handles rank 1 and 2.
+  ::  Source
+  ++  de-ray
     |=  =ray
     ^-  baum
     |^
@@ -355,10 +423,13 @@
       (^rip a b)
     --
   ::
-  ::  +check: validate a ray's data length against its shape.  The data atom
-  ::  carries a 0x1 most-significant "pin" above the elements (so leading-zero
-  ::  elements aren't lost), hence (met bloq data) counts prod(shape)+1 blocks;
-  ::  this asserts prod(shape) == (met ...) - 1.  Every public arm calls it.
+  ::    +check:  ray -> ?
+  ::
+  ::  Validates a ray's data length against its shape.  The data atom carries a
+  ::  0x1 most-significant "pin" above the elements (so leading-zero elements
+  ::  aren't lost), so (met bloq data) counts prod(shape)+1 blocks; this asserts
+  ::  prod(shape) == (met ...) - 1.  Every public arm calls it.
+  ::  Source
   ++  check
     |=  =ray
     ^-  ?
@@ -378,6 +449,13 @@
       a    (snag -.dex ;;((list ndray) a))
     ==
   ::
+  ::    +fill:  [=meta x=@] -> ray
+  ::
+  ::  A ray of shape/kind .meta with every scalar set to the raw bits .x.
+  ::    Examples
+  ::      > (fill:la [~[2 2] 5 %i754 ~] .3)
+  ::      [meta=[shape=~[2 2] bloq=5 kind=%i754 tail=0] data=0x1.4040.0000.4040.0000.4040.0000.4040.0000]
+  ::  Source
   ++  fill
     |=  [=meta x=@]
     ^-  ray
@@ -397,6 +475,12 @@
     :-  meta.ray
     (cut bloq.meta.ray [0 (roll shape.meta.ray ^mul)] data.ray)
   ::
+  ::    +scalar-to-ray:  [=meta data=@] -> ray
+  ::
+  ::  Wraps a single scalar .data as a ray whose shape is .meta's rank with
+  ::  every dimension 1 (e.g. ~[1 1] for a rank-2 meta).  Used to box reduction
+  ::  results such as +max and +cumsum.
+  ::  Source
   ++  scalar-to-ray
     |=  [=meta data=@]
     ^-  ray
@@ -404,6 +488,13 @@
     %-  spac
     [meta data]
   ::
+  ::    +change:  [=ray =kind =bloq] -> ray
+  ::
+  ::  Converts .ray to a new .kind and .bloq (width), element by element:
+  ::  %uint<->%i754 and re-widening within a kind.  %unum/%cplx/%fixp conversions
+  ::  are not yet wired (they crash with a message); note the %i754->%uint
+  ::  negative-value limitation called out inline.
+  ::  Source
   ++  change
     |=  [=ray =kind =bloq]
     ^-  ^ray
@@ -466,7 +557,15 @@
   ::  Builders
   ::
   ::
-  ++  eye      ::  produces identity matrix of shape nxn.
+  ::    +eye:  meta -> ray
+  ::
+  ::  The n x n identity matrix for the square shape in .meta -- ones on the
+  ::  diagonal, zeros elsewhere.  Crashes unless the shape is square.
+  ::    Examples
+  ::      > (eye:la [~[2 2] 5 %i754 ~])
+  ::      [meta=[shape=~[2 2] bloq=5 kind=%i754 tail=0] data=0x1.3f80.0000.0000.0000.0000.0000.3f80.0000]
+  ::  Source
+  ++  eye
     |=  =meta
     ^-  ray
     ~_  leaf+"lagoon-fail"
@@ -515,13 +614,21 @@
       ::  fixed-point 1.0 = 2^b, with b the fractional bits from meta.tail.
         %fixp  (bex +:;;([a=@ b=@] tail.meta))
     ==
-  ::    Zeroes
+  ::    +zeros:  meta -> ray
+  ::
+  ::  A ray of shape/kind .meta with every scalar 0 (the kind's zero, which is
+  ::  the 0x0 bit pattern for every supported kind).
+  ::  Source
   ++  zeros
     |=  =meta  ^-  ray
     ~_  leaf+"lagoon-fail"
     :-  meta
     (lsh [bloq.meta (roll shape.meta ^mul)] 1)
-  ::    Ones
+  ::    +ones:  meta -> ray
+  ::
+  ::  A ray of shape/kind .meta with every scalar 1 (the kind's one: 1.0 for
+  ::  %i754, posit one for %unum, 1+0i for %cplx, 2^b for %fixp, &c.).
+  ::  Source
   ++  ones
     |=  =meta  ^-  ray
     ~_  leaf+"lagoon-fail"
@@ -558,11 +665,14 @@
           %fixp  (bex +:;;([a=@ b=@] tail.meta))
       ==
     (fill meta one)
-  ::  Produce a 1-dimensional index array.
-  ::  Only produces %uint.
-  ::  Note that this runs from 0 to n-1.  The point of ++iota is to be an index,
-  ::  so it needs to pattern-match the context rather than slavishly follow APL.
+  ::    +iota:  meta -> ray
   ::
+  ::  A 1-D %uint index vector 0, 1, ..., n-1 for the length n in .meta (the
+  ::  kind is overridden to %uint).  Runs 0 to n-1 to serve as an index.
+  ::    Examples
+  ::      > (iota:la [~[4] 5 %uint ~])
+  ::      [meta=[shape=~[4] bloq=5 kind=%uint tail=0] data=0x1.0000.0003.0000.0002.0000.0001.0000.0000]
+  ::  Source
   ++  iota
     |=  =meta
     ^-  ray
@@ -570,7 +680,12 @@
     =/  n  (snag 0 shape.meta)
     =.  kind.meta  %uint
     (en-ray meta (gulf 0 (dec n)))
-  ::  Produce a magic square in nD.
+  ::    +magic:  meta -> ray
+  ::
+  ::  A %uint ray of the given shape filled row-major with 0, 1, ..., N-1
+  ::  (N = prod(shape)) -- despite the name, a counting tensor, not a true
+  ::  magic square.
+  ::  Source
   ++  magic
     |=  =meta
     ^-  ray
@@ -578,10 +693,11 @@
     %+  reshape
       (en-ray [~[n] bloq.meta %uint ~] (gulf 0 (dec n)))
     shape.meta
-  ::  Produce a 1-dimensional range along one dimension
-  ::  as [a, b) with interval d.
-  ::  Only produces %i754.
+  ::    +range:  [=meta [a=@ b=@] d=@] -> ray
   ::
+  ::  A 1-D %i754 ray over the half-open interval [a, b) in steps of .d (handles
+  ::  positive and negative .d).  Width from .meta's bloq; kind forced to %i754.
+  ::  Source
   ++  range
     ~/  %range
     |=  [=meta [a=@ b=@] d=@]
@@ -626,10 +742,11 @@
         [meta (flop bad)]
       $(bad [(~(add rh rnd) (snag 0 bad) d) bad])
     ==
-  ::  Produce a 1-dimensional range along one dimension
-  ::  as [a b] with number of steps n.
-  ::  Only produces %i754.
+  ::    +linspace:  [=meta [a=@ b=@] n=@ud] -> ray
   ::
+  ::  A 1-D %i754 ray of .n evenly-spaced points over the closed interval
+  ::  [a, b] (n=1 yields just [a]).  Width from .meta's bloq; kind forced %i754.
+  ::  Source
   ++  linspace
     ~/  %linspace
     |=  [=meta [a=@ b=@] n=@ud]
@@ -678,9 +795,12 @@
       ?:  (^lte n +(i))  (flop [b bad])
       $(i +(i), bad [(~(add rh rnd) a (~(mul rh rnd) (~(sun rh rnd) i) d)) bad])
     ==
-  ::  Coerce 1D array along specified dimension with given overall
-  ::  dimensionality.
+  ::    +urge:  [=ray [i=@ud n=@ud]] -> ray
   ::
+  ::  Reorients a 1-D .ray within an .n-dimensional shape: every dimension is 1
+  ::  except dimension .i, which carries the vector.  Lets a vector sit along a
+  ::  chosen axis for broadcasting.
+  ::  Source
   ++  urge
     |=  [=ray [i=@ud n=@ud]]
     ^-  ^ray
@@ -689,8 +809,12 @@
     =.  shape.meta.ray  (snap shape.meta.ray i n)
     |-
     ray
-  ::  Produce an n-dimensional array containing a single value.
+  ::    +scale:  [=meta data=@] -> ray
   ::
+  ::  Boxes a single scalar .data as a rank-preserving, all-1s-shape ray (like
+  ::  +scalar-to-ray); for %i754 it round-trips the value through +fl to
+  ::  normalize the stored bit pattern.
+  ::  Source
   ++  scale
     |=  [=meta data=@]
     ^-  ray
@@ -728,11 +852,15 @@
   ::
   ::  Operators
   ::
-  ::  +max/+min (and +argmax/+argmin, which call them) reduce with the kind's
-  ::  %gth/%lth ordering, so they require a TOTALLY ORDERED kind.  On %cplx the
-  ::  ordering op deliberately crashes with 'lagoon: %cplx has no total order;
-  ::  use abs/equ' (the complex numbers have no total order).  +any/+all inherit
-  ::  this, since they read the reduced +max/+min scalar.
+  ::    +max:  ray -> ray
+  ::
+  ::  The maximum element of .a, boxed as an all-1s-shape ray.  Reduces via the
+  ::  kind's %gth ordering, so it needs a TOTALLY ORDERED kind: on %cplx the
+  ::  ordering op crashes ('lagoon: %cplx has no total order; use abs/equ').
+  ::    Examples
+  ::      > (max:la (en-ray:la [[~[3] 5 %i754 ~] ~[.1 .5 .2]]))
+  ::      [meta=[shape=~[1 1] bloq=5 kind=%i754 tail=0] data=0x1.40a0.0000]    ::  0x40a0.0000 = .5
+  ::  Source
   ++  max
     ~/  %max
     |=  a=ray
@@ -743,13 +871,22 @@
         b  c 
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
-  ++  argmax :: Only returns first match
+  ::    +argmax:  ray -> @ud
+  ::
+  ::  The ravel (row-major) index of the FIRST maximum element of .a.
+  ::  Source
+  ++  argmax
     ~/  %argmax
     |=  a=ray
     ^-  @ud
     ?>  (check a)
     +:(find ~[(get-item (max a) ~[0 0])] (ravel a))
   ::
+  ::    +min:  ray -> ray
+  ::
+  ::  The minimum element of .a, boxed as an all-1s-shape ray.  Like +max, needs
+  ::  a totally ordered kind (crashes on %cplx).
+  ::  Source
   ++  min
     ~/  %min
     |=  a=ray
@@ -760,15 +897,23 @@
         b  c 
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
-  ++  argmin :: Only returns first match
+  ::    +argmin:  ray -> @ud
+  ::
+  ::  The ravel (row-major) index of the FIRST minimum element of .a.
+  ::  Source
+  ++  argmin
     ~/  %argmin
     |=  a=ray
     ^-  @ud
     ?>  (check a)
     +:(find ~[(get-item (min a) ~[0 0])] (ravel a))
   ::
-  ::  NB: despite the name, this is a full reduction to a scalar (the total
-  ::  sum), not a running/prefix cumulative sum.
+  ::    +cumsum:  ray -> ray
+  ::
+  ::  The total sum of all elements of .a, boxed as an all-1s-shape ray.  (NB:
+  ::  despite the name, a full reduction to a scalar, not a running/prefix sum.)
+  ::  %unum sums exactly in the quire (single rounding); see +unum-sum.
+  ::  Source
   ++  cumsum
     ~/  %cumsum
     |=  a=ray
@@ -780,6 +925,10 @@
     %+  scalar-to-ray  meta.a
     (reel (ravel a) |=([b=@ c=@] ((fun-scalar meta.a %add) b c)))
   ::
+  ::    +prod:  ray -> ray
+  ::
+  ::  The product of all elements of .a, boxed as an all-1s-shape ray.
+  ::  Source
   ++  prod
     |=  a=ray
     ^-  ray
@@ -787,6 +936,11 @@
     %+  scalar-to-ray  meta.a
     (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar meta.a %mul) b c)))
   ::
+  ::    +reshape:  [a=ray shape=(list @)] -> ray
+  ::
+  ::  .a viewed with a new .shape over the same row-major data.  Crashes unless
+  ::  the new shape has the same element count.
+  ::  Source
   ++  reshape
     |=  [a=ray shape=(list @)]
     ^-  ray
@@ -796,7 +950,11 @@
     ?>  =(in-cnt out-cnt)
     =.  shape.meta.a  shape
     a
-  ::  stack along dimension (0 row, 1 col, 2 lay, etc.)
+  ::    +stack:  [a=ray b=ray dim=@ud] -> ray
+  ::
+  ::  Concatenates .a and .b along dimension .dim (0 row, 1 col, 2 lay, ...);
+  ::  the shapes must agree on every other dimension.  Not jetted.
+  ::  Source
   ++  stack
     ~/  %stack
     |=  [a=ray b=ray dim=@ud]
@@ -844,17 +1002,29 @@
       ==
     !!
   ::
+  ::    +hstack:  [a=ray b=ray] -> ray
+  ::
+  ::  Horizontal stack: concatenates .a and .b along dimension 1 (columns).
+  ::  Source
   ++  hstack
     |=  [a=ray b=ray]
     ^-  ray
     (stack a b 1)
   ::
+  ::    +vstack:  [a=ray b=ray] -> ray
+  ::
+  ::  Vertical stack: concatenates .a and .b along dimension 0 (rows).
+  ::  Source
   ++  vstack
     |=  [a=ray b=ray]
     ^-  ray
     (stack a b 0)
   ::
   ::
+  ::    +transpose:  ray -> ray
+  ::
+  ::  The matrix transpose of a 2-D .a (swaps rows and columns).
+  ::  Source
   ++  transpose
     ~/  %transpose
     |=  a=ray  ^-  ray
@@ -879,8 +1049,10 @@
           prod  (set-item prod ~[j i] (get-item a ~[i j]))
         ==
     ==
-  ::  Returns diagonal of an array.
+  ::    +diag:  ray -> ray
   ::
+  ::  The main diagonal of a square 2-D .a as an n x 1 ray.
+  ::  Source
   ++  diag
     ~/  %diag
     |=  a=ray
@@ -898,12 +1070,22 @@
       `(list @)`(flop (gulf 0 (dec -.shape)))
     |=(i=@ (get-item a ~[i i]))
   ::
+  ::    +trace:  ray -> ray
+  ::
+  ::  The trace (sum of the main diagonal) of a square 2-D .a, boxed as a ray.
+  ::  Source
   ++  trace
     ~/  %trace
     |=  a=ray
     ^-  ray
     (cumsum (diag a))
   ::
+  ::    +dot:  [a=ray b=ray] -> ray
+  ::
+  ::  The dot product Sum a_i*b_i of two same-shape rays, boxed as a ray.  %unum
+  ::  fuses the multiply-accumulate in the quire (single rounding); %fixp
+  ::  accumulates the integer products exactly and rescales once.
+  ::  Source
   ++  dot
     ~/  %dot
     |=  [a=ray b=ray]
@@ -938,6 +1120,14 @@
     ?>  =(shape.meta.a shape.meta.b)
     (dot (conj a) b)
   ::
+  ::    +mmul:  [a=ray b=ray] -> ray
+  ::
+  ::  Matrix product of 2-D rays .a (m x k) and .b (k x n), giving an m x n ray.
+  ::  %unum/%fixp accumulate each output cell exactly (see +mmul-unum/+mmul-fixp).
+  ::    Examples
+  ::      > (mmul:la (en-ray:la [[~[2 2] 5 %i754 ~] ~[~[.1 .2] ~[.3 .4]]]) (eye:la [~[2 2] 5 %i754 ~]))
+  ::      [meta=[shape=~[2 2] bloq=5 kind=%i754 tail=0] data=0x1.4080.0000.4040.0000.4000.0000.3f80.0000]    ::  A*I = A
+  ::  Source
   ++  mmul
     ~/  %mmul
     |=  [a=ray b=ray]
@@ -1029,6 +1219,11 @@
     =/  bv=(list @)  (turn (gulf 0 (dec kk)) |=(p=@ `@`(get-item b ~[p j])))
     $(j +(j), prod (set-item prod ~[i j] (fixp-fdp prc av bv)))
 ::
+  ::    +abs:  ray -> ray
+  ::
+  ::  The elementwise absolute value of .a (for %cplx the modulus, returned in
+  ::  the real component).
+  ::  Source
   ++  abs
     ~/  %abs
     |=  a=ray
@@ -1049,6 +1244,10 @@
     ^-  ray
     (el-wise-op a (trans-scalar bloq.meta.a kind.meta.a %conj))
 ::
+  ::    +add-scalar:  [a=ray n=@] -> ray
+  ::
+  ::  Adds the scalar .n (raw bits) to every element of .a.
+  ::  Source
   ++  add-scalar
     ~/  %add-scal
     |=  [a=ray n=@]
@@ -1056,6 +1255,10 @@
     =/  b=ray  (fill meta.a n)
     (add a b)
   ::
+  ::    +sub-scalar:  [a=ray n=@] -> ray
+  ::
+  ::  Subtracts the scalar .n (raw bits) from every element of .a.
+  ::  Source
   ++  sub-scalar
     ~/  %sub-scal
     |=  [a=ray n=@]
@@ -1063,6 +1266,10 @@
     =/  b=ray  (fill meta.a n)
     (sub a b)
   ::
+  ::    +mul-scalar:  [a=ray n=@] -> ray
+  ::
+  ::  Multiplies every element of .a by the scalar .n (raw bits).
+  ::  Source
   ++  mul-scalar
     ~/  %mul-scal
     |=  [a=ray n=@]
@@ -1070,6 +1277,10 @@
     =/  b=ray  (fill meta.a n)
     (mul a b)
   ::
+  ::    +div-scalar:  [a=ray n=@] -> ray
+  ::
+  ::  Divides every element of .a by the scalar .n (raw bits).
+  ::  Source
   ++  div-scalar
     ~/  %div-scal
     |=  [a=ray n=@]
@@ -1077,6 +1288,10 @@
     =/  b=ray  (fill meta.a n)
     (div a b)
   ::
+  ::    +mod-scalar:  [a=ray n=@] -> ray
+  ::
+  ::  Elementwise remainder of .a by the scalar .n (raw bits); see +mod.
+  ::  Source
   ++  mod-scalar
     ~/  %mod-scal
     |=  [a=ray n=@]
@@ -1084,36 +1299,63 @@
     =/  b=ray  (fill meta.a n)
     (mod a b)
   ::
+  ::    +add:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise sum of two same-shape rays.
+  ::    Examples
+  ::      > (add:la (ones:la [~[1 3] 5 %i754 ~]) (ones:la [~[1 3] 5 %i754 ~]))
+  ::      [meta=[shape=~[1 3] bloq=5 kind=%i754 tail=0] data=0x1.4000.0000.4000.0000.4000.0000]    ::  [2 2 2]
+  ::  Source
   ++  add
     ~/  %add-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %add))
   ::
+  ::    +sub:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise difference of two same-shape rays.
+  ::  Source
   ++  sub
     ~/  %sub-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %sub))
   ::
+  ::    +mul:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise (Hadamard) product of two same-shape rays.
+  ::  Source
   ++  mul
     ~/  %mul-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %mul))
   ::
+  ::    +div:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise quotient of two same-shape rays.
+  ::  Source
   ++  div
     ~/  %div-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %div))
   ::
+  ::    +mod:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise remainder (C fmod: a - b*trunc(a/b); NaN on a zero divisor).
+  ::  Source
   ++  mod
     ~/  %mod-rays
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %mod))
   ::
+  ::    +pow-n:  [a=ray n=@ud] -> ray
+  ::
+  ::  Elementwise integer power a^n (n=0 gives ones), via repeated +mul.
+  ::  Source
   ++  pow-n
     |=  [a=ray n=@ud]
     ^-  ray
@@ -1124,42 +1366,76 @@
     ?~  =(1 n)  b
     $(b (mul a b), n (dec n))
   ::
+  ::    +gth:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise a > b as a NUMERIC-boolean ray -- the kind's 1 for true and 0
+  ::  for false (e.g. 0x3f80.0000 for an @rs true) -- so results stay in-kind.
+  ::    Examples
+  ::      > (gth:la (en-ray:la [[~[3] 5 %i754 ~] ~[.1 .5 .2]]) (en-ray:la [[~[3] 5 %i754 ~] ~[.2 .2 .2]]))
+  ::      [meta=[shape=~[3] bloq=5 kind=%i754 tail=0] data=0x1.0000.0000.3f80.0000.0000.0000]    ::  [0 1 0]
+  ::  Source
   ++  gth
     ~/  %gth
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %gth))
   ::
+  ::    +gte:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise a >= b as a numeric-boolean ray (see +gth).
+  ::  Source
   ++  gte
     ~/  %gte
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %gte))
   ::
+  ::    +lth:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise a < b as a numeric-boolean ray (see +gth).
+  ::  Source
   ++  lth
     ~/  %lth
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %lth))
   ::
+  ::    +lte:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise a <= b as a numeric-boolean ray (see +gth).
+  ::  Source
   ++  lte
     ~/  %lte
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %lte))
   ::
+  ::    +equ:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise a == b as a numeric-boolean ray (bit-equality, so +0.0 != -0.0
+  ::  and NaN != NaN).
+  ::  Source
   ++  equ
     :: ~/  %equ
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %equ))
   ::
+  ::    +neq:  [a=ray b=ray] -> ray
+  ::
+  ::  Elementwise a != b as a numeric-boolean ray (see +equ).
+  ::  Source
   ++  neq
     :: ~/  %equ
     |=  [a=ray b=ray]
     ^-  ray
     (bin-op a b (fun-scalar meta.a %neq))
   ::
+  ::    +mpow-n:  [a=ray n=@ud] -> ray
+  ::
+  ::  The matrix power a^n via repeated +mmul (n=0 returns a +ones ray, NOT the
+  ::  identity -- pass +eye explicitly if you need A^0 = I).
+  ::  Source
   ++  mpow-n
     |=  [a=ray n=@ud]
     ^-  ray
@@ -1168,8 +1444,11 @@
     |-  ^-  ray
     ?~  =(1 n)  b
     $(b (mmul a b), n (dec n))
-  ::  proximity check [abs rel]
+  ::    +is-close:  [a=ray b=ray tol=[atol=@ rtol=@]] -> ray
   ::
+  ::  Elementwise approximate equality as a numeric-boolean ray:
+  ::  |a - b| <= atol + rtol*|b|, with .tol = [absolute relative].
+  ::  Source
   ++  is-close
     |=  [a=ray b=ray tol=[@ @]]
     ^-  ray
@@ -1178,19 +1457,25 @@
     =/  rtol  (fill meta.a data:(scale meta.a +.tol))
     (lte (abs (sub a b)) (add atol (mul rtol (abs b))))
   ::
-  ::  Booleans use the numeric convention true=1, false=0 (see fun-scalar).
-  ::  An element is truthy iff its encoded value is nonzero (also +0.0=0x0).
-  ::  any: some element truthy  <=>  the max element is nonzero.
-  ::  all: every element truthy  <=>  the min element is nonzero.
-  ::  Read the reduced scalar as the head of its ravel, so this is
-  ::  independent of min/max's output shape and works for any rank.
-  ::  Because they reduce via +max/+min, +any/+all need a totally ordered kind
-  ::  and crash on %cplx (see +max) -- test complex rays with +is-close/+equ.
+  ::    +any:  ray -> ?
+  ::
+  ::  Loobean: %.y iff SOME element of .a is truthy.  Elements use the numeric
+  ::  convention (true=nonzero, false=0x0, so +0.0 is false); read as the max
+  ::  element being nonzero (via the reduced scalar's ravel head, so it is
+  ::  rank-independent).  Reduces via +max, so it needs a totally ordered kind
+  ::  and crashes on %cplx.
+  ::  Source
   ++  any
     |=  [a=ray]
     ^-  ?(%.y %.n)
     ?!(=(-:(ravel (max a)) 0))
   ::
+  ::    +all:  ray -> ?
+  ::
+  ::  Loobean: %.y iff EVERY element of .a is truthy (nonzero); read as the min
+  ::  element being nonzero.  Reduces via +min, so it needs a totally ordered
+  ::  kind and crashes on %cplx.
+  ::  Source
   ++  all
     |=  [a=ray]
     ^-  ?(%.y %.n)

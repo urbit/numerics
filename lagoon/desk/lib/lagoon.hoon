@@ -728,6 +728,11 @@
   ::
   ::  Operators
   ::
+  ::  +max/+min (and +argmax/+argmin, which call them) reduce with the kind's
+  ::  %gth/%lth ordering, so they require a TOTALLY ORDERED kind.  On %cplx the
+  ::  ordering op deliberately crashes with 'lagoon: %cplx has no total order;
+  ::  use abs/equ' (the complex numbers have no total order).  +any/+all inherit
+  ::  this, since they read the reduced +max/+min scalar.
   ++  max
     ~/  %max
     |=  a=ray
@@ -1179,6 +1184,8 @@
   ::  all: every element truthy  <=>  the min element is nonzero.
   ::  Read the reduced scalar as the head of its ravel, so this is
   ::  independent of min/max's output shape and works for any rank.
+  ::  Because they reduce via +max/+min, +any/+all need a totally ordered kind
+  ::  and crash on %cplx (see +max) -- test complex rays with +is-close/+equ.
   ++  any
     |=  [a=ray]
     ^-  ?(%.y %.n)

@@ -41,4 +41,59 @@
 ::  correctness); #18's Chebyshev rewrite would tighten these.
 ++  test-cexp-large   (expect-eq !>(`@`0x46ab.cef6) !>((~(cexp s %n) zt0)))
 ++  test-csin-large   (expect-eq !>(`@`0x462b.b42b.0000.0000) !>((~(csin s %n) z0t)))
+::
+::  Same edges across the other widths: @cd (double), @ch (half), @cq (quad).
+::  Origin, the csqrt/clog branch cut at -1, the clog(0)=-inf singularity, the
+::  csqrt sign branch at -i, and the imaginary axis (csin -> sinh).
+++  d   cd:complex
+++  h   ch:complex
+++  q   cq:complex
+++  d00  `@`0x0
+++  dn1  `@`0xbff0.0000.0000.0000
+++  d0i  `@`0x3ff0.0000.0000.0000.0000.0000.0000.0000
+++  d0n  `@`0xbff0.0000.0000.0000.0000.0000.0000.0000
+++  h00  `@`0x0
+++  hn1  `@`0xbc00
+++  h0i  `@`0x3c00.0000
+++  h0n  `@`0xbc00.0000
+++  q00  `@`0x0
+++  qn1  `@`0xbfff.0000.0000.0000.0000.0000.0000.0000
+++  test-cd-cexp-origin  (expect-eq !>(`@`0x3ff0.0000.0000.0000) !>((~(cexp d %n) d00)))
+++  test-cd-csqrt-neg1   (expect-eq !>(`@`0x3ff0.0000.0000.0000.0000.0000.0000.0000) !>((~(csqrt d %n) dn1)))
+++  test-cd-clog-neg1    (expect-eq !>(`@`0x4009.21fb.5444.2d11.0000.0000.0000.0000) !>((~(clog d %n) dn1)))
+++  test-cd-clog-zero    (expect-eq !>(`@`0xfff0.0000.0000.0000) !>((~(clog d %n) d00)))
+++  test-cd-csqrt-neg-i  (expect-eq !>(`@`0xbfe6.a09e.667f.3bcd.3fe6.a09e.667f.3bcd) !>((~(csqrt d %n) d0n)))
+++  test-cd-csin-i       (expect-eq !>(`@`0x3ff2.cd9f.c44e.b983.0000.0000.0000.0000) !>((~(csin d %n) d0i)))
+++  test-ch-cexp-origin  (expect-eq !>(`@`0x3c00) !>((~(cexp h %n) h00)))
+++  test-ch-csqrt-neg1   (expect-eq !>(`@`0x3c00.0000) !>((~(csqrt h %n) hn1)))
+++  test-ch-clog-zero    (expect-eq !>(`@`0xfc00) !>((~(clog h %n) h00)))
+++  test-ch-csqrt-neg-i  (expect-eq !>(`@`0xb9a8.39a8) !>((~(csqrt h %n) h0n)))
+++  test-ch-csin-i       (expect-eq !>(`@`0x3cb2.0000) !>((~(csin h %n) h0i)))
+++  test-cq-cexp-origin  (expect-eq !>(`@`0x3fff.0000.0000.0000.0000.0000.0000.0000) !>((~(cexp q %n) q00)))
+++  test-cq-csqrt-neg1
+  (expect-eq !>(`@`0x3fff.0000.0000.0000.0000.0000.0000.0000.0000.0000.0000.0000.0000.0000.0000.0000) !>((~(csqrt q %n) qn1)))
+++  test-cq-clog-zero    (expect-eq !>(`@`0xffff.0000.0000.0000.0000.0000.0000.0000) !>((~(clog q %n) q00)))
+::
+::  cpow edge cases (@cs): z^0 = 1, integer powers, the branch sqrt via ^0.5,
+::  and the 0^w corner.
+++  cs2   `@`0x4000.0000               ::  2+0i
+++  csi   `@`0x3f80.0000.0000.0000     ::  0+1i
+++  csn1  `@`0xbf80.0000               ::  -1+0i
+++  cwh   `@`0x3f00.0000               ::  0.5+0i
+++  test-cpow-pow0      (expect-eq !>(`@`0x3f80.0000) !>((~(cpow s %n) cs2 z00)))         ::  2^0 = 1
+++  test-cpow-pow2      (expect-eq !>(`@`0x4080.0000) !>((~(cpow s %n) cs2 cs2)))         ::  2^2 = 4
+++  test-cpow-i2        (expect-eq !>(`@`0xb182.92c0.bf80.0000) !>((~(cpow s %n) csi cs2)))   ::  i^2 = -1 (+~0i)
+++  test-cpow-neg1-half  (expect-eq !>(`@`0x3f7f.ffff.b386.2919) !>((~(cpow s %n) csn1 cwh)))  ::  (-1)^0.5 = i
+::  KNOWN LIMITATION: 0^2 should be 0, but cpow = exp(w*clog z) routes through
+::  clog(0)=-inf and exp(-inf) (which the naive series cannot represent), so it
+::  yields NaN.  Locked as a documented corner, not as correctness.
+++  test-cpow-zero-pow2  (expect-eq !>(`@`0x7fc0.0000.7fc0.0000) !>((~(cpow s %n) z00 cs2)))
+::
+::  Rounding modes propagate through the complex ops: cexp(1+2i) gives four
+::  distinct bit patterns under %n / %u / %d / %z.
+++  z12  `@`0x4000.0000.3f80.0000      ::  1+2i
+++  test-cexp-rnd-n  (expect-eq !>(`@`0x401e.30c5.bf90.cb4e) !>((~(cexp s %n) z12)))
+++  test-cexp-rnd-u  (expect-eq !>(`@`0x401e.30d9.bf90.cb53) !>((~(cexp s %u) z12)))
+++  test-cexp-rnd-d  (expect-eq !>(`@`0x401e.30bd.bf90.cb53) !>((~(cexp s %d) z12)))
+++  test-cexp-rnd-z  (expect-eq !>(`@`0x401e.30bd.bf90.cb46) !>((~(cexp s %z) z12)))
 --

@@ -405,6 +405,16 @@
         %4  ?-(fun %neg neg:rph:unum, %factorial factorial:rph:unum, %exp exp:rph:unum, %sin sin:rph:unum, %cos cos:rph:unum, %tan tan:rph:unum, %log log:rph:unum, %log-10 log-10:rph:unum, %log-2 log-2:rph:unum, %sqrt sqt:rph:unum, %cbrt cbrt:rph:unum)
         %3  ?-(fun %neg neg:rpb:unum, %factorial factorial:rpb:unum, %exp exp:rpb:unum, %sin sin:rpb:unum, %cos cos:rpb:unum, %tan tan:rpb:unum, %log log:rpb:unum, %log-10 log-10:rpb:unum, %log-2 log-2:rpb:unum, %sqrt sqt:rpb:unum, %cbrt cbrt:rpb:unum)
       ==
+      ::
+      ::  complex (/lib/complex): bloq 5/6/7/8 = ch/cs/cd/cq.  Real-only / ordered
+      ::  functions (factorial, log-10, log-2, cbrt) are undefined on complex.
+        %cplx
+      ?+    bloq  !!
+        %8  ?-(fun %neg ~(neg cq:complex rnd), %exp ~(cexp cq:complex rnd), %sin ~(csin cq:complex rnd), %cos ~(ccos cq:complex rnd), %tan ~(ctan cq:complex rnd), %log ~(clog cq:complex rnd), %sqrt ~(csqrt cq:complex rnd), %factorial |=(@ !!), %log-10 |=(@ !!), %log-2 |=(@ !!), %cbrt |=(@ !!))
+        %7  ?-(fun %neg ~(neg cd:complex rnd), %exp ~(cexp cd:complex rnd), %sin ~(csin cd:complex rnd), %cos ~(ccos cd:complex rnd), %tan ~(ctan cd:complex rnd), %log ~(clog cd:complex rnd), %sqrt ~(csqrt cd:complex rnd), %factorial |=(@ !!), %log-10 |=(@ !!), %log-2 |=(@ !!), %cbrt |=(@ !!))
+        %6  ?-(fun %neg ~(neg cs:complex rnd), %exp ~(cexp cs:complex rnd), %sin ~(csin cs:complex rnd), %cos ~(ccos cs:complex rnd), %tan ~(ctan cs:complex rnd), %log ~(clog cs:complex rnd), %sqrt ~(csqrt cs:complex rnd), %factorial |=(@ !!), %log-10 |=(@ !!), %log-2 |=(@ !!), %cbrt |=(@ !!))
+        %5  ?-(fun %neg ~(neg ch:complex rnd), %exp ~(cexp ch:complex rnd), %sin ~(csin ch:complex rnd), %cos ~(ccos ch:complex rnd), %tan ~(ctan ch:complex rnd), %log ~(clog ch:complex rnd), %sqrt ~(csqrt ch:complex rnd), %factorial |=(@ !!), %log-10 |=(@ !!), %log-2 |=(@ !!), %cbrt |=(@ !!))
+      ==
     ==  ::  kind
   ::
   +$  binary-ops  $?  %pow-n
@@ -452,6 +462,14 @@
         %5  ?-(fun %pow-n pow-n:rps:unum, %pow pow:rps:unum)
         %4  ?-(fun %pow-n pow-n:rph:unum, %pow pow:rph:unum)
         %3  ?-(fun %pow-n pow-n:rpb:unum, %pow pow:rpb:unum)
+      ==
+      ::  complex: z^w via +cpow (both rays complex); integer +pow-n undefined.
+        %cplx
+      ?+    bloq.meta  !!
+        %8  ?-(fun %pow ~(cpow cq:complex rnd), %pow-n |=([@ @] !!))
+        %7  ?-(fun %pow ~(cpow cd:complex rnd), %pow-n |=([@ @] !!))
+        %6  ?-(fun %pow ~(cpow cs:complex rnd), %pow-n |=([@ @] !!))
+        %5  ?-(fun %pow ~(cpow ch:complex rnd), %pow-n |=([@ @] !!))
       ==
     ==  ::  kind
   ::

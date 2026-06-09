@@ -20,18 +20,17 @@
 ::  additive copies later.  Complex has no total order, so there is
 ::  intentionally no gth/gte/lth/lte -- only equ/neq.
 ::
-::  TODO (PENCILLED IN -- complex transcendentals, follow-on to the %unum
-::  transcendental work).  This lib currently provides arithmetic + abs/conj/
-::  re/im/pak only.  To let Saloon's Tier B (exp/sin/cos/log/sqrt/...) accept
-::  %cplx rays the way it now accepts %unum, each width door needs the complex
-::  elementary functions, then a %cplx branch in saloon +trans-scalar/+fun-scalar
-::  (mirroring the %unum branch).  Closed forms over the real component ops:
-::    cexp(a+bi)  = e^a * (cos b + i sin b)
-::    clog(a+bi)  = log|z| + i*atan2(b, a)            (needs a real atan2)
-::    csqrt(z)    = sqrt((|z|+a)/2) + i*sgn(b)*sqrt((|z|-a)/2)
-::    csin/ccos   via the real sin/cos/sinh/cosh, cpow via cexp(w*clog z)
-::  Depends on the real transcendentals (which #18's Chebyshev rewrite will
-::  harden); accuracy will inherit whatever the real layer provides.
+::  Complex elementary functions (cexp/clog/csqrt/csin/ccos/ctan/cpow) compose
+::  real component transcendentals.  To keep this lib self-contained -- like
+::  /lib/unum, /lib/fixed, /lib/twoc, with no dependency on /lib/math -- each
+::  width door carries its OWN real exp/sin/cos/log/atan as naive Taylor/AGM
+::  series over the stdlib component float door, at a fixed term count (the same
+::  approach as /lib/math and /lib/unum; #18's Chebyshev rewrite would upgrade
+::  those in lockstep).  Closed forms:
+::    cexp(a+bi) = e^a (cos b + i sin b)
+::    clog(a+bi) = log|z| + i atan2(b, a)
+::    csqrt(z)   = sqrt((|z|+a)/2) + i sgn(b) sqrt((|z|-a)/2)
+::    csin/ccos via real sin/cos and cosh/sinh; ctan = csin/ccos; cpow = cexp(w clog z)
 ::
 |%
 +$  rounding-mode  ?(%n %u %d %z)
@@ -202,6 +201,131 @@
   ::      %.y
   ::  Source
   ++  neq   |=([p=@ q=@] =(| (equ p q)))
+  ::
+  ::  Transcendental / elementary functions.  Self-contained real @rs series
+  ::  (naive Taylor/AGM, fixed term counts -- accurate near the expansion point,
+  ::  matching /lib/math and /lib/unum); component arithmetic stays on stdlib +rs.
+  ::
+  ++  rpi   `@rs`.3.1415927                  :: pi at @rs
+  ++  rexp
+    |=  x=@rs  ^-  @rs
+    =/  s  .1  =/  t  .1  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =.  t  (~(mul rs rnd) t (~(div rs rnd) x (~(sun rs rnd) n)))
+    $(n +(n), s (~(add rs rnd) s t))
+  ++  rsin
+    |=  x=@rs  ^-  @rs
+    =/  t  x  =/  s  x  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =/  k  (^mul 2 n)
+    =.  t  (~(sub rs rnd) .0 (~(mul rs rnd) t (~(div rs rnd) (~(mul rs rnd) x x) (~(mul rs rnd) (~(sun rs rnd) k) (~(sun rs rnd) +(k))))))
+    $(n +(n), s (~(add rs rnd) s t))
+  ++  rcos
+    |=  x=@rs  ^-  @rs
+    =/  t  .1  =/  s  .1  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =/  k  (^mul 2 n)
+    =.  t  (~(sub rs rnd) .0 (~(mul rs rnd) t (~(div rs rnd) (~(mul rs rnd) x x) (~(mul rs rnd) (~(sun rs rnd) (dec k)) (~(sun rs rnd) k)))))
+    $(n +(n), s (~(add rs rnd) s t))
+  ++  rlog
+    |=  x=@rs  ^-  @rs
+    =/  y   (~(div rs rnd) (~(sub rs rnd) x .1) (~(add rs rnd) x .1))
+    =/  y2  (~(mul rs rnd) y y)  =/  s  y  =/  t  y  =/  n=@  1
+    |-  ?:  (gth n 30)  (~(mul rs rnd) .2 s)
+    =.  t  (~(mul rs rnd) t y2)
+    =/  c  (~(div rs rnd) .1 (~(sun rs rnd) +((^mul 2 n))))
+    $(n +(n), s (~(add rs rnd) s (~(mul rs rnd) c t)))
+  ++  ratan                                  :: single-arg arctan (Gauss AGM)
+    |=  x=@rs  ^-  @rs
+    =/  rt  (~(sqt rs rnd) (~(add rs rnd) .1 (~(mul rs rnd) x x)))
+    =/  a  (~(div rs rnd) .1 rt)  =/  b  .1  =/  n=@  0
+    |-  ?:  (gth n 40)  (~(div rs rnd) x (~(mul rs rnd) rt b))
+    =/  ai  (~(mul rs rnd) .0.5 (~(add rs rnd) a b))
+    $(n +(n), a ai, b (~(sqt rs rnd) (~(mul rs rnd) ai b)))
+  ++  ratn                                   :: atan2(y, x)
+    |=  [y=@rs x=@rs]  ^-  @rs
+    ?:  (~(gth rs rnd) x .0)                          (ratan (~(div rs rnd) y x))
+    ?:  &((~(lth rs rnd) x .0) (~(gte rs rnd) y .0))  (~(add rs rnd) (ratan (~(div rs rnd) y x)) rpi)
+    ?:  &((~(lth rs rnd) x .0) (~(lth rs rnd) y .0))  (~(sub rs rnd) (ratan (~(div rs rnd) y x)) rpi)
+    ?:  (~(gth rs rnd) y .0)                          (~(div rs rnd) rpi .2)
+    ?:  (~(lth rs rnd) y .0)                          (~(sub rs rnd) .0 (~(div rs rnd) rpi .2))
+    .0
+  ::    +cexp:  @cs -> @cs
+  ::
+  ::  Complex exponential e^z = e^a (cos b + i sin b) for z = a + bi.
+  ::    Examples
+  ::      > (~(cexp cs:complex %n) 0x4000.0000.3f80.0000)  ::  exp(1+2i)
+  ::      0x401e.30c5.bf90.cb4e
+  ::  Source
+  ++  cexp
+    |=  p=@
+    ^-  @
+    =/  ea  (rexp (re p))
+    (pak (~(mul rs rnd) ea (rcos (im p))) (~(mul rs rnd) ea (rsin (im p))))
+  ::    +clog:  @cs -> @cs
+  ::
+  ::  Principal complex logarithm ln(z) = ln|z| + i*atan2(b, a).
+  ::  Source
+  ++  clog
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  mag  (~(sqt rs rnd) (~(add rs rnd) (~(mul rs rnd) a a) (~(mul rs rnd) b b)))
+    (pak (rlog mag) (ratn b a))
+  ::    +csqrt:  @cs -> @cs
+  ::
+  ::  Principal complex square root: sqrt((|z|+a)/2) + i*sgn(b)*sqrt((|z|-a)/2),
+  ::  with the imaginary sign taken from b (the principal branch).
+  ::  Source
+  ++  csqrt
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  mag  (~(sqt rs rnd) (~(add rs rnd) (~(mul rs rnd) a a) (~(mul rs rnd) b b)))
+    =/  re-  (~(sqt rs rnd) (~(div rs rnd) (~(add rs rnd) mag a) .2))
+    =/  im-  (~(sqt rs rnd) (~(div rs rnd) (~(sub rs rnd) mag a) .2))
+    (pak re- ?:((~(lth rs rnd) b .0) (fneg im-) im-))
+  ::    +csin:  @cs -> @cs
+  ::
+  ::  Complex sine sin(z) = sin(a)cosh(b) + i cos(a)sinh(b), with cosh/sinh built
+  ::  from the real exponential.
+  ::  Source
+  ++  csin
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  eb   (rexp b)
+    =/  enb  (rexp (fneg b))
+    =/  csh  (~(div rs rnd) (~(add rs rnd) eb enb) .2)
+    =/  snh  (~(div rs rnd) (~(sub rs rnd) eb enb) .2)
+    (pak (~(mul rs rnd) (rsin a) csh) (~(mul rs rnd) (rcos a) snh))
+  ::    +ccos:  @cs -> @cs
+  ::
+  ::  Complex cosine cos(z) = cos(a)cosh(b) - i sin(a)sinh(b).
+  ::  Source
+  ++  ccos
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  eb   (rexp b)
+    =/  enb  (rexp (fneg b))
+    =/  csh  (~(div rs rnd) (~(add rs rnd) eb enb) .2)
+    =/  snh  (~(div rs rnd) (~(sub rs rnd) eb enb) .2)
+    (pak (~(mul rs rnd) (rcos a) csh) (fneg (~(mul rs rnd) (rsin a) snh)))
+  ::    +ctan:  @cs -> @cs
+  ::
+  ::  Complex tangent tan(z) = sin(z) / cos(z).
+  ::  Source
+  ++  ctan  |=(p=@ (div (csin p) (ccos p)))
+  ::    +cpow:  [@cs @cs] -> @cs
+  ::
+  ::  Complex power z^w = exp(w * ln z) (principal branch).
+  ::  Source
+  ++  cpow  |=([p=@ q=@] (cexp (mul q (clog p))))
   --
 ::    +cd:  complex-double (@cd), two @rd (64-bit) components.
 ::
@@ -370,6 +494,128 @@
   ::      %.y
   ::  Source
   ++  neq   |=([p=@ q=@] =(| (equ p q)))
+  ::
+  ::  Transcendental / elementary functions.  Self-contained real @rd series
+  ::  (naive Taylor/AGM, fixed term counts -- accurate near the expansion point,
+  ::  matching /lib/math and /lib/unum); component arithmetic stays on stdlib +rs.
+  ::
+  ++  rpi   `@rd`.~3.14159265358979                  :: pi at @rd
+  ++  rexp
+    |=  x=@rd  ^-  @rd
+    =/  s  .~1  =/  t  .~1  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =.  t  (~(mul rd rnd) t (~(div rd rnd) x (~(sun rd rnd) n)))
+    $(n +(n), s (~(add rd rnd) s t))
+  ++  rsin
+    |=  x=@rd  ^-  @rd
+    =/  t  x  =/  s  x  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =/  k  (^mul 2 n)
+    =.  t  (~(sub rd rnd) .~0 (~(mul rd rnd) t (~(div rd rnd) (~(mul rd rnd) x x) (~(mul rd rnd) (~(sun rd rnd) k) (~(sun rd rnd) +(k))))))
+    $(n +(n), s (~(add rd rnd) s t))
+  ++  rcos
+    |=  x=@rd  ^-  @rd
+    =/  t  .~1  =/  s  .~1  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =/  k  (^mul 2 n)
+    =.  t  (~(sub rd rnd) .~0 (~(mul rd rnd) t (~(div rd rnd) (~(mul rd rnd) x x) (~(mul rd rnd) (~(sun rd rnd) (dec k)) (~(sun rd rnd) k)))))
+    $(n +(n), s (~(add rd rnd) s t))
+  ++  rlog
+    |=  x=@rd  ^-  @rd
+    =/  y   (~(div rd rnd) (~(sub rd rnd) x .~1) (~(add rd rnd) x .~1))
+    =/  y2  (~(mul rd rnd) y y)  =/  s  y  =/  t  y  =/  n=@  1
+    |-  ?:  (gth n 30)  (~(mul rd rnd) .~2 s)
+    =.  t  (~(mul rd rnd) t y2)
+    =/  c  (~(div rd rnd) .~1 (~(sun rd rnd) +((^mul 2 n))))
+    $(n +(n), s (~(add rd rnd) s (~(mul rd rnd) c t)))
+  ++  ratan                                  :: single-arg arctan (Gauss AGM)
+    |=  x=@rd  ^-  @rd
+    =/  rt  (~(sqt rd rnd) (~(add rd rnd) .~1 (~(mul rd rnd) x x)))
+    =/  a  (~(div rd rnd) .~1 rt)  =/  b  .~1  =/  n=@  0
+    |-  ?:  (gth n 40)  (~(div rd rnd) x (~(mul rd rnd) rt b))
+    =/  ai  (~(mul rd rnd) .~0.5 (~(add rd rnd) a b))
+    $(n +(n), a ai, b (~(sqt rd rnd) (~(mul rd rnd) ai b)))
+  ++  ratn                                   :: atan2(y, x)
+    |=  [y=@rd x=@rd]  ^-  @rd
+    ?:  (~(gth rd rnd) x .~0)                          (ratan (~(div rd rnd) y x))
+    ?:  &((~(lth rd rnd) x .~0) (~(gte rd rnd) y .~0))  (~(add rd rnd) (ratan (~(div rd rnd) y x)) rpi)
+    ?:  &((~(lth rd rnd) x .~0) (~(lth rd rnd) y .~0))  (~(sub rd rnd) (ratan (~(div rd rnd) y x)) rpi)
+    ?:  (~(gth rd rnd) y .~0)                          (~(div rd rnd) rpi .~2)
+    ?:  (~(lth rd rnd) y .~0)                          (~(sub rd rnd) .~0 (~(div rd rnd) rpi .~2))
+    .~0
+  ::    +cexp:  @cd -> @cd
+  ::
+  ::  Complex exponential e^z = e^a (cos b + i sin b) for z = a + bi.
+  ::  Source
+  ++  cexp
+    |=  p=@
+    ^-  @
+    =/  ea  (rexp (re p))
+    (pak (~(mul rd rnd) ea (rcos (im p))) (~(mul rd rnd) ea (rsin (im p))))
+  ::    +clog:  @cd -> @cd
+  ::
+  ::  Principal complex logarithm ln(z) = ln|z| + i*atan2(b, a).
+  ::  Source
+  ++  clog
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  mag  (~(sqt rd rnd) (~(add rd rnd) (~(mul rd rnd) a a) (~(mul rd rnd) b b)))
+    (pak (rlog mag) (ratn b a))
+  ::    +csqrt:  @cd -> @cd
+  ::
+  ::  Principal complex square root: sqrt((|z|+a)/2) + i*sgn(b)*sqrt((|z|-a)/2),
+  ::  with the imaginary sign taken from b (the principal branch).
+  ::  Source
+  ++  csqrt
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  mag  (~(sqt rd rnd) (~(add rd rnd) (~(mul rd rnd) a a) (~(mul rd rnd) b b)))
+    =/  re-  (~(sqt rd rnd) (~(div rd rnd) (~(add rd rnd) mag a) .~2))
+    =/  im-  (~(sqt rd rnd) (~(div rd rnd) (~(sub rd rnd) mag a) .~2))
+    (pak re- ?:((~(lth rd rnd) b .~0) (fneg im-) im-))
+  ::    +csin:  @cd -> @cd
+  ::
+  ::  Complex sine sin(z) = sin(a)cosh(b) + i cos(a)sinh(b), with cosh/sinh built
+  ::  from the real exponential.
+  ::  Source
+  ++  csin
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  eb   (rexp b)
+    =/  enb  (rexp (fneg b))
+    =/  csh  (~(div rd rnd) (~(add rd rnd) eb enb) .~2)
+    =/  snh  (~(div rd rnd) (~(sub rd rnd) eb enb) .~2)
+    (pak (~(mul rd rnd) (rsin a) csh) (~(mul rd rnd) (rcos a) snh))
+  ::    +ccos:  @cd -> @cd
+  ::
+  ::  Complex cosine cos(z) = cos(a)cosh(b) - i sin(a)sinh(b).
+  ::  Source
+  ++  ccos
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  eb   (rexp b)
+    =/  enb  (rexp (fneg b))
+    =/  csh  (~(div rd rnd) (~(add rd rnd) eb enb) .~2)
+    =/  snh  (~(div rd rnd) (~(sub rd rnd) eb enb) .~2)
+    (pak (~(mul rd rnd) (rcos a) csh) (fneg (~(mul rd rnd) (rsin a) snh)))
+  ::    +ctan:  @cd -> @cd
+  ::
+  ::  Complex tangent tan(z) = sin(z) / cos(z).
+  ::  Source
+  ++  ctan  |=(p=@ (div (csin p) (ccos p)))
+  ::    +cpow:  [@cd @cd] -> @cd
+  ::
+  ::  Complex power z^w = exp(w * ln z) (principal branch).
+  ::  Source
+  ++  cpow  |=([p=@ q=@] (cexp (mul q (clog p))))
   --
 ::    +ch:  complex-half (@ch), two @rh (16-bit) components.
 ::
@@ -536,6 +782,128 @@
   ::      %.y
   ::  Source
   ++  neq   |=([p=@ q=@] =(| (equ p q)))
+  ::
+  ::  Transcendental / elementary functions.  Self-contained real @rh series
+  ::  (naive Taylor/AGM, fixed term counts -- accurate near the expansion point,
+  ::  matching /lib/math and /lib/unum); component arithmetic stays on stdlib +rs.
+  ::
+  ++  rpi   `@rh`.~~3.14159                  :: pi at @rh
+  ++  rexp
+    |=  x=@rh  ^-  @rh
+    =/  s  .~~1  =/  t  .~~1  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =.  t  (~(mul rh rnd) t (~(div rh rnd) x (~(sun rh rnd) n)))
+    $(n +(n), s (~(add rh rnd) s t))
+  ++  rsin
+    |=  x=@rh  ^-  @rh
+    =/  t  x  =/  s  x  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =/  k  (^mul 2 n)
+    =.  t  (~(sub rh rnd) .~~0 (~(mul rh rnd) t (~(div rh rnd) (~(mul rh rnd) x x) (~(mul rh rnd) (~(sun rh rnd) k) (~(sun rh rnd) +(k))))))
+    $(n +(n), s (~(add rh rnd) s t))
+  ++  rcos
+    |=  x=@rh  ^-  @rh
+    =/  t  .~~1  =/  s  .~~1  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =/  k  (^mul 2 n)
+    =.  t  (~(sub rh rnd) .~~0 (~(mul rh rnd) t (~(div rh rnd) (~(mul rh rnd) x x) (~(mul rh rnd) (~(sun rh rnd) (dec k)) (~(sun rh rnd) k)))))
+    $(n +(n), s (~(add rh rnd) s t))
+  ++  rlog
+    |=  x=@rh  ^-  @rh
+    =/  y   (~(div rh rnd) (~(sub rh rnd) x .~~1) (~(add rh rnd) x .~~1))
+    =/  y2  (~(mul rh rnd) y y)  =/  s  y  =/  t  y  =/  n=@  1
+    |-  ?:  (gth n 30)  (~(mul rh rnd) .~~2 s)
+    =.  t  (~(mul rh rnd) t y2)
+    =/  c  (~(div rh rnd) .~~1 (~(sun rh rnd) +((^mul 2 n))))
+    $(n +(n), s (~(add rh rnd) s (~(mul rh rnd) c t)))
+  ++  ratan                                  :: single-arg arctan (Gauss AGM)
+    |=  x=@rh  ^-  @rh
+    =/  rt  (~(sqt rh rnd) (~(add rh rnd) .~~1 (~(mul rh rnd) x x)))
+    =/  a  (~(div rh rnd) .~~1 rt)  =/  b  .~~1  =/  n=@  0
+    |-  ?:  (gth n 40)  (~(div rh rnd) x (~(mul rh rnd) rt b))
+    =/  ai  (~(mul rh rnd) .~~0.5 (~(add rh rnd) a b))
+    $(n +(n), a ai, b (~(sqt rh rnd) (~(mul rh rnd) ai b)))
+  ++  ratn                                   :: atan2(y, x)
+    |=  [y=@rh x=@rh]  ^-  @rh
+    ?:  (~(gth rh rnd) x .~~0)                          (ratan (~(div rh rnd) y x))
+    ?:  &((~(lth rh rnd) x .~~0) (~(gte rh rnd) y .~~0))  (~(add rh rnd) (ratan (~(div rh rnd) y x)) rpi)
+    ?:  &((~(lth rh rnd) x .~~0) (~(lth rh rnd) y .~~0))  (~(sub rh rnd) (ratan (~(div rh rnd) y x)) rpi)
+    ?:  (~(gth rh rnd) y .~~0)                          (~(div rh rnd) rpi .~~2)
+    ?:  (~(lth rh rnd) y .~~0)                          (~(sub rh rnd) .~~0 (~(div rh rnd) rpi .~~2))
+    .~~0
+  ::    +cexp:  @ch -> @ch
+  ::
+  ::  Complex exponential e^z = e^a (cos b + i sin b) for z = a + bi.
+  ::  Source
+  ++  cexp
+    |=  p=@
+    ^-  @
+    =/  ea  (rexp (re p))
+    (pak (~(mul rh rnd) ea (rcos (im p))) (~(mul rh rnd) ea (rsin (im p))))
+  ::    +clog:  @ch -> @ch
+  ::
+  ::  Principal complex logarithm ln(z) = ln|z| + i*atan2(b, a).
+  ::  Source
+  ++  clog
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  mag  (~(sqt rh rnd) (~(add rh rnd) (~(mul rh rnd) a a) (~(mul rh rnd) b b)))
+    (pak (rlog mag) (ratn b a))
+  ::    +csqrt:  @ch -> @ch
+  ::
+  ::  Principal complex square root: sqrt((|z|+a)/2) + i*sgn(b)*sqrt((|z|-a)/2),
+  ::  with the imaginary sign taken from b (the principal branch).
+  ::  Source
+  ++  csqrt
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  mag  (~(sqt rh rnd) (~(add rh rnd) (~(mul rh rnd) a a) (~(mul rh rnd) b b)))
+    =/  re-  (~(sqt rh rnd) (~(div rh rnd) (~(add rh rnd) mag a) .~~2))
+    =/  im-  (~(sqt rh rnd) (~(div rh rnd) (~(sub rh rnd) mag a) .~~2))
+    (pak re- ?:((~(lth rh rnd) b .~~0) (fneg im-) im-))
+  ::    +csin:  @ch -> @ch
+  ::
+  ::  Complex sine sin(z) = sin(a)cosh(b) + i cos(a)sinh(b), with cosh/sinh built
+  ::  from the real exponential.
+  ::  Source
+  ++  csin
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  eb   (rexp b)
+    =/  enb  (rexp (fneg b))
+    =/  csh  (~(div rh rnd) (~(add rh rnd) eb enb) .~~2)
+    =/  snh  (~(div rh rnd) (~(sub rh rnd) eb enb) .~~2)
+    (pak (~(mul rh rnd) (rsin a) csh) (~(mul rh rnd) (rcos a) snh))
+  ::    +ccos:  @ch -> @ch
+  ::
+  ::  Complex cosine cos(z) = cos(a)cosh(b) - i sin(a)sinh(b).
+  ::  Source
+  ++  ccos
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  eb   (rexp b)
+    =/  enb  (rexp (fneg b))
+    =/  csh  (~(div rh rnd) (~(add rh rnd) eb enb) .~~2)
+    =/  snh  (~(div rh rnd) (~(sub rh rnd) eb enb) .~~2)
+    (pak (~(mul rh rnd) (rcos a) csh) (fneg (~(mul rh rnd) (rsin a) snh)))
+  ::    +ctan:  @ch -> @ch
+  ::
+  ::  Complex tangent tan(z) = sin(z) / cos(z).
+  ::  Source
+  ++  ctan  |=(p=@ (div (csin p) (ccos p)))
+  ::    +cpow:  [@ch @ch] -> @ch
+  ::
+  ::  Complex power z^w = exp(w * ln z) (principal branch).
+  ::  Source
+  ++  cpow  |=([p=@ q=@] (cexp (mul q (clog p))))
   --
 ::    +cq:  complex-quad (@cq), two @rq (128-bit) components.
 ::
@@ -703,5 +1071,127 @@
   ::      %.y
   ::  Source
   ++  neq   |=([p=@ q=@] =(| (equ p q)))
+  ::
+  ::  Transcendental / elementary functions.  Self-contained real @rq series
+  ::  (naive Taylor/AGM, fixed term counts -- accurate near the expansion point,
+  ::  matching /lib/math and /lib/unum); component arithmetic stays on stdlib +rs.
+  ::
+  ++  rpi   `@rq`.~~~3.14159265358979323846                  :: pi at @rq
+  ++  rexp
+    |=  x=@rq  ^-  @rq
+    =/  s  .~~~1  =/  t  .~~~1  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =.  t  (~(mul rq rnd) t (~(div rq rnd) x (~(sun rq rnd) n)))
+    $(n +(n), s (~(add rq rnd) s t))
+  ++  rsin
+    |=  x=@rq  ^-  @rq
+    =/  t  x  =/  s  x  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =/  k  (^mul 2 n)
+    =.  t  (~(sub rq rnd) .~~~0 (~(mul rq rnd) t (~(div rq rnd) (~(mul rq rnd) x x) (~(mul rq rnd) (~(sun rq rnd) k) (~(sun rq rnd) +(k))))))
+    $(n +(n), s (~(add rq rnd) s t))
+  ++  rcos
+    |=  x=@rq  ^-  @rq
+    =/  t  .~~~1  =/  s  .~~~1  =/  n=@  1
+    |-  ?:  (gth n 20)  s
+    =/  k  (^mul 2 n)
+    =.  t  (~(sub rq rnd) .~~~0 (~(mul rq rnd) t (~(div rq rnd) (~(mul rq rnd) x x) (~(mul rq rnd) (~(sun rq rnd) (dec k)) (~(sun rq rnd) k)))))
+    $(n +(n), s (~(add rq rnd) s t))
+  ++  rlog
+    |=  x=@rq  ^-  @rq
+    =/  y   (~(div rq rnd) (~(sub rq rnd) x .~~~1) (~(add rq rnd) x .~~~1))
+    =/  y2  (~(mul rq rnd) y y)  =/  s  y  =/  t  y  =/  n=@  1
+    |-  ?:  (gth n 30)  (~(mul rq rnd) .~~~2 s)
+    =.  t  (~(mul rq rnd) t y2)
+    =/  c  (~(div rq rnd) .~~~1 (~(sun rq rnd) +((^mul 2 n))))
+    $(n +(n), s (~(add rq rnd) s (~(mul rq rnd) c t)))
+  ++  ratan                                  :: single-arg arctan (Gauss AGM)
+    |=  x=@rq  ^-  @rq
+    =/  rt  (~(sqt rq rnd) (~(add rq rnd) .~~~1 (~(mul rq rnd) x x)))
+    =/  a  (~(div rq rnd) .~~~1 rt)  =/  b  .~~~1  =/  n=@  0
+    |-  ?:  (gth n 40)  (~(div rq rnd) x (~(mul rq rnd) rt b))
+    =/  ai  (~(mul rq rnd) .~~~0.5 (~(add rq rnd) a b))
+    $(n +(n), a ai, b (~(sqt rq rnd) (~(mul rq rnd) ai b)))
+  ++  ratn                                   :: atan2(y, x)
+    |=  [y=@rq x=@rq]  ^-  @rq
+    ?:  (~(gth rq rnd) x .~~~0)                          (ratan (~(div rq rnd) y x))
+    ?:  &((~(lth rq rnd) x .~~~0) (~(gte rq rnd) y .~~~0))  (~(add rq rnd) (ratan (~(div rq rnd) y x)) rpi)
+    ?:  &((~(lth rq rnd) x .~~~0) (~(lth rq rnd) y .~~~0))  (~(sub rq rnd) (ratan (~(div rq rnd) y x)) rpi)
+    ?:  (~(gth rq rnd) y .~~~0)                          (~(div rq rnd) rpi .~~~2)
+    ?:  (~(lth rq rnd) y .~~~0)                          (~(sub rq rnd) .~~~0 (~(div rq rnd) rpi .~~~2))
+    .~~~0
+  ::    +cexp:  @cq -> @cq
+  ::
+  ::  Complex exponential e^z = e^a (cos b + i sin b) for z = a + bi.
+  ::  Source
+  ++  cexp
+    |=  p=@
+    ^-  @
+    =/  ea  (rexp (re p))
+    (pak (~(mul rq rnd) ea (rcos (im p))) (~(mul rq rnd) ea (rsin (im p))))
+  ::    +clog:  @cq -> @cq
+  ::
+  ::  Principal complex logarithm ln(z) = ln|z| + i*atan2(b, a).
+  ::  Source
+  ++  clog
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  mag  (~(sqt rq rnd) (~(add rq rnd) (~(mul rq rnd) a a) (~(mul rq rnd) b b)))
+    (pak (rlog mag) (ratn b a))
+  ::    +csqrt:  @cq -> @cq
+  ::
+  ::  Principal complex square root: sqrt((|z|+a)/2) + i*sgn(b)*sqrt((|z|-a)/2),
+  ::  with the imaginary sign taken from b (the principal branch).
+  ::  Source
+  ++  csqrt
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  mag  (~(sqt rq rnd) (~(add rq rnd) (~(mul rq rnd) a a) (~(mul rq rnd) b b)))
+    =/  re-  (~(sqt rq rnd) (~(div rq rnd) (~(add rq rnd) mag a) .~~~2))
+    =/  im-  (~(sqt rq rnd) (~(div rq rnd) (~(sub rq rnd) mag a) .~~~2))
+    (pak re- ?:((~(lth rq rnd) b .~~~0) (fneg im-) im-))
+  ::    +csin:  @cq -> @cq
+  ::
+  ::  Complex sine sin(z) = sin(a)cosh(b) + i cos(a)sinh(b), with cosh/sinh built
+  ::  from the real exponential.
+  ::  Source
+  ++  csin
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  eb   (rexp b)
+    =/  enb  (rexp (fneg b))
+    =/  csh  (~(div rq rnd) (~(add rq rnd) eb enb) .~~~2)
+    =/  snh  (~(div rq rnd) (~(sub rq rnd) eb enb) .~~~2)
+    (pak (~(mul rq rnd) (rsin a) csh) (~(mul rq rnd) (rcos a) snh))
+  ::    +ccos:  @cq -> @cq
+  ::
+  ::  Complex cosine cos(z) = cos(a)cosh(b) - i sin(a)sinh(b).
+  ::  Source
+  ++  ccos
+    |=  p=@
+    ^-  @
+    =/  a  (re p)
+    =/  b  (im p)
+    =/  eb   (rexp b)
+    =/  enb  (rexp (fneg b))
+    =/  csh  (~(div rq rnd) (~(add rq rnd) eb enb) .~~~2)
+    =/  snh  (~(div rq rnd) (~(sub rq rnd) eb enb) .~~~2)
+    (pak (~(mul rq rnd) (rcos a) csh) (fneg (~(mul rq rnd) (rsin a) snh)))
+  ::    +ctan:  @cq -> @cq
+  ::
+  ::  Complex tangent tan(z) = sin(z) / cos(z).
+  ::  Source
+  ++  ctan  |=(p=@ (div (csin p) (ccos p)))
+  ::    +cpow:  [@cq @cq] -> @cq
+  ::
+  ::  Complex power z^w = exp(w * ln z) (principal branch).
+  ::  Source
+  ++  cpow  |=([p=@ q=@] (cexp (mul q (clog p))))
   --
 --

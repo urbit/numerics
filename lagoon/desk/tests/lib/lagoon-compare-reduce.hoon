@@ -166,4 +166,15 @@
     %+  expect-eq  !>(%.n)  !>((all:la all-false))
     %+  expect-eq  !>(%.n)  !>((any:la all-false))
   ==
+::  %cplx has no total order: the ordering reductions (max/min, and any/all
+::  which read them) crash via +fun-scalar %gth -> +ord, rather than silently
+::  mis-ordering.  Test complex rays with +is-close/+equ instead.
+++  test-cplx-reduce-crashes  ^-  tang
+  =/  c  (fill:la [shape=~[1 2] bloq=6 kind=%cplx tail=~] 0x3f80.0000)
+  ;:  weld
+    (expect-fail |.((max:la c)))
+    (expect-fail |.((min:la c)))
+    (expect-fail |.((any:la c)))
+    (expect-fail |.((all:la c)))
+  ==
 --

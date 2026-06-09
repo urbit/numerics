@@ -750,6 +750,10 @@
     =/  cb  bloq.meta.a
     ?>  ?|(=(5 cb) =(6 cb) =(7 cb) =(8 cb))
     =/  rb  (cb-comp cb)
+    ::  rtol: same default + width guard as +eig, against the component (rb).
+    =/  rtol  ?:(=(0x1 `@`rtol) `@r`(feps rb) rtol)
+    ~|  'saloon eig (hermitian): rtol wider than the component; match +sake width to the component bloq'
+    ?>  (^lte (met 3 `@`rtol) (bex (^sub rb 3)))
     ?>  =(2 (lent shape.meta.a))
     =/  n  (snag 0 shape.meta.a)
     ?>  =(n (snag 1 shape.meta.a))
@@ -777,11 +781,11 @@
   ::  (+near/+cnear) -- a matrix symmetric only up to rounding (e.g. a Gram
   ::  matrix from +mmul) is accepted; a genuinely asymmetric one crashes.
   ::
-  ::  CALLERS: set rtol via +sake, and match its WIDTH to the component (@rs for
-  ::  @cs etc.) -- a mismatched width silently mis-scales the threshold.  The
-  ::  bare `sa` default rtol=0x1 is a denormal, not 1.0: it never satisfies the
-  ::  convergence test, so the 60-sweep cap fires and a "~&" warning is emitted
-  ::  (the result is still returned, not silently wrong) -- always call +sake.
+  ::  CALLERS: prefer +sake to set rtol, matched in WIDTH to the component (@rs
+  ::  for @cs etc.).  A tolerance WIDER than the component is now rejected (its
+  ::  high bytes would be dropped, mis-scaling the threshold).  The bare `sa`
+  ::  default rtol=0x1 (a denormal, not 1.0) is replaced by a width-appropriate
+  ::  epsilon (+feps) so bare +eig still converges, though +sake is recommended.
   ::    Examples
   ::      > =sa  (sake %n .~1e-12)
   ::      > =a   (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~2 .~1] ~[.~1 .~2]]])  ::  [[2 1] [1 2]]
@@ -794,6 +798,12 @@
     ?:  =(%cplx kind.meta.a)  (eig-herm a)
     =/  b  bloq.meta.a
     ?>  ?|(=(4 b) =(5 b) =(6 b) =(7 b))
+    ::  rtol: replace the unusable bare default (0x1, a denormal) with a width-
+    ::  appropriate epsilon; reject a tolerance wider than the component, whose
+    ::  high bytes would be dropped and silently mis-scale the threshold.
+    =/  rtol  ?:(=(0x1 `@`rtol) `@r`(feps b) rtol)
+    ~|  'saloon eig: rtol wider than the %i754 component; match +sake width to the array bloq'
+    ?>  (^lte (met 3 `@`rtol) (bex (^sub b 3)))
     ?>  =(2 (lent shape.meta.a))
     =/  n  (snag 0 shape.meta.a)
     ?>  =(n (snag 1 shape.meta.a))

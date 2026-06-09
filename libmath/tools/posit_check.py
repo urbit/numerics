@@ -282,9 +282,121 @@ def check_arith_wide():
         ok &= (not bad)
     return ok
 
+# ---- transcendental series replica (mirrors lib/unum.hoon term-for-term) ----
+# The reference SoftPosit has NO transcendentals, so these reproduce lib/unum's
+# naive Taylor/AGM series in correctly-rounded posit arithmetic and check them
+# against mpmath where the series is accurate (small / near-expansion args).
+PI_FRAC = Fraction(0x3243f6a8885a31, 1 << 52)        # lib/unum's baked pi
+def _one(n): return my_from_i(1, n)
+def _nar(n): return 1 << (n - 1)
+def _val(p, n):                                      # posit pattern -> Fraction (None=NaR)
+    u = decode(p, n)
+    if u[0] == 'z': return Fraction(0)
+    if u[0] == 'n': return None
+    _, s, e, a = u; v = Fraction(a) * (Fraction(2) ** e); return -v if s else v
+def _abs(p, n):
+    v = _val(p, n); return p if (v is None or v >= 0) else neg(p, n)
+def _lt(a, b, n): return _val(a, n) < _val(b, n)
+def _le(a, b, n): return _val(a, n) <= _val(b, n)
+def t_exp(x, n):
+    s = _one(n); t = _one(n)
+    for k in range(1, 21): t = mul(t, div(x, my_from_i(k, n), n), n); s = add(s, t, n)
+    return s
+def t_sin(x, n):
+    t = x; s = x
+    for nn in range(1, 21):
+        k = 2*nn
+        t = neg(mul(t, div(mul(x, x, n), mul(my_from_i(k, n), my_from_i(k+1, n), n), n), n), n)
+        s = add(s, t, n)
+    return s
+def t_cos(x, n):
+    t = _one(n); s = _one(n)
+    for nn in range(1, 21):
+        k = 2*nn
+        t = neg(mul(t, div(mul(x, x, n), mul(my_from_i(k-1, n), my_from_i(k, n), n), n), n), n)
+        s = add(s, t, n)
+    return s
+def t_tan(x, n): return div(t_sin(x, n), t_cos(x, n), n)
+def t_log(x, n):
+    if _le(x, 0, n): return _nar(n)
+    y = div(sub(x, _one(n), n), add(x, _one(n), n), n); y2 = mul(y, y, n); s = y; t = y
+    for nn in range(1, 31):
+        t = mul(t, y2, n); s = add(s, mul(div(_one(n), my_from_i(2*nn+1, n), n), t, n), n)
+    return mul(my_from_i(2, n), s, n)
+def t_pown(x, p, n):
+    if x == _nar(n): return _nar(n)
+    r = _one(n)
+    for _ in range(p): r = mul(r, x, n)
+    return r
+def t_fact(x, n):
+    if x == _nar(n) or (_val(x, n) is not None and _val(x, n) < 0): return _nar(n)
+    t = _one(n)
+    while not _le(x, _one(n), n): t = mul(t, x, n); x = sub(x, _one(n), n)
+    return t
+def t_pow(x, y, n): return t_exp(mul(y, t_log(x, n), n), n)
+def t_cbrt(x, n):
+    if x == _nar(n): return _nar(n)
+    if x == 0: return 0
+    if _val(x, n) < 0: return _nar(n)
+    return t_pow(x, div(_one(n), my_from_i(3, n), n), n)
+def t_atan(x, n):
+    if x == _nar(n): return _nar(n)
+    rt = my_sqrt(add(_one(n), mul(x, x, n), n), n); a = div(_one(n), rt, n); b = _one(n)
+    for _ in range(41):
+        ai = mul(div(_one(n), my_from_i(2, n), n), add(a, b, n), n); b = my_sqrt(mul(ai, b, n), n); a = ai
+    return div(x, mul(rt, b, n), n)
+def t_asin(x, n):
+    if x == _nar(n): return _nar(n)
+    if _lt(_abs(x, n), _one(n), n):
+        return t_atan(div(x, my_sqrt(sub(_one(n), mul(x, x, n), n), n), n), n)
+    if x == _one(n): return mul(ref_value_encode(PI_FRAC, n), div(_one(n), my_from_i(2, n), n), n)
+    if x == neg(_one(n), n): return neg(mul(ref_value_encode(PI_FRAC, n), div(_one(n), my_from_i(2, n), n), n), n)
+    return _nar(n)
+def t_acos(x, n):
+    if x == _nar(n): return _nar(n)
+    if _lt(_abs(x, n), _one(n), n):
+        if x == 0: return mul(ref_value_encode(PI_FRAC, n), div(_one(n), my_from_i(2, n), n), n)
+        return t_atan(div(my_sqrt(sub(_one(n), mul(x, x, n), n), n), x, n), n)
+    if x == _one(n): return 0
+    if x == neg(_one(n), n): return ref_value_encode(PI_FRAC, n)
+    return _nar(n)
+
+def check_transcendental():
+    import mpmath as _M
+    def fr(mv): return Fraction(int(mv * (1 << 220)), 1 << 220)
+    half = Fraction(1, 2)
+    # (label, series-fn, input-Fraction, mpmath-true): args chosen where the
+    # naive series is accurate, so it is correctly rounded vs mpmath at posit8.
+    cases = [
+        ("exp .5",  lambda x, n: t_exp(x, n),  half,        lambda: _M.e ** _M.mpf('0.5')),
+        ("sin .5",  lambda x, n: t_sin(x, n),  half,        lambda: _M.sin(_M.mpf('0.5'))),
+        ("cos .5",  lambda x, n: t_cos(x, n),  half,        lambda: _M.cos(_M.mpf('0.5'))),
+        ("tan .5",  lambda x, n: t_tan(x, n),  half,        lambda: _M.tan(_M.mpf('0.5'))),
+        ("log 2",   lambda x, n: t_log(x, n),  Fraction(2), lambda: _M.log(2)),
+        ("fact 3",  lambda x, n: t_fact(x, n), Fraction(3), lambda: _M.mpf(6)),
+        ("fact 4",  lambda x, n: t_fact(x, n), Fraction(4), lambda: _M.mpf(24)),
+        ("cbrt 1",  lambda x, n: t_cbrt(x, n), Fraction(1), lambda: _M.mpf(1)),
+        ("atan 1",  lambda x, n: t_atan(x, n), Fraction(1), lambda: _M.atan(1)),
+        # NB: asin/acos and atan(.5) sit ~1 ULP off the true value at p8 (the
+        # atan AGM + sqt path accumulates rounding) -- not correctly rounded, so
+        # excluded from this exact gate; their series output is regression-tested
+        # against this replica in /tests/lib/unum-fns instead.
+        ("acos 0",  lambda x, n: t_acos(x, n), Fraction(0), lambda: _M.acos(0)),
+        ("pow-n 2^3", lambda x, n: t_pown(x, 3, n), Fraction(2), lambda: _M.mpf(8)),
+    ]
+    n = 8; bad = []
+    for label, fn, inv, truef in cases:
+        out = fn(ref_value_encode(inv, n), n)
+        exp = ref_value_encode(fr(truef()), n)
+        if out != exp: bad.append(f"{label}(0x{out:02x}!=0x{exp:02x})")
+    print(f"  posit8 series vs mpmath: {len(cases)-len(bad)}/{len(cases)} correctly rounded"
+          + (f" -- MISMATCH {bad}" if bad else ""))
+    return not bad
+
 if __name__ == '__main__':
     c = check_consts(); a = check_arith()
     print("elementary:"); el = check_elementary()
+    print("transcendental:"); tr = check_transcendental()
     print("quire:"); q = check_quire()
     print("wide arith (posit16/32 sampled):"); w = check_arith_wide()
-    print("ALL PASS:", c and a and el and q and w)
+    print("ALL PASS:", c and a and el and tr and q and w)

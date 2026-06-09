@@ -20,6 +20,19 @@
 ::  additive copies later.  Complex has no total order, so there is
 ::  intentionally no gth/gte/lth/lte -- only equ/neq.
 ::
+::  TODO (PENCILLED IN -- complex transcendentals, follow-on to the %unum
+::  transcendental work).  This lib currently provides arithmetic + abs/conj/
+::  re/im/pak only.  To let Saloon's Tier B (exp/sin/cos/log/sqrt/...) accept
+::  %cplx rays the way it now accepts %unum, each width door needs the complex
+::  elementary functions, then a %cplx branch in saloon +trans-scalar/+fun-scalar
+::  (mirroring the %unum branch).  Closed forms over the real component ops:
+::    cexp(a+bi)  = e^a * (cos b + i sin b)
+::    clog(a+bi)  = log|z| + i*atan2(b, a)            (needs a real atan2)
+::    csqrt(z)    = sqrt((|z|+a)/2) + i*sgn(b)*sqrt((|z|-a)/2)
+::    csin/ccos   via the real sin/cos/sinh/cosh, cpow via cexp(w*clog z)
+::  Depends on the real transcendentals (which #18's Chebyshev rewrite will
+::  harden); accuracy will inherit whatever the real layer provides.
+::
 |%
 +$  rounding-mode  ?(%n %u %d %z)
 ::    +cs:  complex-single (@cs), two @rs (32-bit) components.

@@ -394,6 +394,17 @@
           %cbrt       ~(cbrt rh:math [rnd rtol])
         ==  ::  fun
       ==  ::  bloq
+      ::
+      ::  posits (/lib/unum): rpb/rph/rps/rpd are bloq 3/4/5/6 (NOT %i754's
+      ::  4-7), and unum's square root is named +sqt.  Posit rounding is fixed
+      ::  (round-to-nearest-even), so rnd/rtol don't apply.
+        %unum
+      ?+    bloq  !!
+        %6  ?-(fun %neg neg:rpd:unum, %factorial factorial:rpd:unum, %exp exp:rpd:unum, %sin sin:rpd:unum, %cos cos:rpd:unum, %tan tan:rpd:unum, %log log:rpd:unum, %log-10 log-10:rpd:unum, %log-2 log-2:rpd:unum, %sqrt sqt:rpd:unum, %cbrt cbrt:rpd:unum)
+        %5  ?-(fun %neg neg:rps:unum, %factorial factorial:rps:unum, %exp exp:rps:unum, %sin sin:rps:unum, %cos cos:rps:unum, %tan tan:rps:unum, %log log:rps:unum, %log-10 log-10:rps:unum, %log-2 log-2:rps:unum, %sqrt sqt:rps:unum, %cbrt cbrt:rps:unum)
+        %4  ?-(fun %neg neg:rph:unum, %factorial factorial:rph:unum, %exp exp:rph:unum, %sin sin:rph:unum, %cos cos:rph:unum, %tan tan:rph:unum, %log log:rph:unum, %log-10 log-10:rph:unum, %log-2 log-2:rph:unum, %sqrt sqt:rph:unum, %cbrt cbrt:rph:unum)
+        %3  ?-(fun %neg neg:rpb:unum, %factorial factorial:rpb:unum, %exp exp:rpb:unum, %sin sin:rpb:unum, %cos cos:rpb:unum, %tan tan:rpb:unum, %log log:rpb:unum, %log-10 log-10:rpb:unum, %log-2 log-2:rpb:unum, %sqrt sqt:rpb:unum, %cbrt cbrt:rpb:unum)
+      ==
     ==  ::  kind
   ::
   +$  binary-ops  $?  %pow-n
@@ -434,6 +445,14 @@
           %pow        ~(pow rh:math [rnd rtol])
         ==  ::  fun
       ==  ::  bloq
+      ::  posits (/lib/unum): bloq 3/4/5/6.
+        %unum
+      ?+    bloq.meta  !!
+        %6  ?-(fun %pow-n pow-n:rpd:unum, %pow pow:rpd:unum)
+        %5  ?-(fun %pow-n pow-n:rps:unum, %pow pow:rps:unum)
+        %4  ?-(fun %pow-n pow-n:rph:unum, %pow pow:rph:unum)
+        %3  ?-(fun %pow-n pow-n:rpb:unum, %pow pow:rpb:unum)
+      ==
     ==  ::  kind
   ::
   +|  %linalg

@@ -464,27 +464,42 @@
   ::  Source
   ++  exp
     |=  x=@rs  ^-  @rs
-    ::  filter out non-finite arguments
-    ?:  =(x 0x0)  .1
-    ::    check infinities
-    ?:  =(x 0x7f80.0000)  `@rs`0x7f80.0000  :: exp(+inf) -> inf
-    ?:  =(x 0xff80.0000)  .0.0              :: exp(-inf) -> 0
-    ::    check NaN
-    ?.  (^gte (dis 0x7fc0.0000 x) 0)  `@rs`0x7fc0.0000  :: exp(NaN) -> NaN
-    ::    check overflow to infinity
-    =/  o-threshold  `@rs`0x42b0.c0a8  ::  88.72283905206835, value above which exp(x) overflows
-    ?:  (gth x o-threshold)  (mul huge huge)
-    ::    check underflow to zero
-    =/  u-threshold  `@rs`0xc2b0.c0a8  ::  -88.72283905206835, value below which exp(x) underflows
-    ?:  (lth x u-threshold)  (mul tiny tiny)
-    ::  otherwise, use Taylor series
-    =/  p   .1
-    =/  po  .-1
-    =/  i   .1
-    |-  ^-  @rs
-    ?:  (lth (abs (sub po p)) rtol)
-      p
-    $(i (add i .1), p (add p (div (pow-n x i) (factorial i))), po p)
+    ::  Chebyshev: x = k*ln2 + r (Cody-Waite reduction); exp(x) = 2^k * P(r),
+    ::  P a degree-6 minimax polynomial faithful to <=1 ULP.  Internals are
+    ::  forced to round-nearest-even: a correctly-rounded transcendental does
+    ::  not take a rounding-mode axis (and the SoftFloat jet will match this).
+    ::  +scale2 is a correctly-rounded ldexp that stays exact across the normal
+    ::  range and rounds exactly once into the overflow/subnormal tails.
+    =/  pow2  |=(j=@s `@rs`(lsh [0 23] (abs:si (sum:si j --127))))
+    =/  scale2
+      |=  [p=@rs k=@s]  ^-  @rs
+      ?:  (syn:si (dif:si k --128))                 :: k>127: (p*2^127)*2^(k-127)
+        (~(mul ^rs %n) (~(mul ^rs %n) p (pow2 --127)) (pow2 (dif:si k --127)))
+      ?:  !(syn:si (sum:si k --126))                :: k<-126: (p*2^(k+24))*2^-24
+        (~(mul ^rs %n) (~(mul ^rs %n) p (pow2 (sum:si k --24))) (pow2 -24))
+      (~(mul ^rs %n) p (pow2 k))
+    ?:  !(~(equ ^rs %n) x x)    `@rs`0x7fc0.0000    :: exp(NaN) -> NaN
+    ?:  =(x `@rs`0x7f80.0000)   `@rs`0x7f80.0000    :: exp(+inf) -> inf
+    ?:  =(x `@rs`0xff80.0000)   `@rs`0x0            :: exp(-inf) -> 0
+    =/  log2e  `@rs`0x3fb8.aa3b
+    =/  ln2hi  `@rs`0x3f31.7200
+    =/  ln2lo  `@rs`0x35bf.be8e
+    =/  k=@s   (need (~(toi ^rs %n) (~(mul ^rs %n) x log2e)))
+    ?:  (syn:si (dif:si k --129))   `@rs`0x7f80.0000  :: overflow -> inf
+    ?:  !(syn:si (sum:si k --150))  `@rs`0x0          :: underflow -> 0
+    =/  ka  (~(sun ^rs %n) (abs:si k))
+    =/  kf  ?:((syn:si k) ka (~(sub ^rs %n) .0 ka))   :: k as @rs
+    =/  r
+      %-  ~(sub ^rs %n)
+      :-  (~(sub ^rs %n) x (~(mul ^rs %n) kf ln2hi))
+      (~(mul ^rs %n) kf ln2lo)
+    =/  cs=(list @rs)
+      :~  `@rs`0x3f80.0000  `@rs`0x3f80.0000  `@rs`0x3f00.0000
+          `@rs`0x3e2a.aa02  `@rs`0x3d2a.aa56  `@rs`0x3c09.37d3
+          `@rs`0x3ab6.ba99
+      ==
+    =/  p  (roll (flop cs) |=([c=@rs acc=@rs] (~(add ^rs %n) (~(mul ^rs %n) acc r) c)))
+    (scale2 p k)
   ::    +sin:  @rs -> @rs
   ::
   ::  Returns the sine of a floating-point atom.
@@ -1337,27 +1352,45 @@
   ::  Source
   ++  exp
     |=  x=@rd  ^-  @rd
-    ::  filter out non-finite arguments
-    ?:  =(x 0x0)  .~1
-    ::    check infinities
-    ?:  =(x 0x7ff0.0000.0000.0000)  `@rd`0x7ff0.0000.0000.0000  :: exp(+inf) -> inf
-    ?:  =(x 0xfff0.0000.0000.0000)  .~0.0                       :: exp(-inf) -> 0
-    ::    check NaN
-    ?.  (^gte (dis 0x7ff8.0000.0000.0000 x) 0)  `@rd`0x7ff8.0000.0000.0000  :: exp(NaN) -> NaN
-    ::    check overflow to infinity
-    =/  o-threshold  `@rd`0x4086.2e42.fefa.39ef  ::  709.782712893384, value above which exp(x) overflows
-    ?:  (gth x o-threshold)  (mul huge huge)
-    ::    check underflow to zero
-    =/  u-threshold  `@rd`0xc086.2e42.fefa.39ef  ::  -709.782712893384, value below which exp(x) underflows
-    ?:  (lth x u-threshold)  (mul tiny tiny)
-    ::  otherwise, use Taylor series
-    =/  p   .~1
-    =/  po  .~-1
-    =/  i   .~1
-    |-  ^-  @rd
-    ?:  (lth (abs (sub po p)) rtol)
-      p
-    $(i (add i .~1), p (add p (div (pow-n x i) (factorial i))), po p)
+    ::  Chebyshev: x = k*ln2 + r (Cody-Waite reduction); exp(x) = 2^k * P(r),
+    ::  P a degree-11 minimax polynomial faithful to <=1 ULP.  Internals are
+    ::  forced to round-nearest-even: a correctly-rounded transcendental does
+    ::  not take a rounding-mode axis (and the SoftFloat jet will match this).
+    ::  +scale2 is a correctly-rounded ldexp that stays exact across the normal
+    ::  range and rounds exactly once into the overflow/subnormal tails.
+    =/  pow2  |=(j=@s `@rd`(lsh [0 52] (abs:si (sum:si j --1.023))))
+    =/  scale2
+      |=  [p=@rd k=@s]  ^-  @rd
+      ?:  (syn:si (dif:si k --1.024))               :: k>1023: (p*2^1023)*2^(k-1023)
+        (~(mul ^rd %n) (~(mul ^rd %n) p (pow2 --1.023)) (pow2 (dif:si k --1.023)))
+      ?:  !(syn:si (sum:si k --1.022))              :: k<-1022: (p*2^(k+54))*2^-54
+        (~(mul ^rd %n) (~(mul ^rd %n) p (pow2 (sum:si k --54))) (pow2 -54))
+      (~(mul ^rd %n) p (pow2 k))
+    ?:  !(~(equ ^rd %n) x x)              `@rd`0x7ff8.0000.0000.0000  :: NaN
+    ?:  =(x `@rd`0x7ff0.0000.0000.0000)   `@rd`0x7ff0.0000.0000.0000  :: +inf
+    ?:  =(x `@rd`0xfff0.0000.0000.0000)   `@rd`0x0                    :: -inf -> 0
+    =/  log2e  `@rd`0x3ff7.1547.652b.82fe
+    =/  ln2hi  `@rd`0x3fe6.2e42.fee0.0000
+    =/  ln2lo  `@rd`0x3dea.39ef.3579.3c76
+    =/  k=@s   (need (~(toi ^rd %n) (~(mul ^rd %n) x log2e)))
+    ?:  (syn:si (dif:si k --1.025))   `@rd`0x7ff0.0000.0000.0000  :: overflow -> inf
+    ?:  !(syn:si (sum:si k --1.075))  `@rd`0x0                    :: underflow -> 0
+    =/  ka  (~(sun ^rd %n) (abs:si k))
+    =/  kf  ?:((syn:si k) ka (~(sub ^rd %n) .~0 ka))   :: k as @rd
+    =/  r
+      %-  ~(sub ^rd %n)
+      :-  (~(sub ^rd %n) x (~(mul ^rd %n) kf ln2hi))
+      (~(mul ^rd %n) kf ln2lo)
+    =/  cs=(list @rd)
+      :~  `@rd`0x3ff0.0000.0000.0000  `@rd`0x3ff0.0000.0000.0000
+          `@rd`0x3fe0.0000.0000.0011  `@rd`0x3fc5.5555.5555.555a
+          `@rd`0x3fa5.5555.5554.f0cf  `@rd`0x3f81.1111.1110.f225
+          `@rd`0x3f56.c16c.187f.be02  `@rd`0x3f2a.01a0.1b14.378f
+          `@rd`0x3efa.0199.1ac8.730a  `@rd`0x3ec7.1ddf.5749.d126
+          `@rd`0x3e92.8b40.57f4.4145  `@rd`0x3e5a.f631.d005.9bec
+      ==
+    =/  p  (roll (flop cs) |=([c=@rd acc=@rd] (~(add ^rd %n) (~(mul ^rd %n) acc r) c)))
+    (scale2 p k)
   ::    +sin:  @rd -> @rd
   ::
   ::  Returns the sine of a floating-point atom.

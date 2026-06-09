@@ -229,6 +229,7 @@
     $(n +(n), s (~(add rs rnd) s t))
   ++  rlog
     |=  x=@rs  ^-  @rs
+    ?:  =(`@rs`.0 x)  `@rs`0xff80.0000        :: log 0 = -inf
     =/  y   (~(div rs rnd) (~(sub rs rnd) x .1) (~(add rs rnd) x .1))
     =/  y2  (~(mul rs rnd) y y)  =/  s  y  =/  t  y  =/  n=@  1
     |-  ?:  (gth n 30)  (~(mul rs rnd) .2 s)
@@ -522,6 +523,7 @@
     $(n +(n), s (~(add rd rnd) s t))
   ++  rlog
     |=  x=@rd  ^-  @rd
+    ?:  =(`@rd`.~0 x)  `@rd`0xfff0.0000.0000.0000
     =/  y   (~(div rd rnd) (~(sub rd rnd) x .~1) (~(add rd rnd) x .~1))
     =/  y2  (~(mul rd rnd) y y)  =/  s  y  =/  t  y  =/  n=@  1
     |-  ?:  (gth n 30)  (~(mul rd rnd) .~2 s)
@@ -810,6 +812,7 @@
     $(n +(n), s (~(add rh rnd) s t))
   ++  rlog
     |=  x=@rh  ^-  @rh
+    ?:  =(`@rh`.~~0 x)  `@rh`0xfc00
     =/  y   (~(div rh rnd) (~(sub rh rnd) x .~~1) (~(add rh rnd) x .~~1))
     =/  y2  (~(mul rh rnd) y y)  =/  s  y  =/  t  y  =/  n=@  1
     |-  ?:  (gth n 30)  (~(mul rh rnd) .~~2 s)
@@ -1099,6 +1102,7 @@
     $(n +(n), s (~(add rq rnd) s t))
   ++  rlog
     |=  x=@rq  ^-  @rq
+    ?:  =(`@rq`.~~~0 x)  `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000
     =/  y   (~(div rq rnd) (~(sub rq rnd) x .~~~1) (~(add rq rnd) x .~~~1))
     =/  y2  (~(mul rq rnd) y y)  =/  s  y  =/  t  y  =/  n=@  1
     |-  ?:  (gth n 30)  (~(mul rq rnd) .~~~2 s)

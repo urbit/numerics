@@ -401,6 +401,72 @@
   ++  log-10  |=(x=@ ^-(@ (div (log x) log10)))
   ::    +pow:  @ -> @ -> @   (x^y = exp(y * log x))
   ++  pow  |=([x=@ y=@] ^-(@ (exp (mul y (log x)))))
+  ::    +factorial:  @ -> @   (x! by repeated multiplication)
+  ::  Domain x >= 0 (NaR otherwise, and NaR propagates); for integer x this is
+  ::  exact up to the precision, halting once x <= 1.  Mirrors /lib/math.
+  ++  factorial
+    |=  x=@
+    ^-  @
+    ?:  =(nar x)  nar
+    ?:  (lth x zero)  nar
+    =/  t  one
+    |-  ^-  @
+    ?:  (lte x one)  t
+    $(x (sub x one), t (mul t x))
+  ::    +cbrt:  @ -> @   (cube root, x^(1/3) = exp(log x / 3))
+  ::  Domain x > 0 (NaR for x < 0, like the rest of the exp/log-based ops);
+  ::  cbrt(0) = 0.  Mirrors /lib/math's `cbt = (pow x .0.33...)`.
+  ++  cbrt
+    |=  x=@
+    ^-  @
+    ?:  =(nar x)  nar
+    ?:  =(zero x)  zero
+    ?:  (lth x zero)  nar
+    (pow x (div one (sun 3)))
+  ::    +atan:  @ -> @   (inverse tangent, Gauss/AGM iteration)
+  ::  arctan(x) = x / ((1+x^2)^0.5 * b), with [a b] driven to the AGM of
+  ::  (1+x^2)^-0.5 and 1.  Fixed iteration count (AGM converges quadratically).
+  ::  Odd in x, so negative arguments are handled by the carried sign.
+  ++  atan
+    |=  x=@
+    ^-  @
+    ?:  =(nar x)  nar
+    =/  x2  (add one (mul x x))
+    =/  rt  (sqt x2)
+    =/  a   (div one rt)
+    =/  b   one
+    =/  nn=@  0
+    |-  ^-  @
+    ?:  (^gth nn 40)
+      (div x (mul rt b))
+    =/  ai  (mul (div one (sun 2)) (add a b))
+    =/  bi  (sqt (mul ai b))
+    $(a ai, b bi, nn +(nn))
+  ::    +asin:  @ -> @   (inverse sine)
+  ::  arcsin(x) = atan(x / sqrt(1 - x^2)) for |x| < 1; +-pi/2 at x = +-1;
+  ::  NaR outside [-1, 1].  Mirrors /lib/math.
+  ++  asin
+    |=  x=@
+    ^-  @
+    ?:  =(nar x)  nar
+    ?:  (lth (abs x) one)
+      (atan (div x (sqt (sub one (mul x x)))))
+    ?:  (equ x one)        (mul pi (div one (sun 2)))
+    ?:  (equ x (neg one))  (neg (mul pi (div one (sun 2))))
+    nar
+  ::    +acos:  @ -> @   (inverse cosine)
+  ::  arccos(x) = atan(sqrt(1 - x^2) / x) for 0 < |x| < 1 (pi/2 at 0); 0 at
+  ::  x = 1, pi at x = -1; NaR outside [-1, 1].  Mirrors /lib/math.
+  ++  acos
+    |=  x=@
+    ^-  @
+    ?:  =(nar x)  nar
+    ?:  (lth (abs x) one)
+      ?:  (equ x zero)  (mul pi (div one (sun 2)))
+      (atan (div (sqt (sub one (mul x x))) x))
+    ?:  (equ x one)        zero
+    ?:  (equ x (neg one))  pi
+    nar
   ::    +is-close:  @ -> @ -> @ -> ?   (|a - b| <= tol)
   ++  is-close  |=([a=@ b=@ tol=@] ^-(? (lte (abs (sub a b)) tol)))
   ::

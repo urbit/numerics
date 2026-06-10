@@ -822,15 +822,9 @@
   ::      .316.22775
   ::  Source
   ++  sqt
+    ::  Correctly-rounded: delegate to the stdlib (SoftFloat) f32 square root.
     |=  x=@rs  ^-  @rs
-    ?>  (sgn x)
-    ?:  =(.0 x)  .0
-    =/  g=@rs  (div x .2)
-    |-
-    =/  n=@rs  (mul .0.5 (add g (div x g)))
-    ?.  (gth (abs (sub g n)) rtol)
-      n
-    $(g n)
+    (sqt:^rs x)
   ::    +cbrt:  @rs -> @rs
   ::
   ::  Returns the cube root of a floating-point atom.
@@ -856,9 +850,13 @@
   ::      .1.2599207
   ::  Source
   ++  cbt
+    ::  cbrt(x) = sign(x) * exp(log|x| / 3); defined for all reals (unlike pow).
     |=  x=@rs  ^-  @rs
-    ?>  (sgn x)
-    (pow x .0.33333333)
+    ?:  !(~(equ ^rs %n) x x)  x                    :: NaN -> NaN
+    ?:  |(=(x `@rs`0x0) =(x `@rs`0x8000.0000))  x  :: +-0 -> +-0
+    =/  ax  `@rs`(dis x 0x7fff.ffff)
+    =/  r   (exp (~(mul ^rs %n) (log ax) `@rs`0x3eaa.aaab))
+    ?:(=(1 (rsh [0 31] x)) (~(sub ^rs %n) `@rs`0x0 r) r)
   ::    +arg:  @rs -> @rs
   ::
   ::  Returns the argument of a floating-point atom (real argument = absolute
@@ -1753,15 +1751,19 @@
   ::      .~316.2277660168379
   ::  Source
   ++  sqt
+    ::  Correctly-rounded f64 square root.  The stdlib f64 root is only
+    ::  faithful (off by up to 1 ULP), so seed with it and apply one Markstein
+    ::  correction (r = x - g*g via fma; g + (0.5/g)*r), which lands on the
+    ::  correctly-rounded value -- matching the SoftFloat sqrt jet bit-for-bit.
     |=  x=@rd  ^-  @rd
-    ?>  (sgn x)
-    ?:  =(.~0 x)  .~0
-    =/  g=@rd  (div x .~2)
-    |-
-    =/  n=@rd  (mul .~0.5 (add g (div x g)))
-    ?.  (gth (abs (sub g n)) rtol)
-      n
-    $(g n)
+    ?:  !(~(equ ^rd %n) x x)              `@rd`0x7ff8.0000.0000.0000  :: NaN
+    ?:  =(x `@rd`0x7ff0.0000.0000.0000)   `@rd`0x7ff0.0000.0000.0000  :: +inf
+    ?:  |(=(x `@rd`0x0) =(x `@rd`0x8000.0000.0000.0000))  x           :: +-0
+    ?:  =(1 (rsh [0 63] x))               `@rd`0x7ff8.0000.0000.0000  :: x<0 -> NaN
+    =/  g  (sqt:^rd x)                                          :: faithful seed
+    =/  h  (~(div ^rd %n) `@rd`0x3fe0.0000.0000.0000 g)         :: 0.5/g
+    =/  r  (~(fma ^rd %n) (~(sub ^rd %n) `@rd`0x0 g) g x)       :: x - g*g
+    (~(fma ^rd %n) h r g)                                       :: g + h*r
   ::    +cbrt:  @rd -> @rd
   ::
   ::  Returns the cube root of a floating-point atom.
@@ -1787,9 +1789,13 @@
   ::      .~1.2599210498948716
   ::  Source
   ++  cbt
+    ::  cbrt(x) = sign(x) * exp(log|x| / 3); defined for all reals (unlike pow).
     |=  x=@rd  ^-  @rd
-    ?>  (sgn x)
-    (pow x .~0.3333333333333333)
+    ?:  !(~(equ ^rd %n) x x)  x                                :: NaN -> NaN
+    ?:  |(=(x `@rd`0x0) =(x `@rd`0x8000.0000.0000.0000))  x     :: +-0 -> +-0
+    =/  ax  `@rd`(dis x 0x7fff.ffff.ffff.ffff)
+    =/  r   (exp (~(mul ^rd %n) (log ax) `@rd`0x3fd5.5555.5555.5555))
+    ?:(=(1 (rsh [0 63] x)) (~(sub ^rd %n) `@rd`0x0 r) r)
   ::    +arg:  @rd -> @rd
   ::
   ::  Returns the argument of a floating-point atom (real argument = absolute

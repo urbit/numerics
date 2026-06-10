@@ -2659,29 +2659,47 @@
   ::      > (exp .~~inf)
   ::      .inf
   ::  Source
+  ::  +widen-hs: f16 -> f32, exact.  +narrow-sh: f32 -> f16, correctly-rounded
+  ::  RNE.  The @rh transcendentals compute in the (more precise) @rs door and
+  ::  round the result down -- correctly-rounded for f16, since an f32 result is
+  ::  ~2^13 times finer than an f16 ULP.
+  ++  widen-hs
+    |=  h=@rh  ^-  @
+    =/  hh  `@`h
+    =/  s   (lsh [0 16] (dis hh 0x8000))
+    =/  e   (dis (rsh [0 10] hh) 0x1f)
+    =/  m   (dis hh 0x3ff)
+    ?:  =(e 0x1f)  (con s (con 0x7f80.0000 (lsh [0 13] m)))
+    ?:  =(e 0)
+      ?:  =(m 0)  s
+      (con s `@`(~(mul rs [%n .1e-5]) (~(sun rs [%n .1e-5]) m) `@rs`0x3380.0000))
+    (con s (con (lsh [0 23] (^add e 112)) (lsh [0 13] m)))
+  ++  narrow-sh
+    |=  uu=@rs  ^-  @
+    =/  u   `@`uu
+    =/  s   (dis (rsh [0 16] u) 0x8000)
+    =/  e   (dis (rsh [0 23] u) 0xff)
+    =/  m   (dis u 0x7f.ffff)
+    ?:  =(e 0xff)     (con s ?:(=(m 0) 0x7c00 0x7e00))
+    ?:  (^gte e 143)  (con s 0x7c00)
+    ?:  (^gte e 113)
+      =/  ne    (^sub e 112)
+      =/  mant  (rsh [0 13] m)
+      =/  rem   (dis m 0x1fff)
+      =/  rup   ?|((^gth rem 0x1000) &(=(rem 0x1000) =(1 (dis mant 1))))
+      (con s (^add (lsh [0 10] ne) (^add mant ?:(rup 1 0))))
+    ?:  (^lth e 102)  (con s 0x0)
+    =/  shift  (^sub 126 e)
+    =/  mf     (con 0x80.0000 m)
+    =/  mant   (rsh [0 shift] mf)
+    =/  half   (bex (dec shift))
+    =/  rem    (dis mf (dec (bex shift)))
+    =/  rup    ?|((^gth rem half) &(=(rem half) =(1 (dis mant 1))))
+    (con s (^add mant ?:(rup 1 0)))
   ++  exp
+    ::  compute in @rs, round to f16 (see +narrow-sh).
     |=  x=@rh  ^-  @rh
-    ::  filter out non-finite arguments
-    ?:  =(x 0x0)  .~~1
-    ::    check infinities
-    ?:  =(x 0x7c00)  `@rh`0x7c00  :: exp(+inf) -> inf
-    ?:  =(x 0xfc00)  .~~0.0       :: exp(-inf) -> 0
-    ::    check NaN
-    ?.  (^gte (dis 0x7e00 x) 0)  `@rh`0x7e00  :: exp(NaN) -> NaN
-    ::    check overflow to infinity
-    =/  o-threshold  `@rh`0x498c  ::  11.091265424003277, value above which exp(x) overflows
-    ?:  (gth x o-threshold)  (mul huge huge)
-    ::    check underflow to zero
-    =/  u-threshold  `@rh`0xc98c  ::  -11.091265424003277, value below which exp(x) underflows
-    ?:  (lth x u-threshold)  (mul tiny tiny)
-    ::  otherwise, use Taylor series
-    =/  p   .~~1
-    =/  po  .~~-1
-    =/  i   .~~1
-    |-  ^-  @rh
-    ?:  (lth (abs (sub po p)) rtol)
-      p
-    $(i (add i .~~1), p (add p (div (pow-n x i) (factorial i))), po p)
+    `@rh`(narrow-sh (~(exp rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::    +sin:  @rh -> @rh
   ::
   ::  Returns the sine of a floating-point atom.
@@ -2695,25 +2713,7 @@
   ::  Source
   ++  sin
     |=  x=@rh  ^-  @rh
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(x 0x7c00)  `@rh`0x7e00  :: sin(+inf) -> NaN
-    ?:  =(x 0xfc00)  `@rh`0x7e00  :: sin(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7e00 x) 0)  `@rh`0x7e00  :: sin(NaN) -> NaN
-    ::  map into domain
-    =.  x  (mod x tau)
-    ::  otherwise, use Taylor series
-    =/  p   x
-    =/  po  .~~-2
-    =/  i   1
-    =/  term  x
-    |-  ^-  @rh
-    ?.  (gth (abs term) rtol)
-      p
-    =/  i2  (add (sun i) (sun i))
-    =.  term  (mul (neg term) (div (mul x x) (mul i2 (add i2 .~~1))))
-    $(i +(i), p (add p term), po p)
+    `@rh`(narrow-sh (~(sin rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::    +cos:  @rh -> @rh
   ::
   ::  Returns the cosine of a floating-point atom.
@@ -2727,25 +2727,7 @@
   ::  Source
   ++  cos
     |=  x=@rh  ^-  @rh
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(x 0x7c00)  `@rh`0x7e00  :: cos(+inf) -> NaN
-    ?:  =(x 0xfc00)  `@rh`0x7e00  :: cos(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7e00 x) 0)  `@rh`0x7e00  :: cos(NaN) -> NaN
-    ::  map into domain
-    =.  x  (mod x tau)
-    ::  otherwise, use Taylor series
-    =/  p   .~~1
-    =/  po  .~~-2
-    =/  i   1
-    =/  term  .~~1
-    |-  ^-  @rh
-    ?.  (gth (abs term) rtol)
-      p
-    =/  i2  (add (sun i) (sun i))
-    =.  term  (mul (neg term) (div (mul x x) (mul i2 (sub i2 .~~1))))
-    $(i +(i), p (add p term), po p)
+    `@rh`(narrow-sh (~(cos rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::    +tan:  @rh -> @rh
   ::
   ::  Returns the tangent of a floating-point atom.
@@ -2759,7 +2741,7 @@
   ::  Source
   ++  tan
     |=  x=@rh  ^-  @rh
-    (div (sin x) (cos x))
+    `@rh`(narrow-sh (~(tan rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::  +asin:  @rh -> @rh
   ::
   ::  Returns the inverse sine of a floating-point atom.
@@ -2773,11 +2755,7 @@
   ::
   ++  asin
     |=  x=@rh  ^-  @rh
-    ?.  (gte (abs x) .~~1)
-      (atan (div x (sqt (abs (sub .~~1 (mul x x))))))
-    ?:  =(.~~1 x)   ^~((mul pi .~~0.5))
-    ?:  =(.~~-1 x)  ^~((mul pi .~~-0.5))
-    ~|([%asin-out-of-bounds x] !!)
+    `@rh`(narrow-sh (~(asin rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::  +acos:  @rh -> @rh
   ::
   ::  Returns the inverse cosine of a floating-point atom.
@@ -2791,12 +2769,7 @@
   ::
   ++  acos
     |=  x=@rh  ^-  @rh
-    ?.  (gte (abs x) .~~1)
-      ?:  =(.~~0 x)  ^~((mul pi .~~0.5))
-      (atan (div (sqt (abs (sub .~~1 (mul x x)))) x))
-    ?:  =(.~~1 x)   .~~0
-    ?:  =(.~~-1 x)  pi
-    ~|([%acos-out-of-bounds x] !!)
+    `@rh`(narrow-sh (~(acos rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::  +atan:  @rh -> @rh
   ::
   ::  Returns the inverse tangent of a floating-point atom.
@@ -2810,14 +2783,7 @@
   ::
   ++  atan
     |=  x=@rh  ^-  @rh
-    =/  a  (pow (add .~~1 (mul x x)) .~~-0.5)
-    =/  b  .~~1
-    |-
-    ?.  (gth (abs (sub a b)) rtol)
-      (div x (mul (pow (add .~~1 (mul x x)) .~~0.5) b))
-    =/  ai  (mul .~~0.5 (add a b))
-    =/  bi  (sqt (mul ai b))
-    $(a ai, b bi)
+    `@rh`(narrow-sh (~(atan rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::  +atan2:  [@rh @rh] -> @rh
   ::
   ::  Returns the inverse tangent of a floating-point coordinate.
@@ -2831,17 +2797,7 @@
   ::
   ++  atan2
     |=  [y=@rh x=@rh]  ^-  @rh
-    ?:  (gth x .~~0)
-      (atan (div y x))
-    ?:  &((lth x .~~0) (gte y .~~0))
-      (add (atan (div y x)) pi)
-    ?:  &((lth x .~~0) (lth y .~~0))
-      (sub (atan (div y x)) pi)
-    ?:  &(=(.~~0 x) (gth y .~~0))
-      (div pi .~~2)
-    ?:  &(=(.~~0 x) (lth y .~~0))
-      (mul .~~-1 (div pi .~~2))
-    .~~0  ::  undefined
+    `@rh`(narrow-sh (~(atan2 rs [%n .1e-5]) `@rs`(widen-hs y) `@rs`(widen-hs x)))
   ::    +pow-n:  [@rh @rh] -> @rh
   ::
   ::  Returns the power of a floating-point atom to an integer exponent.
@@ -2855,13 +2811,7 @@
   ::  Source
   ++  pow-n
     |=  [x=@rh n=@rh]  ^-  @rh
-    ?:  =(n .~~0)  .~~1
-    ?>  &((gth n .~~0) (is-int n))
-    =/  p  x
-    |-  ^-  @rh
-    ?:  (lth n .~~2)
-      p
-    $(n (sub n .~~1), p (mul p x))
+    `@rh`(narrow-sh (~(pow-n rs [%n .1e-5]) `@rs`(widen-hs x) `@rs`(widen-hs n)))
   ::    +log:  @rh -> @rh
   ::
   ::  Returns the natural logarithm of a floating-point atom.
@@ -2873,25 +2823,8 @@
   ::      > (~(log rh [%z .~~1e-1]) .~~2)
   ::      .~~0.6904
   ++  log
-    |=  z=@rh  ^-  @rh
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(z 0x7c00)  `@rh`0x7c00  :: exp(+inf) -> inf
-    ?:  =(z 0xfc00)  .~~0.0       :: exp(-inf) -> 0
-    ::    check NaN
-    ?.  (^gte (dis 0x7e00 z) 0)  `@rh`0x7e00  :: exp(NaN) -> NaN
-    ::  otherwise, use Taylor series
-    =/  p   .~~0
-    =/  po  .~~-1
-    =/  i   .~~0
-    |-  ^-  @rh
-    ?:  (lth (abs (sub po p)) rtol)
-      (mul (div (mul .~~2 (sub z .~~1)) (add z .~~1)) p)
-    =/  term1  (div .~~1 (add .~~1 (mul .~~2 i)))
-    =/  term2  (mul (sub z .~~1) (sub z .~~1))
-    =/  term3  (mul (add z .~~1) (add z .~~1))
-    =/  term  (mul term1 (pow-n (div term2 term3) i))
-    $(i (add i .~~1), p (add p term), po p)
+    |=  x=@rh  ^-  @rh
+    `@rh`(narrow-sh (~(log rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::    +log-10:  @rh -> @rh
   ::
   ::  Returns the base-10 logarithm of a floating-point atom.
@@ -2899,8 +2832,8 @@
   ::      TODO
   ::  Source
   ++  log-10
-    |=  z=@rh  ^-  @rh
-    (div (log z) log10)
+    |=  x=@rh  ^-  @rh
+    `@rh`(narrow-sh (~(log-10 rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::    +log-2:  @rh -> @rh
   ::
   ::  Returns the base-2 logarithm of a floating-point atom.
@@ -2908,8 +2841,8 @@
   ::      TODO
   ::  Source
   ++  log-2
-    |=  z=@rh  ^-  @rh
-    (div (log z) log2)
+    |=  x=@rh  ^-  @rh
+    `@rh`(narrow-sh (~(log-2 rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::    +pow:  [@rh @rh] -> @rh
   ::
   ::  Returns the power of a floating-point atom to a floating-point exponent.
@@ -2923,9 +2856,7 @@
   ::  Source
   ++  pow
     |=  [x=@rh n=@rh]  ^-  @rh
-    ::  fall through on positive integers (faster)
-    ?:  &(=(n (san (need (toi n)))) (gth n .~~0))  (pow-n x (san (need (toi n))))
-    (exp (mul n (log x)))
+    `@rh`(narrow-sh (~(pow rs [%n .1e-5]) `@rs`(widen-hs x) `@rs`(widen-hs n)))
   ::    +sqrt:  @rh -> @rh
   ::
   ::  Returns the square root of a floating-point atom.
@@ -2952,14 +2883,7 @@
   ::  Source
   ++  sqt
     |=  x=@rh  ^-  @rh
-    ?>  (sgn x)
-    ?:  =(.~~0 x)  .~~0
-    =/  g=@rh  (div x .~~2)
-    |-
-    =/  n=@rh  (mul .~~0.5 (add g (div x g)))
-    ?.  (gth (abs (sub g n)) rtol)
-      n
-    $(g n)
+    `@rh`(narrow-sh (~(sqt rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::    +cbrt:  @rh -> @rh
   ::
   ::  Returns the cube root of a floating-point atom.
@@ -2986,8 +2910,7 @@
   ::  Source
   ++  cbt
     |=  x=@rh  ^-  @rh
-    ?>  (sgn x)
-    (pow x .~~0.3333)
+    `@rh`(narrow-sh (~(cbt rs [%n .1e-5]) `@rs`(widen-hs x)))
   ::    +arg:  @rh -> @rh
   ::
   ::  Returns the argument of a floating-point atom (real argument = absolute

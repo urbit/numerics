@@ -3368,28 +3368,49 @@
   ::      .~~~inf
   ::  Source
   ++  exp
+    ::  Cody-Waite reduction + degree-24 minimax (f128); round-nearest-even
+    ::  internally (matches the SoftFloat jet, see tools/rq_check.c).
     |=  x=@rq  ^-  @rq
-    ::  filter out non-finite arguments
-    ?:  =(x 0x0)  .~~~1
-    ::    check infinities
-    ?:  =(x 0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000  :: exp(+inf) -> inf
-    ?:  =(x 0xffff.0000.0000.0000.0000.0000.0000.0000)  .~~~0.0      :: exp(-inf) -> 0
-    ::    check NaN
-    ?.  (^gte (dis 0x7fff.8000.0000.0000.0000.0000.0000.0000 x) 0)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000  :: exp(NaN) -> NaN
-    ::    check overflow to infinity
-    =/  o-threshold  `@rq`0x400c.62e4.2fef.a39e.f357.93c7.6730.0601  ::  1.135652340629414394949193107797e4, value above which exp(x) overflows
-    ?:  (gth x o-threshold)  (mul huge huge)
-    ::    check underflow to zero
-    =/  u-threshold  `@rq`0xc00c.62e4.2fef.a39e.f357.93c7.6730.0601  ::  -1.135652340629414394949193107797e4, value below which exp(x) underflows
-    ?:  (lth x u-threshold)  (mul tiny tiny)
-    ::  otherwise, use Taylor series
-    =/  p   .~~~1
-    =/  po  .~~~-1
-    =/  i   .~~~1
-    |-  ^-  @rq
-    ?:  (lth (abs (sub po p)) rtol)
-      p
-    $(i (add i .~~~1), p (add p (div (pow-n x i) (factorial i))), po p)
+    =/  pow2  |=(j=@s `@rq`(lsh [0 112] (abs:si (sum:si j --16.383))))
+    =/  scale2
+      |=  [p=@rq k=@s]  ^-  @rq
+      ?:  (syn:si (dif:si k --16.384))
+        (~(mul ^rq %n) (~(mul ^rq %n) p (pow2 --16.383)) (pow2 (dif:si k --16.383)))
+      ?:  !(syn:si (sum:si k --16.382))
+        (~(mul ^rq %n) (~(mul ^rq %n) p (pow2 (sum:si k --112))) (pow2 -112))
+      (~(mul ^rq %n) p (pow2 k))
+    ?:  !(~(equ ^rq %n) x x)    `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  =(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+    ?:  =(x `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x0
+    =/  log2e  `@rq`0x3fff.7154.7652.b82f.e177.7d0f.fda0.d23a
+    =/  ln2hi  `@rq`0x3ffe.62e4.2fef.a39e.f357.93c8.0000.0000
+    =/  ln2lo  `@rq`0xbfad.319f.f034.2542.fc32.f366.359d.274a
+    =/  k=@s   (need (~(toi ^rq %n) (~(mul ^rq %n) x log2e)))
+    ?:  (syn:si (dif:si k --16.385))    `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+    ?:  !(syn:si (sum:si k --16.494))  `@rq`0x0
+    =/  ka  (~(sun ^rq %n) (abs:si k))
+    =/  kf  ?:((syn:si k) ka (~(sub ^rq %n) `@rq`0x0 ka))
+    =/  r
+      %-  ~(sub ^rq %n)
+      :-  (~(sub ^rq %n) x (~(mul ^rq %n) kf ln2hi))
+      (~(mul ^rq %n) kf ln2lo)
+    =/  cs=(list @rq)
+      :~  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
+          `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000  `@rq`0x3ffc.5555.5555.5555.5555.5555.5555.5555
+          `@rq`0x3ffa.5555.5555.5555.5555.5555.5555.5555  `@rq`0x3ff8.1111.1111.1111.1111.1111.1111.1111
+          `@rq`0x3ff5.6c16.c16c.16c1.6c16.c16c.16c1.6c17  `@rq`0x3ff2.a01a.01a0.1a01.a01a.01a0.1a01.a3e8
+          `@rq`0x3fef.a01a.01a0.1a01.a01a.01a0.1a01.a146  `@rq`0x3fec.71de.3a55.6c73.38fa.ac1c.88a5.a526
+          `@rq`0x3fe9.27e4.fb77.89f5.c72e.f016.d3d6.e867  `@rq`0x3fe5.ae64.567f.544e.38fe.7483.63c4.6e8b
+          `@rq`0x3fe2.1eed.8eff.8d89.7b54.4dab.18f4.75c5  `@rq`0x3fde.6124.613a.86d0.97c9.f3ae.babb.2423
+          `@rq`0x3fda.9397.4a8c.07c9.d20b.83c7.f94d.17d8  `@rq`0x3fd6.ae7f.3e73.3b81.f5f4.284f.0d74.f9e7
+          `@rq`0x3fd2.ae7f.3e73.3b81.f417.b4d2.7c5f.92a9  `@rq`0x3fce.952c.7703.0a99.6a41.9e67.4779.c97c
+          `@rq`0x3fca.6827.863b.97b5.0466.ff8c.8b42.b3df  `@rq`0x3fc6.2f49.b469.f892.874b.7a68.6d81.9241
+          `@rq`0x3fc1.e542.ba42.7463.bb3b.32a1.1bb5.f139  `@rq`0x3fbd.71b8.db9f.7f73.c938.90ff.9ab5.5cbb
+          `@rq`0x3fb9.0ce3.8aab.7bd7.6efc.0717.eae7.85a1  `@rq`0x3fb4.7693.274b.ab2a.cb3f.4f7e.dfaa.2666
+          `@rq`0x3faf.f362.9154.e0a7.61cb.0e23.655d.47cb
+      ==
+    =/  p  (roll (flop cs) |=([c=@rq acc=@rq] (~(add ^rq %n) (~(mul ^rq %n) acc r) c)))
+    (scale2 p k)
   ::    +sin:  @rq -> @rq
   ::
   ::  Returns the sine of a floating-point atom.

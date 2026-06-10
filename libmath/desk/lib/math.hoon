@@ -3603,25 +3603,48 @@
   ::      .~~~inf
   ::  Source
   ++  log
-    |=  z=@rq  ^-  @rq
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(z 0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000  :: exp(+inf) -> inf
-    ?:  =(z 0xffff.0000.0000.0000.0000.0000.0000.0000)  .~~~0.0      :: exp(-inf) -> 0
-    ::    check NaN
-    ?.  (^gte (dis 0x7fff.8000.0000.0000.0000.0000.0000.0000 z) 0)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000  :: exp(NaN) -> NaN
-    ::  otherwise, use Taylor series
-    =/  p   .~~~0
-    =/  po  .~~~-1
-    =/  i   .~~~0
-    |-  ^-  @rq
-    ?:  (lth (abs (sub po p)) rtol)
-      (mul (div (mul .~~~2 (sub z .~~~1)) (add z .~~~1)) p)
-    =/  term1  (div .~~~1 (add .~~~1 (mul .~~~2 i)))
-    =/  term2  (mul (sub z .~~~1) (sub z .~~~1))
-    =/  term3  (mul (add z .~~~1) (add z .~~~1))
-    =/  term  (mul term1 (pow-n (div term2 term3) i))
-    $(i (add i .~~~1), p (add p term), po p)
+    ::  x = 2^e * m reduction + atanh series (fdlibm f - s*(f-R)); f128.
+    ::  Round-nearest-even internally (matches tools/rq_check.c).
+    |=  x=@rq  ^-  @rq
+    ?:  !(~(equ ^rq %n) x x)    `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  =(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+    ?:  |(=(x `@rq`0x0) =(x `@rq`0x8000.0000.0000.0000.0000.0000.0000.0000))  `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000
+    ?:  =(1 (rsh [0 127] x))  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    =/  sub  =(0 (dis 0x7fff (rsh [0 112] x)))
+    =/  xx   ?:(sub (~(mul ^rq %n) x `@rq`0x4077.0000.0000.0000.0000.0000.0000.0000) x)
+    =/  ae   ?:(sub -120 --0)
+    =/  b    `@`xx
+    =/  e    (dif:si (new:si %.y (dis 0x7fff (rsh [0 112] b))) --16.383)
+    =/  m    `@rq`(con (dis b 0xffff.ffff.ffff.ffff.ffff.ffff.ffff) 0x3fff.0000.0000.0000.0000.0000.0000.0000)
+    =/  big  (~(gte ^rq %n) m `@rq`0x3fff.6a09.e667.f3bc.c908.b2fb.1366.ea95)
+    =?  m    big  (~(mul ^rq %n) m `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000)
+    =?  e    big  (sum:si e --1)
+    =.  e    (sum:si e ae)
+    =/  f    (~(sub ^rq %n) m `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000)
+    =/  s    (~(div ^rq %n) f (~(add ^rq %n) m `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000))
+    =/  z    (~(mul ^rq %n) s s)
+    =/  cs=(list @rq)
+      :~  `@rq`0x3ffd.5555.5555.5555.5555.5555.5555.5555  `@rq`0x3ffc.9999.9999.9999.9999.9999.9999.999a
+          `@rq`0x3ffc.2492.4924.9249.2492.4924.9249.2492  `@rq`0x3ffb.c71c.71c7.1c71.c71c.71c7.1c71.c71c
+          `@rq`0x3ffb.745d.1745.d174.5d17.45d1.745d.1746  `@rq`0x3ffb.3b13.b13b.13b1.3b13.b13b.13b1.3b14
+          `@rq`0x3ffb.1111.1111.1111.1111.1111.1111.1111  `@rq`0x3ffa.e1e1.e1e1.e1e1.e1e1.e1e1.e1e1.e1e2
+          `@rq`0x3ffa.af28.6bca.1af2.86bc.a1af.286b.ca1b  `@rq`0x3ffa.8618.6186.1861.8618.6186.1861.8618
+          `@rq`0x3ffa.642c.8590.b216.42c8.590b.2164.2c86  `@rq`0x3ffa.47ae.147a.e147.ae14.7ae1.47ae.147b
+          `@rq`0x3ffa.2f68.4bda.12f6.84bd.a12f.684b.da13  `@rq`0x3ffa.1a7b.9611.a7b9.611a.7b96.11a7.b961
+          `@rq`0x3ffa.0842.1084.2108.4210.8421.0842.1084  `@rq`0x3ff9.f07c.1f07.c1f0.7c1f.07c1.f07c.1f08
+          `@rq`0x3ff9.d41d.41d4.1d41.d41d.41d4.1d41.d41d  `@rq`0x3ff9.bacf.914c.1bac.f914.c1ba.cf91.4c1c
+          `@rq`0x3ff9.a41a.41a4.1a41.a41a.41a4.1a41.a41a  `@rq`0x3ff9.8f9c.18f9.c18f.9c18.f9c1.8f9c.18fa
+          `@rq`0x3ff9.7d05.f417.d05f.417d.05f4.17d0.5f41  `@rq`0x3ff9.6c16.c16c.16c1.6c16.c16c.16c1.6c17
+          `@rq`0x3ff9.5c98.82b9.3105.7262.0ae4.c415.c988
+      ==
+    =/  p2  (roll (flop cs) |=([c=@rq acc=@rq] (~(add ^rq %n) (~(mul ^rq %n) acc z) c)))
+    =/  r   (~(mul ^rq %n) (~(add ^rq %n) z z) p2)
+    =/  l1  (~(sub ^rq %n) f (~(mul ^rq %n) s (~(sub ^rq %n) f r)))
+    =/  efa   (~(sun ^rq %n) (abs:si e))
+    =/  ef    ?:((syn:si e) efa (~(sub ^rq %n) `@rq`0x0 efa))
+    =/  hi  (~(mul ^rq %n) ef `@rq`0x3ffe.62e4.2fef.a39e.f357.93c8.0000.0000)
+    =/  lo  (~(mul ^rq %n) ef `@rq`0xbfad.319f.f034.2542.fc32.f366.359d.274a)
+    (~(add ^rq %n) hi (~(add ^rq %n) l1 lo))
   ::    +log-10:  @rq -> @rq
   ::
   ::  Returns the base-10 logarithm of a floating-point atom.

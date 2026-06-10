@@ -518,10 +518,171 @@ def check_atan_rs():
              "0x7fc00000" if x!=x else hexs(x)
         print(f"  atan({name:>5}) -> {hexs(o):>12}   in={ib}")
 
+# ============================ asin @rd ============================
+#  fdlibm e_asin: |x|<0.5 rational x+x*R(x^2); |x| in [0.5,1) via t=(1-|x|)/2,
+#  s=sqrt(t), asin = pi/2 - 2*(s + s*R(t)).  R = P/Q (pS/qS coeffs).
+PS = [f64(s) for s in ['1.66666666666666657415e-01','-3.25565818622400915405e-01',
+    '2.01212532134862925881e-01','-4.00555345006794114027e-02',
+    '7.91534994289814532176e-04','3.47933107596021167570e-05']]
+QS = [f64(s) for s in ['-2.40339491173441421878e+00','2.02094576023350569471e+00',
+    '-6.88283971605453293030e-01','7.70381505559019352791e-02']]
+PIO2_H = f64(mp.pi/2); PIO2_L = f64(mp.pi/2 - mp.mpf(PIO2_H)); PIO4_H = f64(mp.pi/4)
+ASIN_THRESH = of_bits(0x3fef333300000000)      # ~0.975 (fdlibm high-word cut)
+
+def asin_R(t):                                 # P(t)/Q(t)
+    p = f64(t * horner(PS, t))
+    q = f64(ONE + f64(t * horner(QS, t)))
+    return f64(p / q)
+def asin_f64(x):
+    x = f64(x)
+    if x != x: return float('nan')
+    ax = f64(abs(x)); sgn = bits(x) >> 63
+    if ax > ONE: return float('nan')
+    if ax == ONE:
+        return f64(f64(x * PIO2_H) + f64(x * PIO2_L))    # +-pi/2 with sign of x
+    if ax < 0.5:
+        if ax < 1.49e-8: return x                        # |x|<2^-26: asin(x)=x
+        t = f64(x * x)
+        return f64(x + f64(x * asin_R(t)))
+    w = f64(ONE - ax); t = f64(w * 0.5)
+    r = asin_R(t); s = f64(math.sqrt(t))
+    if ax >= ASIN_THRESH:                                # near 1: simple form
+        res = f64(PIO2_H - f64(f64(2.0 * f64(s + f64(s * r))) - PIO2_L))
+    else:                                                # head/tail recovers low bits of s
+        df = of_bits(bits(s) & 0xffffffff00000000)
+        c  = f64(f64(t - f64(df * df)) / f64(s + df))
+        p2 = f64(f64(2.0 * f64(s * r)) - f64(PIO2_L - f64(2.0 * c)))
+        q2 = f64(PIO4_H - f64(2.0 * df))
+        res = f64(PIO4_H - f64(p2 - q2))
+    return f64(-res) if sgn else res
+
+PI_H = f64(mp.pi)
+def acos_f64(x):                               # fdlibm e_acos
+    x = f64(x)
+    if x != x: return float('nan')
+    ax = f64(abs(x)); neg = bits(x) >> 63
+    if ax > ONE: return float('nan')
+    if ax == ONE:
+        return 0.0 if not neg else f64(PI_H + f64(2.0 * PIO2_L))   # acos(1)=0, acos(-1)=pi
+    if ax < 0.5:
+        if ax < 6.94e-18: return PIO2_H                            # |x|<2^-57
+        z = f64(x * x); r = asin_R(z)
+        return f64(PIO2_H - f64(x - f64(PIO2_L - f64(x * r))))
+    if neg:                                                        # x <= -0.5
+        z = f64(f64(ONE + x) * 0.5); s = f64(math.sqrt(z)); r = asin_R(z)
+        w = f64(f64(r * s) - PIO2_L)
+        return f64(PI_H - f64(2.0 * f64(s + w)))
+    z = f64(f64(ONE - x) * 0.5); s = f64(math.sqrt(z))             # x >= 0.5
+    df = of_bits(bits(s) & 0xffffffff00000000)
+    c  = f64(f64(z - f64(df * df)) / f64(s + df))
+    r  = asin_R(z); w = f64(f64(r * s) + c)
+    return f64(2.0 * f64(df + w))
+
+def check_acos():
+    print("# acos @rd: fdlibm rational kernel (shares asin P/Q)")
+    worst = 0.0; xw = None
+    for t in range(-1000000, 1000001, 3):
+        x = f64(mp.mpf(t) / 1000000)
+        got = acos_f64(x); tr = mp.acos(mp.mpf(x))
+        if abs(tr) < 1e-12 or not math.isfinite(got): continue
+        e = abs(ulps(got, tr))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in [-1,1]: {worst:.3f} ULP  at x={xw}")
+    for x in [0.0, 0.5, 1.0, -1.0, 0.25, 0.75, 0.9, -0.6, -0.9, 0.1]:
+        print(f"  acos({x}) -> {hexd(acos_f64(x))}   in={hexd(x)}")
+    for name, x in [('nan', float('nan')), ('1.5', 1.5), ('-2', -2.0)]:
+        print(f"  acos({name}) -> {hexd(acos_f64(x))}")
+
+def check_asin():
+    print("# asin @rd: fdlibm rational kernel")
+    print("PS: " + " ".join(hexd(c) for c in PS))
+    print("QS: " + " ".join(hexd(c) for c in QS))
+    print(f"PIO2_H={hexd(PIO2_H)} PIO2_L={hexd(PIO2_L)}")
+    worst = 0.0; xw = None
+    for t in range(-1000000, 1000001, 3):
+        x = f64(mp.mpf(t) / 1000000)
+        got = asin_f64(x); tr = mp.asin(mp.mpf(x))
+        if abs(tr) < 1e-12 or not math.isfinite(got): continue
+        e = abs(ulps(got, tr))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in [-1,1]: {worst:.3f} ULP  at x={xw}")
+    for x in [0.0, 0.5, 1.0, -1.0, 0.25, 0.75, 0.9, 0.99, -0.6, 0.1]:
+        print(f"  asin({x}) -> {hexd(asin_f64(x))}   in={hexd(x)}")
+    for name, x in [('nan', float('nan')), ('-0', -0.0), ('1.5', 1.5), ('-2', -2.0)]:
+        print(f"  asin({name}) -> {hexd(asin_f64(x))}")
+
+# ============================ asin/acos @rs ============================
+PS_S = [f32(s) for s in ['1.6666586697e-01','-4.2743422091e-02','-8.6563630030e-03']]
+QS1_S = f32('-7.0662963390e-01')
+PIO2_HS = f32(mp.pi/2); PIO2_LS = f32(mp.pi/2 - mp.mpf(PIO2_HS)); PI_HS = f32(mp.pi)
+PIO4_HS = f32(mp.pi/4)
+def asin_R32(t):
+    p = f32(t * horner32(PS_S, t))
+    q = f32(1.0 + f32(t * QS1_S))
+    return f32(p / q)
+def asin_f32(x):
+    x = f32(x)
+    if x != x: return float('nan')
+    ax = f32(abs(x)); sgn = bits32(x) >> 31
+    if ax > 1.0: return float('nan')
+    if ax == 1.0: return f32(f32(x * PIO2_HS) + f32(x * PIO2_LS))
+    if ax < 0.5:
+        if ax < 2.44e-4: return x
+        return f32(x + f32(x * asin_R32(f32(x * x))))
+    w = f32(1.0 - ax); t = f32(w * 0.5)
+    s = f32(math.sqrt(t)); r = asin_R32(t)
+    if ax >= 0.975:
+        res = f32(PIO2_HS - f32(2.0 * f32(s + f32(s * r))))
+    else:
+        df = of_bits32(bits32(s) & 0xfffff000)
+        c  = f32(f32(t - f32(df * df)) / f32(s + df))
+        p2 = f32(f32(2.0 * f32(s * r)) - f32(PIO2_LS - f32(2.0 * c)))
+        q2 = f32(PIO4_HS - f32(2.0 * df))
+        res = f32(PIO4_HS - f32(p2 - q2))
+    return f32(-res) if sgn else res
+def acos_f32(x):
+    x = f32(x)
+    if x != x: return float('nan')
+    ax = f32(abs(x)); neg = bits32(x) >> 31
+    if ax > 1.0: return float('nan')
+    if ax == 1.0: return 0.0 if not neg else f32(PI_HS + f32(2.0 * PIO2_LS))
+    if ax < 0.5:
+        if ax < 1.49e-8: return PIO2_HS                # |x| < 2^-26
+        z = f32(x * x); r = asin_R32(z)
+        return f32(PIO2_HS - f32(x - f32(PIO2_LS - f32(x * r))))
+    if neg:
+        z = f32(f32(1.0 + x) * 0.5); s = f32(math.sqrt(z)); r = asin_R32(z)
+        w = f32(f32(r * s) - PIO2_LS)
+        return f32(PI_HS - f32(2.0 * f32(s + w)))
+    z = f32(f32(1.0 - x) * 0.5); s = f32(math.sqrt(z)); r = asin_R32(z)
+    w = f32(f32(r * s) + 0.0)                      # f32: no head/tail split
+    # use simple form: acos = 2*asin(sqrt((1-x)/2)) = 2*(s + s*r)
+    return f32(2.0 * f32(s + f32(s * r)))
+
+def check_ainv_rs(which):
+    fn = asin_f32 if which == 'asin' else acos_f32
+    tru = mp.asin if which == 'asin' else mp.acos
+    print(f"# {which} @rs: fdlibm rational kernel (f32)")
+    if which == 'asin':
+        print("PS: " + " ".join(hexs(c) for c in PS_S) + "  QS1: " + hexs(QS1_S))
+        print(f"PIO2_H={hexs(PIO2_HS)} PIO2_L={hexs(PIO2_LS)} PI_H={hexs(PI_HS)}")
+    worst = 0.0; xw = None
+    for t in range(-1000000, 1000001, 7):
+        x = f32(mp.mpf(t) / 1000000); got = fn(x); tr = tru(mp.mpf(x))
+        if abs(tr) < 1e-7 or not math.isfinite(got): continue
+        e = abs(ulps32(got, tr))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in [-1,1]: {worst:.3f} ULP  at x={xw}")
+    for x in [0.0, 0.5, 1.0, -1.0, 0.25, 0.75, 0.9, -0.6, 0.1]:
+        print(f"  {which}({x}) -> {hexs(fn(x))}   in={hexs(x)}")
+    for name, x in [('nan', float('nan')), ('1.5', 1.5)]:
+        print(f"  {which}({name}) -> {hexs(fn(x))}")
+
 if __name__ == '__main__':
     fn = sys.argv[1] if len(sys.argv) > 1 else 'exp'
     {'exp': check_exp, 'exp-rs': check_exp_rs,
      'log': check_log, 'log-rs': check_log_rs,
      'sin': lambda: check_trig('sin'), 'cos': lambda: check_trig('cos'),
      'sin-rs': lambda: check_trig_rs('sin'), 'cos-rs': lambda: check_trig_rs('cos'),
-     'atan': check_atan, 'atan-rs': check_atan_rs}[fn]()
+     'atan': check_atan, 'atan-rs': check_atan_rs, 'asin': check_asin, 'acos': check_acos,
+     'asin-rs': lambda: check_ainv_rs('asin'), 'acos-rs': lambda: check_ainv_rs('acos')}[fn]()

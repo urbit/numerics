@@ -3423,26 +3423,88 @@
   ::    .~~~2.4143733100361875441251426417684949e-23
   ::  Source
   ++  sin
+    ::  q*pi/2 reduction + fdlibm kernels (f128); see +rq-trig.
     |=  x=@rq  ^-  @rq
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(x 0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000  :: sin(+inf) -> NaN
-    ?:  =(x 0xffff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000  :: sin(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7fff.8000.0000.0000.0000.0000.0000.0000 x) 0)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000  :: sin(NaN) -> NaN
-    ::  map into domain
-    =.  x  (mod x tau)
-    ::  otherwise, use Taylor series
-    =/  p   x
-    =/  po  .~~~-2
-    =/  i   1
-    =/  term  x
-    |-  ^-  @rq
-    ?.  (gth (abs term) rtol)
-      p
-    =/  i2  (add (sun i) (sun i))
-    =.  term  (mul (neg term) (div (mul x x) (mul i2 (add i2 .~~~1))))
-    $(i +(i), p (add p term), po p)
+    ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  |(=(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000) =(x `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000))  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  |(=(x `@rq`0x0) =(x `@rq`0x8000.0000.0000.0000.0000.0000.0000.0000))  x
+    %-  trig-fin:rq-trig
+    [%.y `@rq`(dis x 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff) (rsh [0 127] x)]
+  ++  rq-trig
+    |%
+    ++  sc
+      ^-  (list @rq)
+      :~  `@rq`0xbffc.5555.5555.5555.5555.5555.5555.5555
+          `@rq`0x3ff8.1111.1111.1111.1111.1111.1111.1111
+          `@rq`0xbff2.a01a.01a0.1a01.a01a.01a0.1a01.a01a
+          `@rq`0x3fec.71de.3a55.6c73.38fa.ac1c.88e5.0017
+          `@rq`0xbfe5.ae64.567f.544e.38fe.747e.4b83.7dc7
+          `@rq`0x3fde.6124.613a.86d0.97ca.3833.1d23.af68
+          `@rq`0xbfd6.ae7f.3e73.3b81.f11d.8656.b0ee.8cb0
+          `@rq`0x3fce.952c.7703.0ad4.a6b2.6051.9777.1b00
+          `@rq`0xbfc6.2f49.b468.1415.724c.a1ec.3b7b.9675
+          `@rq`0x3fbd.71b8.ef6d.cf57.18be.f146.fcee.6e45
+          `@rq`0xbfb4.761b.4131.6381.9d97.b870.4dd7.f628
+          `@rq`0x3fab.3f3c.cdd1.65fa.8d4e.44a4.1977.6f11
+          `@rq`0xbfa1.d1ab.1c2d.ccea.320a.9a18.f15d.4277
+          `@rq`0x3f98.259f.98b4.358a.d7ab.e30e.7766.f129
+          `@rq`0xbf8e.434d.2e78.3f5b.c42e.1ee4.6fa6.bfc4
+          `@rq`0x3f84.3981.254d.d0d5.1b53.82cd.ffa9.7422
+      ==
+    ++  cc
+      ^-  (list @rq)
+      :~  `@rq`0x3ffa.5555.5555.5555.5555.5555.5555.5555
+          `@rq`0xbff5.6c16.c16c.16c1.6c16.c16c.16c1.6c17
+          `@rq`0x3fef.a01a.01a0.1a01.a01a.01a0.1a01.a01a
+          `@rq`0xbfe9.27e4.fb77.89f5.c72e.f016.d3ea.6679
+          `@rq`0x3fe2.1eed.8eff.8d89.7b54.4da9.87ac.fe85
+          `@rq`0xbfda.9397.4a8c.07c9.d20b.adf1.45df.a3e5
+          `@rq`0x3fd2.ae7f.3e73.3b81.f11d.8656.b0ee.8cb0
+          `@rq`0xbfca.6827.863b.97d9.77bb.0048.86a2.c2ab
+          `@rq`0x3fc1.e542.ba40.2022.507a.9cad.2bf8.f0bb
+          `@rq`0xbfb9.0ce3.96db.7f85.2945.0c90.b7f3.38ec
+          `@rq`0x3faf.f2cf.0197.2f57.7cca.4b40.67ca.9d8a
+          `@rq`0xbfa6.88e8.5fc6.a4e5.9a38.f205.0ba6.b015
+          `@rq`0x3f9d.0a18.a263.5085.d373.c5c5.1c35.4a8d
+          `@rq`0xbf93.3932.c504.7d60.e60c.aded.4c29.89c5
+          `@rq`0x3f89.434d.2e78.3f5b.c42e.1ee4.6fa6.bfc4
+          `@rq`0xbf7f.2710.231c.0fd7.a13f.8a2b.4af9.d6b7
+      ==
+    ++  neg  |=(a=@rq ^-(@rq (~(sub ^rq %n) `@rq`0x0 a)))
+    ++  ksin
+      |=  [xx=@rq yy=@rq]  ^-  @rq
+      =/  z   (~(mul ^rq %n) xx xx)
+      =/  r   (roll (flop (tail sc)) |=([c=@rq a=@rq] (~(add ^rq %n) (~(mul ^rq %n) a z) c)))
+      =/  v   (~(mul ^rq %n) z xx)
+      =/  aa  (~(sub ^rq %n) (~(mul ^rq %n) `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000 yy) (~(mul ^rq %n) v r))
+      =/  bb  (~(sub ^rq %n) (~(mul ^rq %n) z aa) yy)
+      =/  dd  (~(sub ^rq %n) bb (~(mul ^rq %n) v (head sc)))
+      (~(sub ^rq %n) xx dd)
+    ++  kcos
+      |=  [xx=@rq yy=@rq]  ^-  @rq
+      =/  z   (~(mul ^rq %n) xx xx)
+      =/  rc  (roll (flop cc) |=([c=@rq a=@rq] (~(add ^rq %n) (~(mul ^rq %n) a z) c)))
+      =/  hz  (~(mul ^rq %n) `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000 z)
+      =/  w2  (~(sub ^rq %n) `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000 hz)
+      =/  aa  (~(sub ^rq %n) (~(sub ^rq %n) `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000 w2) hz)
+      =/  bb  (~(sub ^rq %n) (~(mul ^rq %n) (~(mul ^rq %n) z z) rc) (~(mul ^rq %n) xx yy))
+      (~(add ^rq %n) w2 (~(add ^rq %n) aa bb))
+    ++  trig-fin
+      |=  [s=? ax=@rq sb=@]  ^-  @rq
+      =/  q   (need (~(toi ^rq %n) (~(mul ^rq %n) ax `@rq`0x3ffe.45f3.06dc.9c88.2a53.f84e.afa3.ea6a)))
+      =/  qf  (~(sun ^rq %n) (abs:si q))
+      =/  t   (~(sub ^rq %n) ax (~(mul ^rq %n) qf `@rq`0x3fff.921f.b544.42d1.8460.0000.0000.0000))
+      =/  w   (~(mul ^rq %n) qf `@rq`0x3fc2.3131.98a2.e037.0734.4a40.9382.229a)
+      =/  rhi  (~(sub ^rq %n) t w)
+      =/  rlo  (~(sub ^rq %n) (~(sub ^rq %n) t rhi) w)
+      =/  m   (dis (abs:si q) 3)
+      =/  ks  (ksin rhi rlo)
+      =/  kc  (kcos rhi rlo)
+      ?:  s
+        =/  v  ?:(=(m 0) ks ?:(=(m 1) kc ?:(=(m 2) (neg ks) (neg kc))))
+        ?:(=(sb 1) (neg v) v)
+      ?:(=(m 0) kc ?:(=(m 1) (neg ks) ?:(=(m 2) (neg kc) ks)))
+    --
   ::    +cos:  @rq -> @rq
   ::
   ::  Returns the cosine of a floating-point atom.
@@ -3456,25 +3518,10 @@
   ::  Source
   ++  cos
     |=  x=@rq  ^-  @rq
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(x 0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000  :: cos(+inf) -> NaN
-    ?:  =(x 0xffff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000  :: cos(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7fff.8000.0000.0000.0000.0000.0000.0000 x) 0)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000  :: cos(NaN) -> NaN
-    ::  map into domain
-    =.  x  (mod x tau)
-    ::  otherwise, use Taylor series
-    =/  p   .~~~1
-    =/  po  .~~~-2
-    =/  i   1
-    =/  term  .~~~1
-    |-  ^-  @rq
-    ?.  (gth (abs term) rtol)
-      p
-    =/  i2  (add (sun i) (sun i))
-    =.  term  (mul (neg term) (div (mul x x) (mul i2 (sub i2 .~~~1))))
-    $(i +(i), p (add p term), po p)
+    ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  |(=(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000) =(x `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000))  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    %-  trig-fin:rq-trig
+    [%.n `@rq`(dis x 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff) 0]
   ::    +tan:  @rq -> @rq
   ::
   ::  Returns the tangent of a floating-point atom.
@@ -3704,15 +3751,17 @@
   ::      .~~~316.2277660168379331998893544432718
   ::  Source
   ++  sqt
+    ::  correctly-rounded f128 sqrt: stdlib seed + one Markstein FMA (matches
+    ::  the SoftFloat f128_sqrt jet, tools/rq_check.c).
     |=  x=@rq  ^-  @rq
-    ?>  (sgn x)
-    ?:  =(.~~~0 x)  .~~~0
-    =/  g=@rq  (div x .~~~2)
-    |-
-    =/  n=@rq  (mul .~~~0.5 (add g (div x g)))
-    ?.  (gth (abs (sub g n)) rtol)
-      n
-    $(g n)
+    ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  =(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+    ?:  |(=(x `@rq`0x0) =(x `@rq`0x8000.0000.0000.0000.0000.0000.0000.0000))  x
+    ?:  =(1 (rsh [0 127] x))  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    =/  g  (sqt:^rq x)
+    =/  h  (~(div ^rq %n) `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000 g)
+    =/  r  (~(fma ^rq %n) (~(sub ^rq %n) `@rq`0x0 g) g x)
+    (~(fma ^rq %n) h r g)
   ::    +cbrt:  @rq -> @rq
   ::
   ::  Returns the cube root of a floating-point atom.

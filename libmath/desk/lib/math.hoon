@@ -3629,13 +3629,12 @@
   ::  Source
   ++  pow-n
     |=  [x=@rq n=@rq]  ^-  @rq
-    ?:  =(n .~~~0)  .~~~1
-    ?>  &((gth n .~~~0) (is-int n))
-    =/  p  x
+    ?:  =(n `@rq`0x0)  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
+    =/  i  (need (~(toi ^rq %n) n))
+    =/  p  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
     |-  ^-  @rq
-    ?:  (lth n .~~~2)
-      p
-    $(n (sub n .~~~1), p (mul p x))
+    ?:  =(i --0)  p
+    $(i (dif:si i --1), p (~(mul ^rq %n) p x))
   ::    +log:  @rq -> @rq
   ::
   ::  Returns the natural logarithm of a floating-point atom.
@@ -3699,17 +3698,62 @@
   ::      TODO
   ::  Source
   ++  log-10
-    |=  z=@rq  ^-  @rq
-    (div (log z) log10)
+    |=  x=@rq  ^-  @rq
+    ?:  !(~(equ ^rq %n) x x)    `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  =(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+    ?:  |(=(x `@rq`0x0) =(x `@rq`0x8000.0000.0000.0000.0000.0000.0000.0000))  `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000
+    ?:  =(1 (rsh [0 127] x))  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    =/  el  (lr x)
+    (~(add ^rq %n) (~(mul ^rq %n) ef.el `@rq`0x3ffd.3441.3509.f79f.ef31.1f12.b358.16f9) (~(mul ^rq %n) lm.el `@rq`0x3ffd.bcb7.b152.6e50.e32a.6ab7.555f.5a68))
   ::    +log-2:  @rq -> @rq
   ::
   ::  Returns the base-2 logarithm of a floating-point atom.
   ::    Examples
   ::      TODO
   ::  Source
+  ::  +lr: log reduction for finite positive @rq x -> [e (as @rq), log(mantissa)].
+  ++  lr
+    |=  x=@rq  ^-  [ef=@rq lm=@rq]
+    =/  sub  =(0 (dis 0x7fff (rsh [0 112] x)))
+    =/  xx   ?:(sub (~(mul ^rq %n) x `@rq`0x4077.0000.0000.0000.0000.0000.0000.0000) x)
+    =/  ae   ?:(sub -120 --0)
+    =/  b    `@`xx
+    =/  e    (dif:si (new:si %.y (dis 0x7fff (rsh [0 112] b))) --16.383)
+    =/  m    `@rq`(con (dis b 0xffff.ffff.ffff.ffff.ffff.ffff.ffff) 0x3fff.0000.0000.0000.0000.0000.0000.0000)
+    =/  big  (~(gte ^rq %n) m `@rq`0x3fff.6a09.e667.f3bc.c908.b2fb.1366.ea95)
+    =?  m    big  (~(mul ^rq %n) m `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000)
+    =?  e    big  (sum:si e --1)
+    =.  e    (sum:si e ae)
+    =/  f    (~(sub ^rq %n) m `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000)
+    =/  s    (~(div ^rq %n) f (~(add ^rq %n) m `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000))
+    =/  z    (~(mul ^rq %n) s s)
+    =/  cs=(list @rq)
+      :~  `@rq`0x3ffd.5555.5555.5555.5555.5555.5555.5555  `@rq`0x3ffc.9999.9999.9999.9999.9999.9999.999a
+          `@rq`0x3ffc.2492.4924.9249.2492.4924.9249.2492  `@rq`0x3ffb.c71c.71c7.1c71.c71c.71c7.1c71.c71c
+          `@rq`0x3ffb.745d.1745.d174.5d17.45d1.745d.1746  `@rq`0x3ffb.3b13.b13b.13b1.3b13.b13b.13b1.3b14
+          `@rq`0x3ffb.1111.1111.1111.1111.1111.1111.1111  `@rq`0x3ffa.e1e1.e1e1.e1e1.e1e1.e1e1.e1e1.e1e2
+          `@rq`0x3ffa.af28.6bca.1af2.86bc.a1af.286b.ca1b  `@rq`0x3ffa.8618.6186.1861.8618.6186.1861.8618
+          `@rq`0x3ffa.642c.8590.b216.42c8.590b.2164.2c86  `@rq`0x3ffa.47ae.147a.e147.ae14.7ae1.47ae.147b
+          `@rq`0x3ffa.2f68.4bda.12f6.84bd.a12f.684b.da13  `@rq`0x3ffa.1a7b.9611.a7b9.611a.7b96.11a7.b961
+          `@rq`0x3ffa.0842.1084.2108.4210.8421.0842.1084  `@rq`0x3ff9.f07c.1f07.c1f0.7c1f.07c1.f07c.1f08
+          `@rq`0x3ff9.d41d.41d4.1d41.d41d.41d4.1d41.d41d  `@rq`0x3ff9.bacf.914c.1bac.f914.c1ba.cf91.4c1c
+          `@rq`0x3ff9.a41a.41a4.1a41.a41a.41a4.1a41.a41a  `@rq`0x3ff9.8f9c.18f9.c18f.9c18.f9c1.8f9c.18fa
+          `@rq`0x3ff9.7d05.f417.d05f.417d.05f4.17d0.5f41  `@rq`0x3ff9.6c16.c16c.16c1.6c16.c16c.16c1.6c17
+          `@rq`0x3ff9.5c98.82b9.3105.7262.0ae4.c415.c988
+      ==
+    =/  p2  (roll (flop cs) |=([c=@rq acc=@rq] (~(add ^rq %n) (~(mul ^rq %n) acc z) c)))
+    =/  r   (~(mul ^rq %n) (~(add ^rq %n) z z) p2)
+    =/  l1  (~(sub ^rq %n) f (~(mul ^rq %n) s (~(sub ^rq %n) f r)))
+    =/  efa  (~(sun ^rq %n) (abs:si e))
+    [?:((syn:si e) efa (~(sub ^rq %n) `@rq`0x0 efa)) l1]
   ++  log-2
-    |=  z=@rq  ^-  @rq
-    (div (log z) log2)
+    |=  x=@rq  ^-  @rq
+    ?:  !(~(equ ^rq %n) x x)    `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  =(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
+    ?:  |(=(x `@rq`0x0) =(x `@rq`0x8000.0000.0000.0000.0000.0000.0000.0000))  `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000
+    ?:  =(1 (rsh [0 127] x))  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    =/  el  (lr x)
+    (~(add ^rq %n) ef.el (~(mul ^rq %n) lm.el `@rq`0x3fff.7154.7652.b82f.e177.7d0f.fda0.d23a))
   ::    +pow:  [@rq @rq] -> @rq
   ::
   ::  Returns the power of a floating-point atom to a floating-point exponent.
@@ -3723,9 +3767,9 @@
   ::  Source
   ++  pow
     |=  [x=@rq n=@rq]  ^-  @rq
-    ::  fall through on positive integers (faster)
-    ?:  &(=(n (san (need (toi n)))) (gth n .~~~0))  (pow-n x (san (need (toi n))))
-    (exp (mul n (log x)))
+    ?:  &(=(n (~(san ^rq %n) (need (~(toi ^rq %n) n)))) (~(gth ^rq %n) n `@rq`0x0))
+      (pow-n x n)
+    (exp (~(mul ^rq %n) n (log x)))
   ::    +sqrt:  @rq -> @rq
   ::
   ::  Returns the square root of a floating-point atom.
@@ -3788,8 +3832,12 @@
   ::  Source
   ++  cbt
     |=  x=@rq  ^-  @rq
-    ?>  (sgn x)
-    (pow x .~~~0.3333)
+    ?:  !(~(equ ^rq %n) x x)  x
+    ?:  |(=(x `@rq`0x0) =(x `@rq`0x8000.0000.0000.0000.0000.0000.0000.0000))  x
+    =/  ax  `@rq`(dis x 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
+    =/  r   (exp (~(mul ^rq %n) (log ax) `@rq`0x3ffd.5555.5555.5555.5555.5555.5555.5555))
+    ?:(=(1 (rsh [0 127] x)) (~(sub ^rq %n) `@rq`0x0 r) r)
+
   ::    +arg:  @rq -> @rq
   ::
   ::  Returns the argument of a floating-point atom (real argument = absolute

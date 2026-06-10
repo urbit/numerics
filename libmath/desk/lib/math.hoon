@@ -1651,8 +1651,77 @@
   ::      .~-2.6535896228476087e-6
   ::  Source
   ++  tan
+    ::  Dedicated fdlibm __kernel_tan (faithful <=1 ULP); the sin/cos ratio is
+    ::  ~2 ULP.  q*pi/2 reduction, odd q uses the -cot path.  See +rd-tan.
     |=  x=@rd  ^-  @rd
-    (div (sin x) (cos x))
+    (main:rd-tan x)
+  ::  +rd-tan: dedicated tangent kernel for the @rd door, see +tan.
+  ++  rd-tan
+    |%
+    ++  redq
+      |=  ax=@rd  ^-  [q=@s rhi=@rd rlo=@rd]
+      =/  q   (need (~(toi ^rd %n) (~(mul ^rd %n) ax `@rd`0x3fe4.5f30.6dc9.c883)))
+      =/  qf  (~(sun ^rd %n) (abs:si q))
+      =/  t   (~(sub ^rd %n) ax (~(mul ^rd %n) qf `@rd`0x3ff9.21fb.5440.0000))
+      =/  w   (~(mul ^rd %n) qf `@rd`0x3dd0.b461.1a62.6331)
+      =/  rhi  (~(sub ^rd %n) t w)
+      =/  rlo  (~(sub ^rd %n) (~(sub ^rd %n) t rhi) w)
+      [q rhi rlo]
+    ++  ktan
+      |=  [x=@rd y=@rd iy=@s]  ^-  @rd
+      =/  hxneg  (rsh [0 63] x)
+      =/  big  (~(gte ^rd %n) `@rd`(dis x 0x7fff.ffff.ffff.ffff) `@rd`0x3fe5.9428.0000.0000)
+      =/  xa  ?:(=(hxneg 1) (~(sub ^rd %n) `@rd`0x0 x) x)
+      =/  ya  ?:(=(hxneg 1) (~(sub ^rd %n) `@rd`0x0 y) y)
+      =/  xr
+        ?.  big  x
+        (~(add ^rd %n) (~(sub ^rd %n) `@rd`0x3fe9.21fb.5444.2d18 xa) (~(sub ^rd %n) `@rd`0x3c81.a626.3314.5c07 ya))
+      =/  yr  ?:(big `@rd`0x0 y)
+      =/  z   (~(mul ^rd %n) xr xr)
+      =/  w   (~(mul ^rd %n) z z)
+      =/  rl=(list @rd)
+        :~  `@rd`0x3fc1.1111.1110.fe7a  `@rd`0x3f96.64f4.8406.d637
+            `@rd`0x3f6d.6d22.c956.0328  `@rd`0x3f43.44d8.f2f2.6501
+            `@rd`0x3f14.7e88.a037.92a6  `@rd`0xbef3.75cb.db60.5373
+        ==
+      =/  vl=(list @rd)
+        :~  `@rd`0x3fab.a1ba.1bb3.41fe  `@rd`0x3f82.26e3.e96e.8493
+            `@rd`0x3f57.dbc8.fee0.8315  `@rd`0x3f30.26f7.1a8d.1068
+            `@rd`0x3f12.b80f.32f0.a7e9  `@rd`0x3efb.2a70.74bf.7ad4
+        ==
+      =/  rr  (roll (flop rl) |=([c=@rd a=@rd] (~(add ^rd %n) (~(mul ^rd %n) a w) c)))
+      =/  vv  (~(mul ^rd %n) z (roll (flop vl) |=([c=@rd a=@rd] (~(add ^rd %n) (~(mul ^rd %n) a w) c))))
+      =/  s   (~(mul ^rd %n) z xr)
+      =/  r   (~(add ^rd %n) yr (~(mul ^rd %n) z (~(add ^rd %n) (~(mul ^rd %n) s (~(add ^rd %n) rr vv)) yr)))
+      =.  r   (~(add ^rd %n) r (~(mul ^rd %n) `@rd`0x3fd5.5555.5555.5563 s))
+      =/  w2  (~(add ^rd %n) xr r)
+      ?:  big
+        =/  fac  ?:(=(hxneg 1) `@rd`0xbff0.0000.0000.0000 `@rd`0x3ff0.0000.0000.0000)
+        =/  v    ?:(=(iy --1) `@rd`0x3ff0.0000.0000.0000 `@rd`0xbff0.0000.0000.0000)
+        %+  ~(mul ^rd %n)  fac
+        %+  ~(sub ^rd %n)  v
+        %+  ~(mul ^rd %n)  `@rd`0x4000.0000.0000.0000
+        %+  ~(sub ^rd %n)  xr
+        (~(sub ^rd %n) (~(div ^rd %n) (~(mul ^rd %n) w2 w2) (~(add ^rd %n) w2 v)) r)
+      ?:  =(iy --1)  w2
+      =/  zz   `@rd`(dis w2 0xffff.ffff.0000.0000)
+      =/  vv2  (~(sub ^rd %n) r (~(sub ^rd %n) zz xr))
+      =/  a    (~(div ^rd %n) `@rd`0xbff0.0000.0000.0000 w2)
+      =/  tt   `@rd`(dis a 0xffff.ffff.0000.0000)
+      =/  ss   (~(add ^rd %n) `@rd`0x3ff0.0000.0000.0000 (~(mul ^rd %n) tt zz))
+      (~(add ^rd %n) tt (~(mul ^rd %n) a (~(add ^rd %n) ss (~(mul ^rd %n) tt vv2))))
+    ++  main
+      |=  x=@rd  ^-  @rd
+      ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
+      ?:  |(=(x `@rd`0x7ff0.0000.0000.0000) =(x `@rd`0xfff0.0000.0000.0000))  `@rd`0x7ff8.0000.0000.0000
+      ?:  |(=(x `@rd`0x0) =(x `@rd`0x8000.0000.0000.0000))  x
+      =/  neg  (rsh [0 63] x)
+      =/  ax   `@rd`(dis x 0x7fff.ffff.ffff.ffff)
+      =/  red  (redq ax)
+      =/  iy   ?:(=(0 (dis (abs:si q.red) 1)) --1 -1)
+      =/  t    (ktan rhi.red rlo.red iy)
+      ?:(=(neg 1) (~(sub ^rd %n) `@rd`0x0 t) t)
+    --
   ::  +asin:  @rd -> @rd
   ::
   ::  Returns the inverse sine of a floating-point atom.

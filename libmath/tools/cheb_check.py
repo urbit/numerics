@@ -326,6 +326,71 @@ def cos_f64(x):                                # cos is even
     return [kcos(rhi, rlo), f64(-ksin(rhi, rlo)),
             f64(-kcos(rhi, rlo)), ksin(rhi, rlo)][m]
 
+# ---- tan @rd: fdlibm __kernel_tan over the q*pi/2 reduction ----
+TAN_T = [f64(s) for s in [
+    '3.33333333333334091986e-01','1.33333333333201242699e-01',
+    '5.39682539762260521377e-02','2.18694882948595424599e-02',
+    '8.86323982359930005737e-03','3.59207910759131235356e-03',
+    '1.45620945432529025516e-03','5.88041240820264096874e-04',
+    '2.46463134818469906812e-04','7.81794442939557092300e-05',
+    '7.14072491382608190305e-05','-1.85586374855275456654e-05',
+    '2.59073051863633712884e-05']]
+PIO4 = f64(mp.pi/4); PIO4LO = of_bits(0x3C81A62633145C07)
+TAN_BIG = of_bits(0x3FE5942800000000)          # ~0.6744 (fdlibm high-word cut)
+def head0(x): return of_bits(bits(x) & 0xffffffff00000000)
+def ktan(x, y, iy):
+    hx_neg = bits(x) >> 63
+    big = f64(abs(x)) >= TAN_BIG
+    if big:
+        if hx_neg: x = f64(-x); y = f64(-y)
+        z = f64(PIO4 - x); w0 = f64(PIO4LO - y); x = f64(z + w0); y = 0.0
+    z = f64(x*x); w = f64(z*z)
+    r = horner([TAN_T[1],TAN_T[3],TAN_T[5],TAN_T[7],TAN_T[9],TAN_T[11]], w)
+    v = f64(z * horner([TAN_T[2],TAN_T[4],TAN_T[6],TAN_T[8],TAN_T[10],TAN_T[12]], w))
+    s = f64(z * x)
+    r = f64(y + f64(z * f64(f64(s * f64(r + v)) + y)))
+    r = f64(r + f64(TAN_T[0] * s))
+    w = f64(x + r)
+    if big:
+        fac = 1.0 if not hx_neg else -1.0
+        v = float(iy)
+        return f64(fac * f64(v - f64(2.0 * f64(x - f64(f64(f64(w*w) / f64(w+v)) - r)))))
+    if iy == 1: return w
+    z2 = head0(w); v2 = f64(r - f64(z2 - x)); a = f64(-1.0 / w); t2 = head0(a)
+    s2 = f64(1.0 + f64(t2 * z2))
+    return f64(t2 + f64(a * f64(s2 + f64(t2 * v2))))
+def tan_f64(x):
+    x = f64(x)
+    if x != x or x == INF or x == -INF: return float('nan')
+    if x == 0.0: return x
+    neg = bits(x) >> 63; ax = f64(abs(x))
+    q, rhi, rlo = reduce_pio2(ax)
+    iy = -1 if (q & 1) else 1
+    t = ktan(rhi, rlo, iy)
+    return f64(-t) if neg else t
+
+def check_tan():
+    print("# tan @rd: q*pi/2 reduction + fdlibm __kernel_tan (deg-13 + cot path)")
+    print("T: " + " ".join(hexd(c) for c in TAN_T))
+    print(f"PIO4={hexd(PIO4)} PIO4LO={hexd(PIO4LO)} BIG={hexd(TAN_BIG)}")
+    wt = wr = 0.0; xw = None
+    for t in range(-200000, 200001, 7):
+        x = f64(mp.mpf(t) / 1000)
+        tr = mp.tan(mp.mpf(x))
+        if not math.isfinite(float(tr)) or abs(tr) > 1e15 or abs(tr) < 1e-9: continue
+        gt = tan_f64(x); gr = f64(sin_f64(x) / cos_f64(x))   # dedicated vs ratio
+        if math.isfinite(gt):
+            e = abs(ulps(gt, tr))
+            if e > wt: wt, xw = e, x
+        if math.isfinite(gr): wr = max(wr, abs(ulps(gr, tr)))
+    print(f"dedicated max {wt:.3f} ULP at x={xw};  sin/cos ratio max {wr:.3f} ULP")
+    for x in [0.0, 0.5, 1.0, -1.0, 0.7853981633974483, 2.0, 10.0, 100.0]:
+        print(f"  tan({x}) -> {hexd(tan_f64(x))}   in={hexd(x)}")
+    for name, x in [('+inf', INF), ('nan', float('nan')), ('-0', -0.0)]:
+        o = tan_f64(x)
+        ib = "0x7ff0000000000000" if x==INF else "0x7ff8000000000000" if x!=x else hexd(x)
+        print(f"  tan({name}) -> {hexd(o)}   in={ib}")
+
 def check_trig(which):
     fn = sin_f64 if which == 'sin' else cos_f64
     tru = mp.sin if which == 'sin' else mp.cos
@@ -678,6 +743,62 @@ def check_ainv_rs(which):
     for name, x in [('nan', float('nan')), ('1.5', 1.5)]:
         print(f"  {which}({name}) -> {hexs(fn(x))}")
 
+# ---- tan @rs: 3-part pi/2 reduction + f32 __kernel_tan ----
+TAN_T_S = [f32(c) for c in TAN_T[:7]]
+PIO4_S = f32(mp.pi/4); PIO4LO_S = f32(mp.pi/4 - mp.mpf(PIO4_S))
+TAN_BIG_S = f32(0.6744)
+def head0_32(x): return of_bits32(bits32(x) & 0xfffff000)
+def ktan32(x, y, iy):
+    hx_neg = bits32(x) >> 31
+    big = f32(abs(x)) >= TAN_BIG_S
+    if big:
+        if hx_neg: x = f32(-x); y = f32(-y)
+        z = f32(PIO4_S - x); w0 = f32(PIO4LO_S - y); x = f32(z + w0); y = 0.0
+    z = f32(x*x); w = f32(z*z)
+    r = horner32([TAN_T_S[1],TAN_T_S[3],TAN_T_S[5]], w)
+    v = f32(z * horner32([TAN_T_S[2],TAN_T_S[4],TAN_T_S[6]], w))
+    s = f32(z * x)
+    r = f32(y + f32(z * f32(f32(s * f32(r + v)) + y)))
+    r = f32(r + f32(TAN_T_S[0] * s))
+    w = f32(x + r)
+    if big:
+        fac = 1.0 if not hx_neg else -1.0
+        v = float(iy)
+        return f32(fac * f32(v - f32(2.0 * f32(x - f32(f32(f32(w*w) / f32(w+v)) - r)))))
+    if iy == 1: return w
+    z2 = head0_32(w); v2 = f32(r - f32(z2 - x)); a = f32(-1.0 / w); t2 = head0_32(a)
+    s2 = f32(1.0 + f32(t2 * z2))
+    return f32(t2 + f32(a * f32(s2 + f32(t2 * v2))))
+def tan_f32(x):
+    x = f32(x)
+    if x != x or x == INF or x == -INF: return float('nan')
+    if x == 0.0: return x
+    neg = bits32(x) >> 31; ax = f32(abs(x))
+    q, rhi, rlo = reduce_pio2_32(ax)
+    iy = -1 if (q & 1) else 1
+    t = ktan32(rhi, rlo, iy)
+    return f32(-t) if neg else t
+
+def check_tan_rs():
+    print("# tan @rs: 3-part pi/2 reduction + f32 __kernel_tan")
+    print("T: " + " ".join(hexs(c) for c in TAN_T_S))
+    print(f"PIO4={hexs(PIO4_S)} PIO4LO={hexs(PIO4LO_S)} BIG={hexs(TAN_BIG_S)}")
+    wt = 0.0; xw = None
+    for t in range(-200000, 200001, 7):
+        x = f32(mp.mpf(t) / 1000); tr = mp.tan(mp.mpf(x))
+        if not math.isfinite(float(tr)) or abs(tr) > 1e7 or abs(tr) < 1e-6: continue
+        gt = tan_f32(x)
+        if math.isfinite(gt):
+            e = abs(ulps32(gt, tr))
+            if e > wt: wt, xw = e, x
+    print(f"dedicated max {wt:.3f} ULP at x={xw}")
+    for x in [0.0, 0.5, 1.0, -1.0, 0.7853982, 2.0, 10.0, 100.0]:
+        print(f"  tan({x}) -> {hexs(tan_f32(x))}   in={hexs(x)}")
+    for name, x in [('+inf', INF), ('nan', float('nan')), ('-0', -0.0)]:
+        o = tan_f32(x)
+        ib = "0x7f800000" if x==INF else "0x7fc00000" if x!=x else hexs(x)
+        print(f"  tan({name}) -> {hexs(o)}   in={ib}")
+
 if __name__ == '__main__':
     fn = sys.argv[1] if len(sys.argv) > 1 else 'exp'
     {'exp': check_exp, 'exp-rs': check_exp_rs,
@@ -685,4 +806,5 @@ if __name__ == '__main__':
      'sin': lambda: check_trig('sin'), 'cos': lambda: check_trig('cos'),
      'sin-rs': lambda: check_trig_rs('sin'), 'cos-rs': lambda: check_trig_rs('cos'),
      'atan': check_atan, 'atan-rs': check_atan_rs, 'asin': check_asin, 'acos': check_acos,
-     'asin-rs': lambda: check_ainv_rs('asin'), 'acos-rs': lambda: check_ainv_rs('acos')}[fn]()
+     'asin-rs': lambda: check_ainv_rs('asin'), 'acos-rs': lambda: check_ainv_rs('acos'),
+     'tan': check_tan, 'tan-rs': check_tan_rs}[fn]()

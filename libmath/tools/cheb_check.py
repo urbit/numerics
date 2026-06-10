@@ -799,6 +799,58 @@ def check_tan_rs():
         ib = "0x7f800000" if x==INF else "0x7fc00000" if x!=x else hexs(x)
         print(f"  tan({name}) -> {hexs(o)}   in={ib}")
 
+
+
+# ============================ @rq (f128) ============================
+#  numpy float128 is x87 80-bit ext, NOT true IEEE quad, so we model f128 with
+#  mpmath rounded to 113-bit RNE per op (= SoftFloat f128 for + - * / ldexp).
+#  exp @rq vertical slice; the rest of the rq surface follows the @rd pattern
+#  at higher degree.  Run: python3 cheb_check.py exp-rq
+QP = 113
+def qr(x):                                     # round to f128 (113-bit RNE)
+    x = mp.mpf(x)
+    if x == 0: return mp.mpf(0)
+    m, e = mp.frexp(x); M = mp.nint(m * mp.mpf(2)**QP)
+    return M * mp.mpf(2)**(e - QP)
+def qhex(v):                                   # 128-bit IEEE-quad encoding
+    if v == 0: return "0x" + "0"*32
+    s = 1 if v < 0 else 0; a = abs(mp.mpf(v))
+    m, e = mp.frexp(a); biased = (e - 1) + 16383
+    mant = int(mp.nint((m*2 - 1) * mp.mpf(2)**112))
+    if mant == (1 << 112): mant = 0; biased += 1
+    return f"0x{(s<<127)|(biased<<112)|mant:032x}"
+def qadd(a, b): return qr(mp.mpf(a) + mp.mpf(b))
+def qmul(a, b): return qr(mp.mpf(a) * mp.mpf(b))
+def qsub(a, b): return qr(mp.mpf(a) - mp.mpf(b))
+def qhorner(co, r):
+    acc = co[-1]
+    for c in reversed(co[:-1]): acc = qadd(qmul(acc, r), c)
+    return acc
+def gen_exp_coeffs_q(deg):
+    half = mp.log(2) / 2
+    return [qr(c) for c in reversed(mp.chebyfit(lambda r: mp.e**r, [-half, half], deg+1))]
+QLOG2E = qr(1 / mp.log(2))
+_ln2 = mp.log(2)
+QLN2HI = qr(mp.mpf(int(qr(_ln2) * mp.mpf(2)**80)) / mp.mpf(2)**80)
+QLN2LO = qr(_ln2 - QLN2HI)
+def exp_q(x, co):
+    x = qr(x); k = int(mp.floor(qr(x * QLOG2E) + 0.5))
+    r = qsub(qsub(x, qmul(mp.mpf(k), QLN2HI)), qmul(mp.mpf(k), QLN2LO))
+    return qr(qhorner(co, r) * mp.mpf(2)**k)
+def check_exp_rq():
+    deg = 24; co = gen_exp_coeffs_q(deg)
+    print(f"# exp @rq: Cody-Waite + degree-{deg} minimax poly (f128, 113-bit)")
+    print(f"LOG2E={qhex(QLOG2E)}\nLN2HI={qhex(QLN2HI)}\nLN2LO={qhex(QLN2LO)}")
+    print("coeffs c0..c%d:" % deg)
+    for i, c in enumerate(co): print(f"  c{i:<2}={qhex(c)}")
+    worst = 0
+    for t in range(-2000, 2001):
+        x = qr(mp.mpf(t)/100); g = exp_q(x, co); tr = mp.e**x
+        ulp = mp.mpf(2)**(mp.frexp(g)[1] - QP); worst = max(worst, abs((g-tr)/ulp))
+    print(f"max error over [-20,20]: {float(worst):.3f} ULP")
+    for v in ['1','0.5','-2','10']:
+        print(f"  exp({v}) -> {qhex(exp_q(mp.mpf(v), co))}")
+
 if __name__ == '__main__':
     fn = sys.argv[1] if len(sys.argv) > 1 else 'exp'
     {'exp': check_exp, 'exp-rs': check_exp_rs,
@@ -807,4 +859,4 @@ if __name__ == '__main__':
      'sin-rs': lambda: check_trig_rs('sin'), 'cos-rs': lambda: check_trig_rs('cos'),
      'atan': check_atan, 'atan-rs': check_atan_rs, 'asin': check_asin, 'acos': check_acos,
      'asin-rs': lambda: check_ainv_rs('asin'), 'acos-rs': lambda: check_ainv_rs('acos'),
-     'tan': check_tan, 'tan-rs': check_tan_rs}[fn]()
+     'tan': check_tan, 'tan-rs': check_tan_rs, 'exp-rq': check_exp_rq}[fn]()

@@ -25,7 +25,7 @@
 ::
 ++  sa
   ^|
-  =+  [rnd=*rounding-mode rtol=`@r`0x1]
+  =+  [rnd=`rounding-mode`%n rtol=`@r`0x1]
   ~/  %sa-core
   |%
   ::  innermost core of Saloon functionality

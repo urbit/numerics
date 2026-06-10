@@ -3548,12 +3548,86 @@
   ::      .~~~0.7753974966107530637394463388579305
   ::
   ++  asin
+    ::  fdlibm rational-form kernel (poly R, deg-30) + sqrt head/tail; f128.
     |=  x=@rq  ^-  @rq
-    ?.  (gte (abs x) .~~~1)
-      (atan (div x (sqt (abs (sub .~~~1 (mul x x))))))
-    ?:  =(.~~~1 x)   ^~((mul pi .~~~0.5))
-    ?:  =(.~~~-1 x)  ^~((mul pi .~~~-0.5))
-    ~|([%asin-out-of-bounds x] !!)
+    (asn:rq-ainv x)
+  ++  acos
+    |=  x=@rq  ^-  @rq
+    (acs:rq-ainv x)
+  ++  rq-ainv
+    |%
+    ++  rr
+      |=  t=@rq  ^-  @rq
+      =/  cs=(list @rq)
+        :~  `@rq`0x3f80.8991.2e54.d43f.83f4.00d5.0d55.a7e8  `@rq`0x3ffc.5555.5555.5555.5555.5555.5555.5552
+            `@rq`0x3ffb.3333.3333.3333.3333.3333.3333.5009  `@rq`0x3ffa.6db6.db6d.b6db.6db6.db6d.b668.951b
+            `@rq`0x3ff9.f1c7.1c71.c71c.71c7.1c72.bac1.ec0e  `@rq`0x3ff9.6e8b.a2e8.ba2e.8ba2.e81a.a31a.41d8
+            `@rq`0x3ff9.1c4e.c4ec.4ec4.ec4f.0b6f.e680.df37  `@rq`0x3ff8.c999.9999.9999.996c.f372.753e.7c99
+            `@rq`0x3ff8.7a87.8787.8787.9217.7cc3.2753.53f7  `@rq`0x3ff8.3fde.50d7.9433.f7f1.afe5.cbea.c090
+            `@rq`0x3ff8.12ef.3cf3.cf83.f127.037c.33f0.fb5b  `@rq`0x3ff7.df3b.d37a.5ede.5c11.4e9d.a47d.edfd
+            `@rq`0x3ff7.a686.3d72.3133.909e.0729.7f5e.2958  `@rq`0x3ff7.782d.d9f3.ff64.52ce.6cb8.56ef.901f
+            `@rq`0x3ff7.51ba.328f.884c.2fdb.62f4.1c70.9bd1  `@rq`0x3ff7.3168.1fe6.e02d.b0d4.9614.21ef.a7ec
+            `@rq`0x3ff7.15ef.e556.e52a.3408.e80b.5b3f.8641  `@rq`0x3ff6.fc96.253e.cb71.1812.7122.68a4.5b42
+            `@rq`0x3ff6.d4a8.2428.408a.ebe9.bc6e.47ec.09af  `@rq`0x3ff6.aa37.7fe9.13f6.c0a9.facb.9451.1de4
+            `@rq`0x3ff6.b48c.a21a.48d1.8473.7463.fe86.56d8  `@rq`0x3ff5.7e9a.a4b5.b4c4.e391.3451.8885.e78f
+            `@rq`0x3ff8.1906.4c51.85fa.a0d0.3ab9.c514.26b2  `@rq`0xbff9.300f.0da2.da1e.1c08.5f96.2a89.aacc
+            `@rq`0x3ffb.0643.398c.dbcb.97d2.5a1b.e10b.6c8a  `@rq`0xbffc.27ed.3dd5.cd82.528e.0d54.bf4f.5e05
+            `@rq`0x3ffd.1d64.319b.e957.ad88.0c8c.d533.b68b  `@rq`0xbffd.9731.e485.678b.81c3.902a.2c54.acc7
+            `@rq`0x3ffd.ae10.872f.69b7.a99a.a13d.6e9c.d204  `@rq`0xbffd.228f.c652.7609.25c1.64c7.f610.91fa
+            `@rq`0x3ffb.9aa4.ca63.cbd7.2c15.b8ad.9b23.77ce
+        ==
+      (roll (flop cs) |=([c=@rq a=@rq] (~(add ^rq %n) (~(mul ^rq %n) a t) c)))
+    ++  asn
+      |=  x=@rq  ^-  @rq
+      ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+      =/  sgn  (rsh [0 127] x)
+      =/  ax   `@rq`(dis x 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
+      ?:  (~(gth ^rq %n) ax `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+      ?:  =(ax `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000)  (~(add ^rq %n) (~(mul ^rq %n) x `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8) (~(mul ^rq %n) x `@rq`0x3f8c.cd12.9024.e088.a67c.c740.20bb.ea64))
+      ?:  (~(lth ^rq %n) ax `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000)
+        ?:  (~(lth ^rq %n) ax `@rq`0x3fc6.0000.0000.0000.0000.0000.0000.0000)  x
+        (~(add ^rq %n) x (~(mul ^rq %n) x (rr (~(mul ^rq %n) x x))))
+      =/  w  (~(sub ^rq %n) `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000 ax)
+      =/  t  (~(mul ^rq %n) w `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000)
+      =/  r  (rr t)
+      =/  s  (sqt t)
+      ?:  (~(gte ^rq %n) ax `@rq`0x3ffe.f333.3333.3333.3333.3333.3333.3333)
+        =/  res  (~(sub ^rq %n) `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8 (~(sub ^rq %n) (~(mul ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 (~(add ^rq %n) s (~(mul ^rq %n) s r))) `@rq`0x3f8c.cd12.9024.e088.a67c.c740.20bb.ea64))
+        ?:(=(sgn 1) (~(sub ^rq %n) `@rq`0x0 res) res)
+      =/  df  `@rq`(dis s 0xffff.ffff.ffff.ffff.ff00.0000.0000.0000)
+      =/  c   (~(div ^rq %n) (~(sub ^rq %n) t (~(mul ^rq %n) df df)) (~(add ^rq %n) s df))
+      =/  p2  (~(sub ^rq %n) (~(mul ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 (~(mul ^rq %n) s r)) (~(sub ^rq %n) `@rq`0x3f8c.cd12.9024.e088.a67c.c740.20bb.ea64 (~(mul ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 c)))
+      =/  q2  (~(sub ^rq %n) `@rq`0x3ffe.921f.b544.42d1.8469.898c.c517.01b8 (~(mul ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 df))
+      =/  res  (~(sub ^rq %n) `@rq`0x3ffe.921f.b544.42d1.8469.898c.c517.01b8 (~(sub ^rq %n) p2 q2))
+      ?:(=(sgn 1) (~(sub ^rq %n) `@rq`0x0 res) res)
+    ++  acs
+      |=  x=@rq  ^-  @rq
+      ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+      =/  neg  (rsh [0 127] x)
+      =/  ax   `@rq`(dis x 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
+      ?:  (~(gth ^rq %n) ax `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+      ?:  =(ax `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000)
+        ?:  =(neg 0)  `@rq`0x0
+        (~(add ^rq %n) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8 (~(mul ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 `@rq`0x3f8c.cd12.9024.e088.a67c.c740.20bb.ea64))
+      ?:  (~(lth ^rq %n) ax `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000)
+        ?:  (~(lth ^rq %n) ax `@rq`0x3f87.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8
+        =/  z  (~(mul ^rq %n) x x)
+        =/  r  (rr z)
+        (~(sub ^rq %n) `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8 (~(sub ^rq %n) x (~(sub ^rq %n) `@rq`0x3f8c.cd12.9024.e088.a67c.c740.20bb.ea64 (~(mul ^rq %n) x r))))
+      ?:  =(neg 1)
+        =/  z  (~(mul ^rq %n) (~(add ^rq %n) `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000 x) `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000)
+        =/  s  (sqt z)
+        =/  r  (rr z)
+        =/  w  (~(sub ^rq %n) (~(mul ^rq %n) r s) `@rq`0x3f8c.cd12.9024.e088.a67c.c740.20bb.ea64)
+        (~(sub ^rq %n) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8 (~(mul ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 (~(add ^rq %n) s w)))
+      =/  z   (~(mul ^rq %n) (~(sub ^rq %n) `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000 x) `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000)
+      =/  s   (sqt z)
+      =/  df  `@rq`(dis s 0xffff.ffff.ffff.ffff.ff00.0000.0000.0000)
+      =/  c   (~(div ^rq %n) (~(sub ^rq %n) z (~(mul ^rq %n) df df)) (~(add ^rq %n) s df))
+      =/  r   (rr z)
+      =/  w   (~(add ^rq %n) (~(mul ^rq %n) r s) c)
+      (~(mul ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 (~(add ^rq %n) df w))
+    --
   ::  +acos:  @rq -> @rq
   ::
   ::  Returns the inverse cosine of a floating-point atom.
@@ -3565,14 +3639,6 @@
   ::      > (acos .~~~0.7)
   ::      .~~~0.7953988301841435554899943710156033
   ::
-  ++  acos
-    |=  x=@rq  ^-  @rq
-    ?.  (gte (abs x) .~~~1)
-      ?:  =(.~~~0 x)  ^~((mul pi .~~~0.5))
-      (atan (div (sqt (abs (sub .~~~1 (mul x x)))) x))
-    ?:  =(.~~~1 x)   .~~~0
-    ?:  =(.~~~-1 x)  pi
-    ~|([%acos-out-of-bounds x] !!)
   ::  +atan:  @rq -> @rq
   ::
   ::  Returns the inverse tangent of a floating-point atom.

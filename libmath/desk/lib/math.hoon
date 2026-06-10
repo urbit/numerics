@@ -513,25 +513,14 @@
   ::  Source
   ++  sin
     |=  x=@rs  ^-  @rs
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(x 0x7f80.0000)  `@rs`0x7fc0.0000  :: sin(+inf) -> NaN
-    ?:  =(x 0xff80.0000)  `@rs`0x7fc0.0000  :: sin(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7fc0.0000 x) 0)  `@rs`0x7fc0.0000  :: sin(NaN) -> NaN
-    ::  map into domain
-    =.  x  (mod x tau)
-    ::  otherwise, use Taylor series
-    =/  p   x
-    =/  po  .-2
-    =/  i   1
-    =/  term  x
-    |-  ^-  @rs
-    ?.  (gth (abs term) rtol)
-      p
-    =/  i2  (add (sun i) (sun i))
-    =.  term  (mul (neg term) (div (mul x x) (mul i2 (add i2 .1))))
-    $(i +(i), p (add p term), po p)
+    ::  Reduce x = q*(pi/2) + (rhi+rlo) with a 3-part pi/2 (f32 needs the bits),
+    ::  then fdlibm sin/cos kernels picked by q&3.  Faithful to <=1 ULP for
+    ::  |x| <~ 500.  Round-nearest-even internally (the SoftFloat jet matches).
+    ?:  !(~(equ ^rs %n) x x)  `@rs`0x7fc0.0000                          :: NaN
+    ?:  |(=(x `@rs`0x7f80.0000) =(x `@rs`0xff80.0000))  `@rs`0x7fc0.0000  :: +-inf
+    ?:  |(=(x `@rs`0x0) =(x `@rs`0x8000.0000))  x                       :: +-0 -> +-0
+    %-  trig-fin:rs-trig
+    [%.y `@rs`(dis x 0x7fff.ffff) (rsh [0 31] x)]
   ::    +cos:  @rs -> @rs
   ::
   ::  Returns the cosine of a floating-point atom.
@@ -545,25 +534,52 @@
   ::  Source
   ++  cos
     |=  x=@rs  ^-  @rs
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(x 0x7f80.0000)  `@rs`0x7fc0.0000  :: sin(+inf) -> NaN
-    ?:  =(x 0xff80.0000)  `@rs`0x7fc0.0000  :: sin(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7fc0.0000 x) 0)  `@rs`0x7fc0.0000  :: sin(NaN) -> NaN
-    ::  map into domain
-    =.  x  (mod x tau)
-    ::  otherwise, use Taylor series
-    =/  p   .1
-    =/  po  .-2
-    =/  i   1
-    =/  term  .1
-    |-  ^-  @rs
-    ?.  (gth (abs term) rtol)
-      p
-    =/  i2  (add (sun i) (sun i))
-    =.  term  (mul (neg term) (div (mul x x) (mul i2 (sub i2 .1))))
-    $(i +(i), p (add p term), po p)
+    ?:  !(~(equ ^rs %n) x x)  `@rs`0x7fc0.0000
+    ?:  |(=(x `@rs`0x7f80.0000) =(x `@rs`0xff80.0000))  `@rs`0x7fc0.0000
+    %-  trig-fin:rs-trig
+    [%.n `@rs`(dis x 0x7fff.ffff) 0]
+  ::  +rs-trig: shared sin/cos engine for the @rs door (see +sin / +cos).
+  ++  rs-trig
+    |%
+    ++  sc  ^-((list @rs) :~(`@rs`0xbe2a.aaab `@rs`0x3c08.8889 `@rs`0xb950.0d01 `@rs`0x3638.ef1d `@rs`0xb2d7.322b))
+    ++  cc  ^-((list @rs) :~(`@rs`0x3d2a.aaab `@rs`0xbab6.0b61 `@rs`0x37d0.0d01 `@rs`0xb493.f27e `@rs`0x310f.76c7))
+    ++  neg  |=(a=@rs ^-(@rs (~(sub ^rs %n) `@rs`0x0 a)))
+    ++  ksin
+      |=  [xx=@rs yy=@rs]  ^-  @rs
+      =/  z   (~(mul ^rs %n) xx xx)
+      =/  r   (roll (flop (tail sc)) |=([c=@rs a=@rs] (~(add ^rs %n) (~(mul ^rs %n) a z) c)))
+      =/  v   (~(mul ^rs %n) z xx)
+      =/  aa  (~(sub ^rs %n) (~(mul ^rs %n) `@rs`0x3f00.0000 yy) (~(mul ^rs %n) v r))
+      =/  bb  (~(sub ^rs %n) (~(mul ^rs %n) z aa) yy)
+      =/  dd  (~(sub ^rs %n) bb (~(mul ^rs %n) v (head sc)))
+      (~(sub ^rs %n) xx dd)
+    ++  kcos
+      |=  [xx=@rs yy=@rs]  ^-  @rs
+      =/  z   (~(mul ^rs %n) xx xx)
+      =/  rc  (roll (flop cc) |=([c=@rs a=@rs] (~(add ^rs %n) (~(mul ^rs %n) a z) c)))
+      =/  hz  (~(mul ^rs %n) `@rs`0x3f00.0000 z)
+      =/  w2  (~(sub ^rs %n) `@rs`0x3f80.0000 hz)
+      =/  aa  (~(sub ^rs %n) (~(sub ^rs %n) `@rs`0x3f80.0000 w2) hz)
+      =/  bb  (~(sub ^rs %n) (~(mul ^rs %n) (~(mul ^rs %n) z z) rc) (~(mul ^rs %n) xx yy))
+      (~(add ^rs %n) w2 (~(add ^rs %n) aa bb))
+    ::  +trig-fin: [is-sin? |x| sign-bit] -> sin x (is-sin?) or cos x
+    ++  trig-fin
+      |=  [s=? ax=@rs sb=@]  ^-  @rs
+      =/  q   (need (~(toi ^rs %n) (~(mul ^rs %n) ax `@rs`0x3f22.f983)))
+      =/  qf  (~(sun ^rs %n) (abs:si q))
+      =/  r1  (~(sub ^rs %n) ax (~(mul ^rs %n) qf `@rs`0x3fc9.0000))
+      =/  r2  (~(sub ^rs %n) r1 (~(mul ^rs %n) qf `@rs`0x39fd.a000))
+      =/  w   (~(mul ^rs %n) qf `@rs`0x33a2.2169)
+      =/  rhi  (~(sub ^rs %n) r2 w)
+      =/  rlo  (~(sub ^rs %n) (~(sub ^rs %n) r2 rhi) w)
+      =/  m   (dis (abs:si q) 3)
+      =/  ks  (ksin rhi rlo)
+      =/  kc  (kcos rhi rlo)
+      ?:  s
+        =/  v  ?:(=(m 0) ks ?:(=(m 1) kc ?:(=(m 2) (neg ks) (neg kc))))
+        ?:(=(sb 1) (neg v) v)
+      ?:(=(m 0) kc ?:(=(m 1) (neg ks) ?:(=(m 2) (neg kc) ks)))
+    --
   ::    +tan:  @rs -> @rs
   ::
   ::  Returns the tangent of a floating-point atom.
@@ -1420,25 +1436,14 @@
   ::  Source
   ++  sin
     |=  x=@rd  ^-  @rd
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(x 0x7ff0.0000.0000.0000)  `@rd`0x7ff8.0000.0000.0000  :: sin(+inf) -> NaN
-    ?:  =(x 0xfff0.0000.0000.0000)  `@rd`0x7ff8.0000.0000.0000  :: sin(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7ff8.0000.0000.0000 x) 0)  `@rd`0x7ff8.0000.0000.0000  :: sin(NaN) -> NaN
-    ::  map into domain
-    =.  x  (mod x tau)
-    ::  otherwise, use Taylor series
-    =/  p   x
-    =/  po  .~-2
-    =/  i   1
-    =/  term  x
-    |-  ^-  @rd
-    ?.  (gth (abs term) rtol)
-      p
-    =/  i2  (add (sun i) (sun i))
-    =.  term  (mul (neg term) (div (mul x x) (mul i2 (add i2 .~1))))
-    $(i +(i), p (add p term), po p)
+    ::  Reduce x = q*(pi/2) + (rhi+rlo) (2-part pi/2), then fdlibm sin/cos
+    ::  kernels picked by q&3.  Faithful to <=1 ULP for |x| <~ 2^22.
+    ::  Round-nearest-even internally (the SoftFloat jet matches).
+    ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
+    ?:  |(=(x `@rd`0x7ff0.0000.0000.0000) =(x `@rd`0xfff0.0000.0000.0000))  `@rd`0x7ff8.0000.0000.0000
+    ?:  |(=(x `@rd`0x0) =(x `@rd`0x8000.0000.0000.0000))  x   :: +-0 -> +-0
+    %-  trig-fin:rd-trig
+    [%.y `@rd`(dis x 0x7fff.ffff.ffff.ffff) (rsh [0 63] x)]
   ::    +cos:  @rd -> @rd
   ::
   ::  Returns the cosine of a floating-point atom.
@@ -1452,25 +1457,63 @@
   ::  Source
   ++  cos
     |=  x=@rd  ^-  @rd
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(x 0x7ff0.0000.0000.0000)  `@rd`0x7ff8.0000.0000.0000  :: cos(+inf) -> NaN
-    ?:  =(x 0xfff0.0000.0000.0000)  `@rd`0x7ff8.0000.0000.0000  :: cos(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7ff8.0000.0000.0000 x) 0)  `@rd`0x7ff8.0000.0000.0000  :: exp(NaN) -> NaN
-    ::  map into domain
-    =.  x  (mod x tau)
-    ::  otherwise, use Taylor series
-    =/  p   .~1
-    =/  po  .~-2
-    =/  i   1
-    =/  term  .~1
-    |-  ^-  @rd
-    ?.  (gth (abs term) rtol)
-      p
-    =/  i2  (add (sun i) (sun i))
-    =.  term  (mul (neg term) (div (mul x x) (mul i2 (sub i2 .~1))))
-    $(i +(i), p (add p term), po p)
+    ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
+    ?:  |(=(x `@rd`0x7ff0.0000.0000.0000) =(x `@rd`0xfff0.0000.0000.0000))  `@rd`0x7ff8.0000.0000.0000
+    %-  trig-fin:rd-trig
+    [%.n `@rd`(dis x 0x7fff.ffff.ffff.ffff) 0]
+  ::  +rd-trig: shared sin/cos engine for the @rd door (see +sin / +cos).
+  ++  rd-trig
+    |%
+    ++  sc
+      ^-  (list @rd)
+      :~  `@rd`0xbfc5.5555.5555.5555  `@rd`0x3f81.1111.1111.1111
+          `@rd`0xbf2a.01a0.1a01.a01a  `@rd`0x3ec7.1de3.a556.c734
+          `@rd`0xbe5a.e645.67f5.44e4  `@rd`0x3de6.1246.13a8.6d09
+          `@rd`0xbd6a.e7f3.e733.b81f  `@rd`0x3ce9.52c7.7030.ad4a
+      ==
+    ++  cc
+      ^-  (list @rd)
+      :~  `@rd`0x3fa5.5555.5555.5555  `@rd`0xbf56.c16c.16c1.6c17
+          `@rd`0x3efa.01a0.1a01.a01a  `@rd`0xbe92.7e4f.b778.9f5c
+          `@rd`0x3e21.eed8.eff8.d898  `@rd`0xbda9.3974.a8c0.7c9d
+          `@rd`0x3d2a.e7f3.e733.b81f  `@rd`0xbca6.8278.63b9.7d97
+      ==
+    ++  neg  |=(a=@rd ^-(@rd (~(sub ^rd %n) `@rd`0x0 a)))
+    ++  ksin
+      |=  [xx=@rd yy=@rd]  ^-  @rd
+      =/  z   (~(mul ^rd %n) xx xx)
+      =/  r   (roll (flop (tail sc)) |=([c=@rd a=@rd] (~(add ^rd %n) (~(mul ^rd %n) a z) c)))
+      =/  v   (~(mul ^rd %n) z xx)
+      =/  aa  (~(sub ^rd %n) (~(mul ^rd %n) `@rd`0x3fe0.0000.0000.0000 yy) (~(mul ^rd %n) v r))
+      =/  bb  (~(sub ^rd %n) (~(mul ^rd %n) z aa) yy)
+      =/  dd  (~(sub ^rd %n) bb (~(mul ^rd %n) v (head sc)))
+      (~(sub ^rd %n) xx dd)
+    ++  kcos
+      |=  [xx=@rd yy=@rd]  ^-  @rd
+      =/  z   (~(mul ^rd %n) xx xx)
+      =/  rc  (roll (flop cc) |=([c=@rd a=@rd] (~(add ^rd %n) (~(mul ^rd %n) a z) c)))
+      =/  hz  (~(mul ^rd %n) `@rd`0x3fe0.0000.0000.0000 z)
+      =/  w2  (~(sub ^rd %n) `@rd`0x3ff0.0000.0000.0000 hz)
+      =/  aa  (~(sub ^rd %n) (~(sub ^rd %n) `@rd`0x3ff0.0000.0000.0000 w2) hz)
+      =/  bb  (~(sub ^rd %n) (~(mul ^rd %n) (~(mul ^rd %n) z z) rc) (~(mul ^rd %n) xx yy))
+      (~(add ^rd %n) w2 (~(add ^rd %n) aa bb))
+    ::  +trig-fin: [is-sin? |x| sign-bit] -> sin x (is-sin?) or cos x
+    ++  trig-fin
+      |=  [s=? ax=@rd sb=@]  ^-  @rd
+      =/  q   (need (~(toi ^rd %n) (~(mul ^rd %n) ax `@rd`0x3fe4.5f30.6dc9.c883)))
+      =/  qf  (~(sun ^rd %n) (abs:si q))
+      =/  t   (~(sub ^rd %n) ax (~(mul ^rd %n) qf `@rd`0x3ff9.21fb.5440.0000))
+      =/  w   (~(mul ^rd %n) qf `@rd`0x3dd0.b461.1a62.6331)
+      =/  rhi  (~(sub ^rd %n) t w)
+      =/  rlo  (~(sub ^rd %n) (~(sub ^rd %n) t rhi) w)
+      =/  m   (dis (abs:si q) 3)
+      =/  ks  (ksin rhi rlo)
+      =/  kc  (kcos rhi rlo)
+      ?:  s
+        =/  v  ?:(=(m 0) ks ?:(=(m 1) kc ?:(=(m 2) (neg ks) (neg kc))))
+        ?:(=(sb 1) (neg v) v)
+      ?:(=(m 0) kc ?:(=(m 1) (neg ks) ?:(=(m 2) (neg kc) ks)))
+    --
   ::    +tan:  @rd -> @rd
   ::
   ::  Returns the tangent of a floating-point atom.

@@ -283,7 +283,138 @@ def check_log_rs():
              "0x7fc00000" if x!=x else hexs(x)
         print(f"  log({name:>6}) -> {hexs(o):>12}   in={ib}")
 
+# ============================ sin/cos @rd ============================
+#  x = q*(pi/2) + r, r in [-pi/4, pi/4]; pick sin/cos kernel by q&3.
+PIO2    = mp.pi / 2
+INVPIO2 = f64(2 / mp.pi)
+PIO2_1  = of_bits(bits(f64(PIO2)) & ~((1 << 22) - 1))   # pi/2, low 22 mantissa bits 0
+PIO2_1T = f64(PIO2 - mp.mpf(PIO2_1))                    # tail
+SIN_C = [f64(mp.mpf((-1)**(k+1)) / mp.factorial(2*k+3)) for k in range(8)]  # S(z): -1/6,1/120,..
+COS_C = [f64(mp.mpf((-1)**k)     / mp.factorial(2*k+4)) for k in range(8)]  # C(z):  1/24,-1/720,..
+
+def ksin(x, y):                               # fdlibm __kernel_sin(x,y); x+y = reduced arg
+    z = f64(x*x)
+    r = horner(SIN_C[1:], z)                   # S2 + z*S3 + ...  (exact-Taylor, 7 terms)
+    v = f64(z*x)
+    return f64(x - f64(f64(f64(z*f64(f64(0.5*y) - f64(v*r))) - y) - f64(v*SIN_C[0])))
+def kcos(x, y):                               # fdlibm __kernel_cos(x,y)
+    z = f64(x*x)
+    rc = horner(COS_C, z)                      # C1 + z*C2 + ...  (z^2*rc = r^4/24 - ...)
+    hz = f64(0.5*z); w2 = f64(1.0 - hz)
+    return f64(w2 + f64(f64(f64(1.0 - w2) - hz) + f64(f64(f64(z*z)*rc) - f64(x*y))))
+def reduce_pio2(x):                           # x = q*pi/2 + (rhi+rlo); Fast2Sum tail
+    q = int(math.floor(f64(x * INVPIO2) + 0.5))
+    t = f64(x - f64(q * PIO2_1))              # exact in the Sterbenz region
+    w = f64(q * PIO2_1T)
+    rhi = f64(t - w)
+    rlo = f64(f64(t - rhi) - w)
+    return q, rhi, rlo
+def sin_f64(x):                                # compute on |x|, apply odd symmetry
+    x = f64(x)
+    if x != x or x == INF or x == -INF: return float('nan')
+    if x == 0.0: return x                      # +-0 -> +-0
+    neg = bits(x) >> 63; ax = f64(abs(x))
+    q, rhi, rlo = reduce_pio2(ax); m = q & 3
+    v = [ksin(rhi, rlo), kcos(rhi, rlo),
+         f64(-ksin(rhi, rlo)), f64(-kcos(rhi, rlo))][m]
+    return f64(-v) if neg else v
+def cos_f64(x):                                # cos is even
+    x = f64(x)
+    if x != x or x == INF or x == -INF: return float('nan')
+    ax = f64(abs(x))
+    q, rhi, rlo = reduce_pio2(ax); m = q & 3
+    return [kcos(rhi, rlo), f64(-ksin(rhi, rlo)),
+            f64(-kcos(rhi, rlo)), ksin(rhi, rlo)][m]
+
+def check_trig(which):
+    fn = sin_f64 if which == 'sin' else cos_f64
+    tru = mp.sin if which == 'sin' else mp.cos
+    print(f"# {which} @rd: x=q*pi/2+r reduction; kernels deg-7 (sin)/deg-7 (cos)")
+    print(f"INVPIO2={hexd(INVPIO2)}  PIO2_1={hexd(PIO2_1)}  PIO2_1T={hexd(PIO2_1T)}")
+    nm = 'SIN_C' if which=='sin' else 'COS_C'  # both kernels are always needed; print both
+    for label, arr in [('SIN_C', SIN_C), ('COS_C', COS_C)]:
+        print(f"{label}: " + " ".join(hexd(c) for c in arr))
+    worst = 0.0; xw = None
+    for t in range(-200000, 200001, 7):
+        x = f64(mp.mpf(t) / 1000)
+        got = fn(x); tr = tru(mp.mpf(x))
+        if not math.isfinite(got) or abs(tr) < 1e-9: continue
+        e = abs(ulps(got, tr))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in [-200,200] (|f|>1e-9): {worst:.3f} ULP  at x={xw}")
+    print("expected (input -> output):")
+    for x in [0.0, 0.5, 1.0, -1.0, 1.5707963267948966, 3.141592653589793, 10.0, 100.0]:
+        print(f"  {which}({x}) -> {hexd(fn(x))}   in={hexd(x)}")
+    print("edges:")
+    for name, x in [('+inf', INF), ('-inf', -INF), ('nan', float('nan')), ('-0', -0.0)]:
+        o = fn(x)
+        ib = "0x7ff0000000000000" if x==INF else "0xfff0000000000000" if x==-INF else \
+             "0x7ff8000000000000" if x!=x else hexd(x)
+        print(f"  {which}({name:>5}) -> {hexd(o):>18}   in={ib}")
+
+# ============================ sin/cos @rs ============================
+def of_bits32(b): return struct.unpack('>f', struct.pack('>I', b))[0]
+INVPIO2_S = f32(2 / mp.pi)
+# 3-part pi/2: P1,P2 each ~10 sig bits (so q*Pi exact for q<2^14), P3 the tail.
+PIO2_1_S  = of_bits32(bits32(f32(PIO2)) & ~0x1fff)
+PIO2_2_S  = of_bits32(bits32(f32(mp.mpf(PIO2) - mp.mpf(PIO2_1_S))) & ~0x1fff)
+PIO2_3_S  = f32(mp.mpf(PIO2) - mp.mpf(PIO2_1_S) - mp.mpf(PIO2_2_S))
+SIN_C_S = [f32(mp.mpf((-1)**(k+1)) / mp.factorial(2*k+3)) for k in range(5)]
+COS_C_S = [f32(mp.mpf((-1)**k)     / mp.factorial(2*k+4)) for k in range(5)]
+
+def ksin32(x, y):
+    z = f32(x*x); r = horner32(SIN_C_S[1:], z); v = f32(z*x)
+    return f32(x - f32(f32(f32(z*f32(f32(0.5*y) - f32(v*r))) - y) - f32(v*SIN_C_S[0])))
+def kcos32(x, y):
+    z = f32(x*x); rc = horner32(COS_C_S, z)
+    hz = f32(0.5*z); w2 = f32(1.0 - hz)
+    return f32(w2 + f32(f32(f32(1.0 - w2) - hz) + f32(f32(f32(z*z)*rc) - f32(x*y))))
+def reduce_pio2_32(x):
+    q = int(math.floor(f32(x * INVPIO2_S) + 0.5))
+    r = f32(x - f32(q * PIO2_1_S)); r = f32(r - f32(q * PIO2_2_S))
+    w = f32(q * PIO2_3_S); rhi = f32(r - w); rlo = f32(f32(r - rhi) - w)
+    return q, rhi, rlo
+def sin_f32(x):
+    x = f32(x)
+    if x != x or x == INF or x == -INF: return float('nan')
+    if x == 0.0: return x
+    neg = bits32(x) >> 31; ax = f32(abs(x))
+    q, rhi, rlo = reduce_pio2_32(ax); m = q & 3
+    v = [ksin32(rhi,rlo), kcos32(rhi,rlo), f32(-ksin32(rhi,rlo)), f32(-kcos32(rhi,rlo))][m]
+    return f32(-v) if neg else v
+def cos_f32(x):
+    x = f32(x)
+    if x != x or x == INF or x == -INF: return float('nan')
+    ax = f32(abs(x))
+    q, rhi, rlo = reduce_pio2_32(ax); m = q & 3
+    return [kcos32(rhi,rlo), f32(-ksin32(rhi,rlo)), f32(-kcos32(rhi,rlo)), ksin32(rhi,rlo)][m]
+
+def check_trig_rs(which):
+    fn = sin_f32 if which == 'sin' else cos_f32
+    tru = mp.sin if which == 'sin' else mp.cos
+    print(f"# {which} @rs: x=q*pi/2+r reduction (f32)")
+    print(f"INVPIO2={hexs(INVPIO2_S)}  PIO2_1={hexs(PIO2_1_S)}  PIO2_2={hexs(PIO2_2_S)}  PIO2_3={hexs(PIO2_3_S)}")
+    print("SIN_C: " + " ".join(hexs(c) for c in SIN_C_S))
+    print("COS_C: " + " ".join(hexs(c) for c in COS_C_S))
+    worst = 0.0; xw = None
+    for t in range(-200000, 200001, 7):
+        x = f32(mp.mpf(t) / 1000); got = fn(x); tr = tru(mp.mpf(x))
+        if not math.isfinite(got) or abs(tr) < 1e-6: continue
+        e = abs(ulps32(got, tr))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in [-200,200] (|f|>1e-6): {worst:.3f} ULP  at x={xw}")
+    print("expected (input -> output):")
+    for x in [0.0, 0.5, 1.0, -1.0, 1.5707964, 3.1415927, 10.0, 100.0]:
+        print(f"  {which}({x}) -> {hexs(fn(x))}   in={hexs(x)}")
+    for name, x in [('+inf', INF), ('-inf', -INF), ('nan', float('nan')), ('-0', -0.0)]:
+        o = fn(x)
+        ib = "0x7f800000" if x==INF else "0xff800000" if x==-INF else \
+             "0x7fc00000" if x!=x else hexs(x)
+        print(f"  {which}({name:>5}) -> {hexs(o):>12}   in={ib}")
+
 if __name__ == '__main__':
     fn = sys.argv[1] if len(sys.argv) > 1 else 'exp'
     {'exp': check_exp, 'exp-rs': check_exp_rs,
-     'log': check_log, 'log-rs': check_log_rs}[fn]()
+     'log': check_log, 'log-rs': check_log_rs,
+     'sin': lambda: check_trig('sin'), 'cos': lambda: check_trig('cos'),
+     'sin-rs': lambda: check_trig_rs('sin'), 'cos-rs': lambda: check_trig_rs('cos')}[fn]()

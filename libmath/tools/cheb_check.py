@@ -169,6 +169,121 @@ def check_exp_rs():
              "0x7fc00000" if x!=x else hexs(x)
         print(f"  exp({name:>7}) -> {hexs(o):>12}   in={ib}")
 
+# ============================ log @rd ============================
+#  x = 2^e * m, m in [sqrt(1/2), sqrt(2)); log = e*ln2 + 2s*P(z),
+#  s = (m-1)/(m+1), z = s*s, P(z) = sum_k z^k/(2k+1) (atanh series, z<=0.0294).
+SQRT2  = f64(mp.sqrt(2))
+ONE    = f64(1.0)
+def gen_log_coeffs(deg):                       # P2(z) = 1/3 + z/5 + z^2/7 + ...
+    return [f64(mp.mpf(1) / (2*k + 3)) for k in range(deg + 1)]
+
+def log_f64(x, coeffs):
+    x = f64(x)
+    if x != x:                 return float('nan')        # NaN
+    if x == INF:               return INF                  # +inf
+    if x < 0.0 or x == -INF:   return float('nan')         # x<0 -> NaN
+    if x == 0.0:               return -INF                 # log(+-0) -> -inf
+    # normalise subnormals so the bit-extraction reduction sees a normal m
+    add_e = 0
+    if x < 2.2250738585072014e-308:                        # < smallest normal
+        x = f64(x * 18014398509481984.0); add_e = -54      # *2^54
+    b = bits(x); ef = ((b >> 52) & 0x7ff) - 1023; m = of_bits((b & ((1<<52)-1)) | 0x3ff0000000000000)
+    if m >= SQRT2:  m = f64(m * 0.5); ef += 1
+    ef += add_e
+    # log(1+f) = f - s*(f - R), R = 2z*P2(z): keeps f as the exact leading term
+    f = f64(m - ONE)
+    s = f64(f / f64(m + ONE))
+    z = f64(s * s)
+    p2 = horner(coeffs, z)
+    r  = f64(f64(f64(z + z)) * p2)                         # 2z*P2(z)
+    l1 = f64(f - f64(s * f64(f - r)))                      # log(1+f)
+    e = f64(float(ef))
+    return f64(f64(e * LN2HI) + f64(l1 + f64(e * LN2LO)))
+
+def check_log():
+    deg = 9
+    coeffs = gen_log_coeffs(deg)
+    print(f"# log @rd: x=2^e*m reduction + degree-{deg} atanh poly")
+    print(f"LN2HI = {hexd(LN2HI)}   LN2LO = {hexd(LN2LO)}   SQRT2 = {hexd(SQRT2)}")
+    print("coeffs (ascending, c0..c%d), as f64 hex:" % deg)
+    for i, c in enumerate(coeffs):
+        print(f"  c{i:<2} = {hexd(c)}   ({c!r})")
+    worst = 0.0; xw = None
+    for t in range(1, 200001, 7):
+        x = f64(mp.mpf(t) / 1000)
+        got = log_f64(x, coeffs); tru = mp.log(mp.mpf(x))
+        if tru == 0 or not math.isfinite(got): continue
+        e = abs(ulps(got, tru))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in (0,200]: {worst:.3f} ULP  at x={xw}")
+    print("expected (input -> output) bit patterns:")
+    for x in [1.0, 2.0, 0.5, 10.0, 100.0, 0.1, 1.0e-300, 7.389056098930650]:
+        print(f"  log({x}) -> {hexd(log_f64(x, coeffs))}   in={hexd(x)}")
+    print("edge cases (in -> out):")
+    edges = [('+inf', INF), ('-inf', -INF), ('nan', float('nan')),
+             ('0.0', 0.0), ('-1.0', -1.0), ('1.0', 1.0)]
+    for name, x in edges:
+        o = log_f64(x, coeffs)
+        ib = "0x7ff0000000000000" if x==INF else "0xfff0000000000000" if x==-INF else \
+             "0x7ff8000000000000" if x!=x else hexd(x)
+        print(f"  log({name:>6}) -> {hexd(o):>18}   in={ib}")
+
+# ============================ log @rs ============================
+SQRT2_S = f32(mp.sqrt(2))
+def gen_log_coeffs_f32(deg):
+    return [f32(mp.mpf(1) / (2*k + 3)) for k in range(deg + 1)]
+
+def log_f32(x, coeffs):
+    x = f32(x)
+    if x != x:                 return float('nan')
+    if x == INF:               return INF
+    if x < 0.0 or x == -INF:   return float('nan')
+    if x == 0.0:               return -INF
+    add_e = 0
+    if x < 1.1754943508222875e-38:                         # < smallest normal f32
+        x = f32(x * 16777216.0); add_e = -24               # *2^24
+    b = bits32(x); ef = ((b >> 23) & 0xff) - 127
+    m = struct.unpack('>f', struct.pack('>I', (b & 0x7fffff) | 0x3f800000))[0]
+    if m >= SQRT2_S:  m = f32(m * 0.5); ef += 1
+    ef += add_e
+    f = f32(m - 1.0)
+    s = f32(f / f32(m + 1.0))
+    z = f32(s * s)
+    p2 = horner32(coeffs, z)
+    r  = f32(f32(z + z) * p2)
+    l1 = f32(f - f32(s * f32(f - r)))
+    e = f32(float(ef))
+    return f32(f32(e * LN2HI_S) + f32(l1 + f32(e * LN2LO_S)))
+
+def check_log_rs():
+    deg = 4
+    coeffs = gen_log_coeffs_f32(deg)
+    print(f"# log @rs: x=2^e*m reduction + degree-{deg} atanh poly (f32)")
+    print(f"LN2HI = {hexs(LN2HI_S)}   LN2LO = {hexs(LN2LO_S)}   SQRT2 = {hexs(SQRT2_S)}")
+    print("coeffs (ascending, c0..c%d), as f32 hex:" % deg)
+    for i, c in enumerate(coeffs):
+        print(f"  c{i:<2} = {hexs(c)}   ({c!r})")
+    worst = 0.0; xw = None
+    for t in range(1, 200001, 7):
+        x = f32(mp.mpf(t) / 1000)
+        got = log_f32(x, coeffs); tru = mp.log(mp.mpf(x))
+        if tru == 0 or not math.isfinite(got): continue
+        e = abs(ulps32(got, tru))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in (0,200]: {worst:.3f} ULP  at x={xw}")
+    print("expected (input -> output) bit patterns:")
+    for x in [1.0, 2.0, 0.5, 10.0, 100.0, 0.1, 1.0e-40, 7.389056]:
+        print(f"  log({x}) -> {hexs(log_f32(x, coeffs))}   in={hexs(x)}")
+    print("edge cases (in -> out):")
+    edges = [('+inf', INF), ('-inf', -INF), ('nan', float('nan')),
+             ('0.0', 0.0), ('-1.0', -1.0), ('1.0', 1.0)]
+    for name, x in edges:
+        o = log_f32(x, coeffs)
+        ib = "0x7f800000" if x==INF else "0xff800000" if x==-INF else \
+             "0x7fc00000" if x!=x else hexs(x)
+        print(f"  log({name:>6}) -> {hexs(o):>12}   in={ib}")
+
 if __name__ == '__main__':
     fn = sys.argv[1] if len(sys.argv) > 1 else 'exp'
-    {'exp': check_exp, 'exp-rs': check_exp_rs}[fn]()
+    {'exp': check_exp, 'exp-rs': check_exp_rs,
+     'log': check_log, 'log-rs': check_log_rs}[fn]()

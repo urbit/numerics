@@ -698,25 +698,41 @@
   ::      .0.9999994
   ::  Source
   ++  log
-    |=  z=@rs  ^-  @rs
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(z 0x7f80.0000)  `@rs`0x7f80.0000  :: log(+inf) -> inf
-    ?:  =(z 0xff80.0000)  `@rs`0x7fc0.0000  :: log(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7fc0.0000 z) 0)  `@rs`0x7fc0.0000  :: exp(NaN) -> NaN
-    ::  otherwise, use Taylor series
-    =/  p   .0
-    =/  po  .-1
-    =/  i   .0
-    |-  ^-  @rs
-    ?:  (lth (abs (sub po p)) rtol)
-      (mul (div (mul .2 (sub z .1)) (add z .1)) p)
-    =/  term1  (div .1 (add .1 (mul .2 i)))
-    =/  term2  (mul (sub z .1) (sub z .1))
-    =/  term3  (mul (add z .1) (add z .1))
-    =/  term  (mul term1 (pow-n (div term2 term3) i))
-    $(i (add i .1), p (add p term), po p)
+    |=  x=@rs  ^-  @rs
+    ::  Reduce x = 2^e * m with m in [sqrt(1/2), sqrt(2)); then
+    ::  log(x) = e*ln2 + log(1+f), f = m-1, s = f/(2+f),
+    ::  log(1+f) = f - s*(f - 2z*P2(z)), z = s*s, P2 the atanh series
+    ::  1/3 + z/5 + z^2/7 + ...  Faithful to <=1 ULP; round-nearest-even
+    ::  internally (the SoftFloat jet will match this bit-for-bit).
+    ?:  !(~(equ ^rs %n) x x)         `@rs`0x7fc0.0000   :: log(NaN) -> NaN
+    ?:  =(x `@rs`0x7f80.0000)        `@rs`0x7f80.0000   :: log(+inf) -> inf
+    ?:  |(=(x `@rs`0x0) =(x `@rs`0x8000.0000))  `@rs`0xff80.0000  :: log(+-0) -> -inf
+    ?:  =(1 (rsh [0 31] x))          `@rs`0x7fc0.0000   :: log(x<0) -> NaN
+    =/  sub  =(0 (dis 0xff (rsh [0 23] x)))                  :: subnormal?
+    =/  xx   ?:(sub (~(mul ^rs %n) x `@rs`0x4b80.0000) x)    :: *2^24
+    =/  ae   ?:(sub -24 --0)
+    =/  b    `@`xx
+    =/  ef   (dif:si (new:si %.y (dis 0xff (rsh [0 23] b))) --127)
+    =/  m    `@rs`(con (dis b 0x7f.ffff) 0x3f80.0000)
+    =/  big  (~(gte ^rs %n) m `@rs`0x3fb5.04f3)              :: m >= sqrt(2)
+    =?  m    big  (~(mul ^rs %n) m `@rs`0x3f00.0000)         :: m * 0.5
+    =?  ef   big  (sum:si ef --1)
+    =.  ef   (sum:si ef ae)
+    =/  f    (~(sub ^rs %n) m `@rs`0x3f80.0000)
+    =/  s    (~(div ^rs %n) f (~(add ^rs %n) m `@rs`0x3f80.0000))
+    =/  z    (~(mul ^rs %n) s s)
+    =/  cs=(list @rs)
+      :~  `@rs`0x3eaa.aaab  `@rs`0x3e4c.cccd  `@rs`0x3e12.4925
+          `@rs`0x3de3.8e39  `@rs`0x3dba.2e8c
+      ==
+    =/  p2  (roll (flop cs) |=([c=@rs acc=@rs] (~(add ^rs %n) (~(mul ^rs %n) acc z) c)))
+    =/  r   (~(mul ^rs %n) (~(add ^rs %n) z z) p2)
+    =/  l1  (~(sub ^rs %n) f (~(mul ^rs %n) s (~(sub ^rs %n) f r)))
+    =/  efa   (~(sun ^rs %n) (abs:si ef))
+    =/  ef-f  ?:((syn:si ef) efa (~(sub ^rs %n) .0 efa))     :: e as @rs
+    =/  hi  (~(mul ^rs %n) ef-f `@rs`0x3f31.7200)            :: e*ln2hi
+    =/  lo  (~(mul ^rs %n) ef-f `@rs`0x35bf.be8e)            :: e*ln2lo
+    (~(add ^rs %n) hi (~(add ^rs %n) l1 lo))
   ::    +log-10:  @rs -> @rs
   ::
   ::  Returns the base-10 logarithm of a floating-point atom.
@@ -1585,25 +1601,44 @@
   ::      .~inf
   ::  Source
   ++  log
-    |=  z=@rd  ^-  @rd
-    ::  filter out non-finite arguments
-    ::    check infinities
-    ?:  =(z 0x7ff0.0000.0000.0000)  `@rd`0x7ff0.0000.0000.0000  :: log(+inf) -> inf
-    ?:  =(z 0xfff0.0000.0000.0000)  `@rd`0x7ff8.0000.0000.0000  :: log(-inf) -> NaN
-    ::    check NaN
-    ?.  (^gte (dis 0x7ff8.0000.0000.0000 z) 0)  `@rd`0x7ff8.0000.0000.0000  :: log(NaN) -> NaN
-    ::  otherwise, use Taylor series
-    =/  p   .~0
-    =/  po  .~-1
-    =/  i   .~0
-    |-  ^-  @rd
-    ?:  (lth (abs (sub po p)) rtol)
-      (mul (div (mul .~2 (sub z .~1)) (add z .~1)) p)
-    =/  term1  (div .~1 (add .~1 (mul .~2 i)))
-    =/  term2  (mul (sub z .~1) (sub z .~1))
-    =/  term3  (mul (add z .~1) (add z .~1))
-    =/  term  (mul term1 (pow-n (div term2 term3) i))
-    $(i (add i .~1), p (add p term), po p)
+    |=  x=@rd  ^-  @rd
+    ::  Reduce x = 2^e * m with m in [sqrt(1/2), sqrt(2)); then
+    ::  log(x) = e*ln2 + log(1+f), f = m-1, s = f/(2+f),
+    ::  log(1+f) = f - s*(f - 2z*P2(z)), z = s*s, P2 the atanh series
+    ::  1/3 + z/5 + z^2/7 + ...  Faithful to <=1 ULP; round-nearest-even
+    ::  internally (the SoftFloat jet will match this bit-for-bit).
+    ?:  !(~(equ ^rd %n) x x)              `@rd`0x7ff8.0000.0000.0000  :: NaN
+    ?:  =(x `@rd`0x7ff0.0000.0000.0000)   `@rd`0x7ff0.0000.0000.0000  :: +inf
+    ?:  |(=(x `@rd`0x0) =(x `@rd`0x8000.0000.0000.0000))  `@rd`0xfff0.0000.0000.0000  :: +-0 -> -inf
+    ?:  =(1 (rsh [0 63] x))               `@rd`0x7ff8.0000.0000.0000  :: x<0 -> NaN
+    =/  sub  =(0 (dis 0x7ff (rsh [0 52] x)))                    :: subnormal?
+    =/  xx   ?:(sub (~(mul ^rd %n) x `@rd`0x4350.0000.0000.0000) x)  :: *2^54
+    =/  ae   ?:(sub -54 --0)
+    =/  b    `@`xx
+    =/  ef   (dif:si (new:si %.y (dis 0x7ff (rsh [0 52] b))) --1.023)
+    =/  m    `@rd`(con (dis b 0xf.ffff.ffff.ffff) 0x3ff0.0000.0000.0000)
+    =/  big  (~(gte ^rd %n) m `@rd`0x3ff6.a09e.667f.3bcd)       :: m >= sqrt(2)
+    =?  m    big  (~(mul ^rd %n) m `@rd`0x3fe0.0000.0000.0000)  :: m * 0.5
+    =?  ef   big  (sum:si ef --1)
+    =.  ef   (sum:si ef ae)
+    =/  f    (~(sub ^rd %n) m `@rd`0x3ff0.0000.0000.0000)
+    =/  s    (~(div ^rd %n) f (~(add ^rd %n) m `@rd`0x3ff0.0000.0000.0000))
+    =/  z    (~(mul ^rd %n) s s)
+    =/  cs=(list @rd)
+      :~  `@rd`0x3fd5.5555.5555.5555  `@rd`0x3fc9.9999.9999.999a
+          `@rd`0x3fc2.4924.9249.2492  `@rd`0x3fbc.71c7.1c71.c71c
+          `@rd`0x3fb7.45d1.745d.1746  `@rd`0x3fb3.b13b.13b1.3b14
+          `@rd`0x3fb1.1111.1111.1111  `@rd`0x3fae.1e1e.1e1e.1e1e
+          `@rd`0x3faa.f286.bca1.af28  `@rd`0x3fa8.6186.1861.8618
+      ==
+    =/  p2  (roll (flop cs) |=([c=@rd acc=@rd] (~(add ^rd %n) (~(mul ^rd %n) acc z) c)))
+    =/  r   (~(mul ^rd %n) (~(add ^rd %n) z z) p2)
+    =/  l1  (~(sub ^rd %n) f (~(mul ^rd %n) s (~(sub ^rd %n) f r)))
+    =/  efa   (~(sun ^rd %n) (abs:si ef))
+    =/  ef-f  ?:((syn:si ef) efa (~(sub ^rd %n) .~0 efa))      :: e as @rd
+    =/  hi  (~(mul ^rd %n) ef-f `@rd`0x3fe6.2e42.fee0.0000)    :: e*ln2hi
+    =/  lo  (~(mul ^rd %n) ef-f `@rd`0x3dea.39ef.3579.3c76)    :: e*ln2lo
+    (~(add ^rd %n) hi (~(add ^rd %n) l1 lo))
   ::    +log-10:  @rd -> @rd
   ::
   ::  Returns the base-10 logarithm of a floating-point atom.

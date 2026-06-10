@@ -853,8 +853,15 @@
   ::      .inf
   ::  Source
   ++  log-10
-    |=  z=@rs  ^-  @rs
-    (div (log z) log10)
+    ::  e*log10(2) + log(m)/ln10, reusing +lr so the integer part is added with
+    ::  no division rounding (more accurate than log(x)/ln10).
+    |=  x=@rs  ^-  @rs
+    ?:  !(~(equ ^rs %n) x x)  `@rs`0x7fc0.0000
+    ?:  =(x `@rs`0x7f80.0000)  `@rs`0x7f80.0000
+    ?:  |(=(x `@rs`0x0) =(x `@rs`0x8000.0000))  `@rs`0xff80.0000
+    ?:  =(1 (rsh [0 31] x))  `@rs`0x7fc0.0000
+    =/  el  (lr x)
+    (~(add ^rs %n) (~(mul ^rs %n) ef.el `@rs`0x3e9a.209b) (~(mul ^rs %n) lm.el `@rs`0x3ede.5bd9))
   ::    +log-2:  @rs -> @rs
   ::
   ::  Returns the base-2 logarithm of a floating-point atom.
@@ -863,12 +870,42 @@
   ::      .-3.321928
   ::      > (log-2 .2)
   ::      .1.5849625
-  ::      > (~(log-2 rs [%z .1e-8]) .2)
-  ::      .1.5849633
   ::  Source
   ++  log-2
-    |=  z=@rs  ^-  @rs
-    (div (log z) log2)
+    ::  e + log(m)/ln2 (integer part exact); see +lr.
+    |=  x=@rs  ^-  @rs
+    ?:  !(~(equ ^rs %n) x x)  `@rs`0x7fc0.0000
+    ?:  =(x `@rs`0x7f80.0000)  `@rs`0x7f80.0000
+    ?:  |(=(x `@rs`0x0) =(x `@rs`0x8000.0000))  `@rs`0xff80.0000
+    ?:  =(1 (rsh [0 31] x))  `@rs`0x7fc0.0000
+    =/  el  (lr x)
+    (~(add ^rs %n) ef.el (~(mul ^rs %n) lm.el `@rs`0x3fb8.aa3b))
+  ::  +lr: log reduction for finite positive x -> [e (as @rs), log(mantissa)].
+  ++  lr
+    |=  x=@rs  ^-  [ef=@rs lm=@rs]
+    =/  sub  =(0 (dis 0xff (rsh [0 23] x)))
+    =/  xx   ?:(sub (~(mul ^rs %n) x `@rs`0x4b80.0000) x)
+    =/  ae   ?:(sub -24 --0)
+    =/  b    `@`xx
+    =/  e    (dif:si (new:si %.y (dis 0xff (rsh [0 23] b))) --127)
+    =/  m    `@rs`(con (dis b 0x7f.ffff) 0x3f80.0000)
+    =/  big  (~(gte ^rs %n) m `@rs`0x3fb5.04f3)
+    =?  m    big  (~(mul ^rs %n) m `@rs`0x3f00.0000)
+    =?  e    big  (sum:si e --1)
+    =.  e    (sum:si e ae)
+    =/  f    (~(sub ^rs %n) m `@rs`0x3f80.0000)
+    =/  s    (~(div ^rs %n) f (~(add ^rs %n) m `@rs`0x3f80.0000))
+    =/  z    (~(mul ^rs %n) s s)
+    =/  cs=(list @rs)
+      :~  `@rs`0x3eaa.aaab  `@rs`0x3e4c.cccd  `@rs`0x3e12.4925
+          `@rs`0x3de3.8e39  `@rs`0x3dba.2e8c
+      ==
+    =/  p2  (roll (flop cs) |=([c=@rs a=@rs] (~(add ^rs %n) (~(mul ^rs %n) a z) c)))
+    =/  r   (~(mul ^rs %n) (~(add ^rs %n) z z) p2)
+    =/  l1  (~(sub ^rs %n) f (~(mul ^rs %n) s (~(sub ^rs %n) f r)))
+    =/  efa  (~(sun ^rs %n) (abs:si e))
+    =/  ef   ?:((syn:si e) efa (~(sub ^rs %n) .0 efa))
+    [ef l1]
   ::    +pow:  [@rs @rs] -> @rs
   ::
   ::  Returns the power of a floating-point atom to a floating-point exponent.
@@ -1888,22 +1925,62 @@
   ::      .~0.30102999562024696
   ::  Source
   ++  log-10
-    |=  z=@rd  ^-  @rd
-    (div (log z) log10)
+    ::  e*log10(2) + log(m)/ln10, reusing +lr so the integer part is added with
+    ::  no division rounding (more accurate than log(x)/ln10).
+    |=  x=@rd  ^-  @rd
+    ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
+    ?:  =(x `@rd`0x7ff0.0000.0000.0000)  `@rd`0x7ff0.0000.0000.0000
+    ?:  |(=(x `@rd`0x0) =(x `@rd`0x8000.0000.0000.0000))  `@rd`0xfff0.0000.0000.0000
+    ?:  =(1 (rsh [0 63] x))  `@rd`0x7ff8.0000.0000.0000
+    =/  el  (lr x)
+    (~(add ^rd %n) (~(mul ^rd %n) ef.el `@rd`0x3fd3.4413.509f.79ff) (~(mul ^rd %n) lm.el `@rd`0x3fdb.cb7b.1526.e50e))
   ::    +log-2:  @rd -> @rd
   ::
   ::  Returns the base-2 logarithm of a floating-point atom.
   ::    Examples
-  ::      > (log-2 .0.1)
-  ::      .~-3.321928094582713
-  ::      > (log-2 .2)
-  ::      .~0.9999999999985144
-  ::      > (~(log-2 rs [%z .1e-8]) .2)
-  ::      .~0.9999999998547181
+  ::      > (log-2 .~2)
+  ::      .~1
+  ::      > (log-2 .~0.1)
+  ::      .~-3.321928094887362
   ::  Source
   ++  log-2
-    |=  z=@rd  ^-  @rd
-    (div (log z) log2)
+    ::  e + log(m)/ln2 (integer part exact); see +lr.
+    |=  x=@rd  ^-  @rd
+    ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
+    ?:  =(x `@rd`0x7ff0.0000.0000.0000)  `@rd`0x7ff0.0000.0000.0000
+    ?:  |(=(x `@rd`0x0) =(x `@rd`0x8000.0000.0000.0000))  `@rd`0xfff0.0000.0000.0000
+    ?:  =(1 (rsh [0 63] x))  `@rd`0x7ff8.0000.0000.0000
+    =/  el  (lr x)
+    (~(add ^rd %n) ef.el (~(mul ^rd %n) lm.el `@rd`0x3ff7.1547.652b.82fe))
+  ::  +lr: log reduction for finite positive x -> [e (as @rd), log(mantissa)].
+  ++  lr
+    |=  x=@rd  ^-  [ef=@rd lm=@rd]
+    =/  sub  =(0 (dis 0x7ff (rsh [0 52] x)))
+    =/  xx   ?:(sub (~(mul ^rd %n) x `@rd`0x4350.0000.0000.0000) x)
+    =/  ae   ?:(sub -54 --0)
+    =/  b    `@`xx
+    =/  e    (dif:si (new:si %.y (dis 0x7ff (rsh [0 52] b))) --1.023)
+    =/  m    `@rd`(con (dis b 0xf.ffff.ffff.ffff) 0x3ff0.0000.0000.0000)
+    =/  big  (~(gte ^rd %n) m `@rd`0x3ff6.a09e.667f.3bcd)
+    =?  m    big  (~(mul ^rd %n) m `@rd`0x3fe0.0000.0000.0000)
+    =?  e    big  (sum:si e --1)
+    =.  e    (sum:si e ae)
+    =/  f    (~(sub ^rd %n) m `@rd`0x3ff0.0000.0000.0000)
+    =/  s    (~(div ^rd %n) f (~(add ^rd %n) m `@rd`0x3ff0.0000.0000.0000))
+    =/  z    (~(mul ^rd %n) s s)
+    =/  cs=(list @rd)
+      :~  `@rd`0x3fd5.5555.5555.5555  `@rd`0x3fc9.9999.9999.999a
+          `@rd`0x3fc2.4924.9249.2492  `@rd`0x3fbc.71c7.1c71.c71c
+          `@rd`0x3fb7.45d1.745d.1746  `@rd`0x3fb3.b13b.13b1.3b14
+          `@rd`0x3fb1.1111.1111.1111  `@rd`0x3fae.1e1e.1e1e.1e1e
+          `@rd`0x3faa.f286.bca1.af28  `@rd`0x3fa8.6186.1861.8618
+      ==
+    =/  p2  (roll (flop cs) |=([c=@rd a=@rd] (~(add ^rd %n) (~(mul ^rd %n) a z) c)))
+    =/  r   (~(mul ^rd %n) (~(add ^rd %n) z z) p2)
+    =/  l1  (~(sub ^rd %n) f (~(mul ^rd %n) s (~(sub ^rd %n) f r)))
+    =/  efa  (~(sun ^rd %n) (abs:si e))
+    =/  ef   ?:((syn:si e) efa (~(sub ^rd %n) .~0 efa))
+    [ef l1]
   ::    +pow:  [@rd @rd] -> @rd
   ::
   ::  Returns the power of a floating-point atom to a floating-point exponent.

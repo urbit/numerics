@@ -606,12 +606,9 @@
   ::      .0.7753969
   ::
   ++  asin
+    ::  fdlibm rational kernel; see +rs-ainv.  Faithful to <=1 ULP; |x|>1 -> NaN.
     |=  x=@rs  ^-  @rs
-    ?.  (gte (abs x) .1)
-      (atan (div x (sqt (abs (sub .1 (mul x x))))))
-    ?:  =(.1 x)   ^~((mul pi .0.5))
-    ?:  =(.-1 x)  ^~((mul pi .-0.5))
-    ~|([%asin-out-of-bounds x] !!)
+    (asn:rs-ainv x)
   ::  +acos:  @rs -> @rs
   ::
   ::  Returns the inverse cosine of a floating-point atom.
@@ -625,12 +622,66 @@
   ::
   ++  acos
     |=  x=@rs  ^-  @rs
-    ?.  (gte (abs x) .1)
-      ?:  =(.0 x)  ^~((mul pi .0.5))
-      (atan (div (sqt (abs (sub .1 (mul x x)))) x))
-    ?:  =(.1 x)   .0
-    ?:  =(.-1 x)  pi
-    ~|([%acos-out-of-bounds x] !!)
+    (acs:rs-ainv x)
+  ::  +rs-ainv: shared asin/acos engine for the @rs door (rational P/Q kernel),
+  ::  see +asin / +acos.
+  ++  rs-ainv
+    |%
+    ++  rr
+      |=  t=@rs  ^-  @rs
+      =/  ps=(list @rs)  :~(`@rs`0x3e2a.aa75 `@rs`0xbd2f.13ba `@rs`0xbc0d.d36b)
+      =/  p  (~(mul ^rs %n) t (roll (flop ps) |=([c=@rs a=@rs] (~(add ^rs %n) (~(mul ^rs %n) a t) c))))
+      =/  q  (~(add ^rs %n) `@rs`0x3f80.0000 (~(mul ^rs %n) t `@rs`0xbf34.e5ae))
+      (~(div ^rs %n) p q)
+    ++  asn
+      |=  x=@rs  ^-  @rs
+      ?:  !(~(equ ^rs %n) x x)  `@rs`0x7fc0.0000
+      =/  sgn  (rsh [0 31] x)
+      =/  ax   `@rs`(dis x 0x7fff.ffff)
+      ?:  (~(gth ^rs %n) ax `@rs`0x3f80.0000)  `@rs`0x7fc0.0000
+      ?:  =(ax `@rs`0x3f80.0000)
+        (~(add ^rs %n) (~(mul ^rs %n) x `@rs`0x3fc9.0fdb) (~(mul ^rs %n) x `@rs`0xb33b.bd2e))
+      ?:  (~(lth ^rs %n) ax `@rs`0x3f00.0000)
+        ?:  (~(lth ^rs %n) ax `@rs`0x3980.0000)  x
+        (~(add ^rs %n) x (~(mul ^rs %n) x (rr (~(mul ^rs %n) x x))))
+      =/  w  (~(sub ^rs %n) `@rs`0x3f80.0000 ax)
+      =/  t  (~(mul ^rs %n) w `@rs`0x3f00.0000)
+      =/  r  (rr t)
+      =/  s  (sqt t)
+      ?:  (~(gte ^rs %n) ax `@rs`0x3f79.999a)
+        =/  res  (~(sub ^rs %n) `@rs`0x3fc9.0fdb (~(sub ^rs %n) (~(mul ^rs %n) `@rs`0x4000.0000 (~(add ^rs %n) s (~(mul ^rs %n) s r))) `@rs`0xb33b.bd2e))
+        ?:(=(sgn 1) (~(sub ^rs %n) `@rs`0x0 res) res)
+      =/  df  `@rs`(dis s 0xffff.f000)
+      =/  c   (~(div ^rs %n) (~(sub ^rs %n) t (~(mul ^rs %n) df df)) (~(add ^rs %n) s df))
+      =/  p2  (~(sub ^rs %n) (~(mul ^rs %n) `@rs`0x4000.0000 (~(mul ^rs %n) s r)) (~(sub ^rs %n) `@rs`0xb33b.bd2e (~(mul ^rs %n) `@rs`0x4000.0000 c)))
+      =/  q2  (~(sub ^rs %n) `@rs`0x3f49.0fdb (~(mul ^rs %n) `@rs`0x4000.0000 df))
+      =/  res  (~(sub ^rs %n) `@rs`0x3f49.0fdb (~(sub ^rs %n) p2 q2))
+      ?:(=(sgn 1) (~(sub ^rs %n) `@rs`0x0 res) res)
+    ++  acs
+      |=  x=@rs  ^-  @rs
+      ?:  !(~(equ ^rs %n) x x)  `@rs`0x7fc0.0000
+      =/  neg  (rsh [0 31] x)
+      =/  ax   `@rs`(dis x 0x7fff.ffff)
+      ?:  (~(gth ^rs %n) ax `@rs`0x3f80.0000)  `@rs`0x7fc0.0000
+      ?:  =(ax `@rs`0x3f80.0000)
+        ?:  =(neg 0)  `@rs`0x0
+        (~(add ^rs %n) `@rs`0x4049.0fdb (~(mul ^rs %n) `@rs`0x4000.0000 `@rs`0xb33b.bd2e))
+      ?:  (~(lth ^rs %n) ax `@rs`0x3f00.0000)
+        ?:  (~(lth ^rs %n) ax `@rs`0x3280.0000)  `@rs`0x3fc9.0fdb
+        =/  z  (~(mul ^rs %n) x x)
+        =/  r  (rr z)
+        (~(sub ^rs %n) `@rs`0x3fc9.0fdb (~(sub ^rs %n) x (~(sub ^rs %n) `@rs`0xb33b.bd2e (~(mul ^rs %n) x r))))
+      ?:  =(neg 1)
+        =/  z  (~(mul ^rs %n) (~(add ^rs %n) `@rs`0x3f80.0000 x) `@rs`0x3f00.0000)
+        =/  s  (sqt z)
+        =/  r  (rr z)
+        =/  w  (~(sub ^rs %n) (~(mul ^rs %n) r s) `@rs`0xb33b.bd2e)
+        (~(sub ^rs %n) `@rs`0x4049.0fdb (~(mul ^rs %n) `@rs`0x4000.0000 (~(add ^rs %n) s w)))
+      =/  z  (~(mul ^rs %n) (~(sub ^rs %n) `@rs`0x3f80.0000 x) `@rs`0x3f00.0000)
+      =/  s  (sqt z)
+      =/  r  (rr z)
+      (~(mul ^rs %n) `@rs`0x4000.0000 (~(add ^rs %n) s (~(mul ^rs %n) s r)))
+    --
   ::  +atan:  @rs -> @rs
   ::
   ::  Returns the inverse tangent of a floating-point atom.
@@ -1577,12 +1628,9 @@
   ::      .~0.7753974965943197
   ::
   ++  asin
+    ::  fdlibm rational kernel; see +rd-ainv.  Faithful to <=1 ULP; |x|>1 -> NaN.
     |=  x=@rd  ^-  @rd
-    ?.  (gte (abs x) .~1)
-      (atan (div x (sqt (abs (sub .~1 (mul x x))))))
-    ?:  =(.~1 x)   ^~((mul pi .~0.5))
-    ?:  =(.~-1 x)  ^~((mul pi .~-0.5))
-    ~|([%asin-out-of-bounds x] !!)
+    (asn:rd-ainv x)
   ::  +acos:  @rd -> @rd
   ::
   ::  Returns the inverse cosine of a floating-point atom.
@@ -1596,12 +1644,78 @@
   ::
   ++  acos
     |=  x=@rd  ^-  @rd
-    ?.  (gte (abs x) .~1)
-      ?:  =(.~0 x)  ^~((mul pi .~0.5))
-      (atan (div (sqt (abs (sub .~1 (mul x x)))) x))
-    ?:  =(.~1 x)   .~0
-    ?:  =(.~-1 x)  pi
-    ~|([%acos-out-of-bounds x] !!)
+    (acs:rd-ainv x)
+  ::  +rd-ainv: shared asin/acos engine for the @rd door (rational P/Q kernel),
+  ::  see +asin / +acos.
+  ++  rd-ainv
+    |%
+    ++  rr
+      |=  t=@rd  ^-  @rd
+      =/  ps=(list @rd)
+        :~  `@rd`0x3fc5.5555.5555.5555  `@rd`0xbfd4.d612.03eb.6f7d
+            `@rd`0x3fc9.c155.0e88.4455  `@rd`0xbfa4.8228.b568.8f3b
+            `@rd`0x3f49.efe0.7501.b288  `@rd`0x3f02.3de1.0dfd.f709
+        ==
+      =/  qs=(list @rd)
+        :~  `@rd`0xc003.3a27.1c8a.2d4b  `@rd`0x4000.2ae5.9c59.8ac8
+            `@rd`0xbfe6.066c.1b8d.0159  `@rd`0x3fb3.b8c5.b12e.9282
+        ==
+      =/  p  (~(mul ^rd %n) t (roll (flop ps) |=([c=@rd a=@rd] (~(add ^rd %n) (~(mul ^rd %n) a t) c))))
+      =/  q  (~(add ^rd %n) `@rd`0x3ff0.0000.0000.0000 (~(mul ^rd %n) t (roll (flop qs) |=([c=@rd a=@rd] (~(add ^rd %n) (~(mul ^rd %n) a t) c)))))
+      (~(div ^rd %n) p q)
+    ++  asn
+      |=  x=@rd  ^-  @rd
+      ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
+      =/  sgn  (rsh [0 63] x)
+      =/  ax   `@rd`(dis x 0x7fff.ffff.ffff.ffff)
+      ?:  (~(gth ^rd %n) ax `@rd`0x3ff0.0000.0000.0000)  `@rd`0x7ff8.0000.0000.0000
+      ?:  =(ax `@rd`0x3ff0.0000.0000.0000)
+        (~(add ^rd %n) (~(mul ^rd %n) x `@rd`0x3ff9.21fb.5444.2d18) (~(mul ^rd %n) x `@rd`0x3c91.a626.3314.5c07))
+      ?:  (~(lth ^rd %n) ax `@rd`0x3fe0.0000.0000.0000)
+        ?:  (~(lth ^rd %n) ax `@rd`0x3e50.0000.0000.0000)  x
+        =/  t  (~(mul ^rd %n) x x)
+        (~(add ^rd %n) x (~(mul ^rd %n) x (rr t)))
+      =/  w  (~(sub ^rd %n) `@rd`0x3ff0.0000.0000.0000 ax)
+      =/  t  (~(mul ^rd %n) w `@rd`0x3fe0.0000.0000.0000)
+      =/  r  (rr t)
+      =/  s  (sqt t)
+      ?:  (~(gte ^rd %n) ax `@rd`0x3fef.3333.0000.0000)
+        =/  res  (~(sub ^rd %n) `@rd`0x3ff9.21fb.5444.2d18 (~(sub ^rd %n) (~(mul ^rd %n) `@rd`0x4000.0000.0000.0000 (~(add ^rd %n) s (~(mul ^rd %n) s r))) `@rd`0x3c91.a626.3314.5c07))
+        ?:(=(sgn 1) (~(sub ^rd %n) `@rd`0x0 res) res)
+      =/  df  `@rd`(dis s 0xffff.ffff.0000.0000)
+      =/  c   (~(div ^rd %n) (~(sub ^rd %n) t (~(mul ^rd %n) df df)) (~(add ^rd %n) s df))
+      =/  p2  (~(sub ^rd %n) (~(mul ^rd %n) `@rd`0x4000.0000.0000.0000 (~(mul ^rd %n) s r)) (~(sub ^rd %n) `@rd`0x3c91.a626.3314.5c07 (~(mul ^rd %n) `@rd`0x4000.0000.0000.0000 c)))
+      =/  q2  (~(sub ^rd %n) `@rd`0x3fe9.21fb.5444.2d18 (~(mul ^rd %n) `@rd`0x4000.0000.0000.0000 df))
+      =/  res  (~(sub ^rd %n) `@rd`0x3fe9.21fb.5444.2d18 (~(sub ^rd %n) p2 q2))
+      ?:(=(sgn 1) (~(sub ^rd %n) `@rd`0x0 res) res)
+    ++  acs
+      |=  x=@rd  ^-  @rd
+      ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
+      =/  neg  (rsh [0 63] x)
+      =/  ax   `@rd`(dis x 0x7fff.ffff.ffff.ffff)
+      ?:  (~(gth ^rd %n) ax `@rd`0x3ff0.0000.0000.0000)  `@rd`0x7ff8.0000.0000.0000
+      ?:  =(ax `@rd`0x3ff0.0000.0000.0000)
+        ?:  =(neg 0)  `@rd`0x0
+        (~(add ^rd %n) `@rd`0x4009.21fb.5444.2d18 (~(mul ^rd %n) `@rd`0x4000.0000.0000.0000 `@rd`0x3c91.a626.3314.5c07))
+      ?:  (~(lth ^rd %n) ax `@rd`0x3fe0.0000.0000.0000)
+        ?:  (~(lth ^rd %n) ax `@rd`0x3c60.0000.0000.0000)  `@rd`0x3ff9.21fb.5444.2d18
+        =/  z  (~(mul ^rd %n) x x)
+        =/  r  (rr z)
+        (~(sub ^rd %n) `@rd`0x3ff9.21fb.5444.2d18 (~(sub ^rd %n) x (~(sub ^rd %n) `@rd`0x3c91.a626.3314.5c07 (~(mul ^rd %n) x r))))
+      ?:  =(neg 1)
+        =/  z  (~(mul ^rd %n) (~(add ^rd %n) `@rd`0x3ff0.0000.0000.0000 x) `@rd`0x3fe0.0000.0000.0000)
+        =/  s  (sqt z)
+        =/  r  (rr z)
+        =/  w  (~(sub ^rd %n) (~(mul ^rd %n) r s) `@rd`0x3c91.a626.3314.5c07)
+        (~(sub ^rd %n) `@rd`0x4009.21fb.5444.2d18 (~(mul ^rd %n) `@rd`0x4000.0000.0000.0000 (~(add ^rd %n) s w)))
+      =/  z   (~(mul ^rd %n) (~(sub ^rd %n) `@rd`0x3ff0.0000.0000.0000 x) `@rd`0x3fe0.0000.0000.0000)
+      =/  s   (sqt z)
+      =/  df  `@rd`(dis s 0xffff.ffff.0000.0000)
+      =/  c   (~(div ^rd %n) (~(sub ^rd %n) z (~(mul ^rd %n) df df)) (~(add ^rd %n) s df))
+      =/  r   (rr z)
+      =/  w   (~(add ^rd %n) (~(mul ^rd %n) r s) c)
+      (~(mul ^rd %n) `@rd`0x4000.0000.0000.0000 (~(add ^rd %n) df w))
+    --
   ::  +atan:  @rd -> @rd
   ::
   ::  Returns the inverse tangent of a floating-point atom.

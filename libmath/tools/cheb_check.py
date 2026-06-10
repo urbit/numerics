@@ -412,9 +412,116 @@ def check_trig_rs(which):
              "0x7fc00000" if x!=x else hexs(x)
         print(f"  {which}({name:>5}) -> {hexs(o):>12}   in={ib}")
 
+# ============================ atan @rd ============================
+#  fdlibm s_atan: reduce |x| against breakpoints 7/16,11/16,19/16,39/16 to a
+#  small argument near atan(0.5)/atan(1)/atan(1.5)/atan(inf), minimax poly.
+ATAN_AT = [f64(s) for s in [
+    '3.33333333333329318027e-01','-1.99999999998764832476e-01',
+    '1.42857142725034663711e-01','-1.11111104054623557880e-01',
+    '9.09088713343650656196e-02','-7.69187620504482999495e-02',
+    '6.66107313738753120669e-02','-5.83357013379057348645e-02',
+    '4.97687799461593236017e-02','-3.65315727442169155270e-02',
+    '1.62858201153657823623e-02']]
+ATAN_BP = [f64(7)/16, f64(11)/16, f64(19)/16, f64(39)/16]
+ATANHI = [f64(mp.atan(mp.mpf('0.5'))), f64(mp.pi/4), f64(mp.atan(mp.mpf('1.5'))), f64(mp.pi/2)]
+ATANLO = [f64(mp.atan(mp.mpf('0.5')) - mp.mpf(ATANHI[0])), f64(mp.pi/4 - mp.mpf(ATANHI[1])),
+          f64(mp.atan(mp.mpf('1.5')) - mp.mpf(ATANHI[2])), f64(mp.pi/2 - mp.mpf(ATANHI[3]))]
+
+def atan_kernel(x):                            # x >= 0 finite
+    if x < ATAN_BP[0]:      idd = -1; xr = x
+    elif x < ATAN_BP[1]:    idd = 0;  xr = f64(f64(f64(x+x)-ONE) / f64(2.0+x))
+    elif x < ATAN_BP[2]:    idd = 1;  xr = f64(f64(x-ONE) / f64(x+ONE))
+    elif x < ATAN_BP[3]:    idd = 2;  xr = f64(f64(x-1.5) / f64(ONE+f64(1.5*x)))
+    else:                   idd = 3;  xr = f64(-1.0 / x)
+    z = f64(xr*xr)
+    s = f64(z * horner(ATAN_AT, z))            # (s1+s2)
+    if idd < 0:  return f64(xr - f64(xr*s))
+    return f64(ATANHI[idd] - f64(f64(f64(xr*s) - ATANLO[idd]) - xr))
+def atan_f64(x):
+    x = f64(x)
+    if x != x:    return float('nan')
+    if x == INF:  return ATANHI[3]
+    if x == -INF: return f64(-ATANHI[3])
+    if x == 0.0:  return x
+    neg = bits(x) >> 63; ax = f64(abs(x))
+    r = atan_kernel(ax)
+    return f64(-r) if neg else r
+
+def check_atan():
+    print("# atan @rd: fdlibm breakpoint reduction + degree-10 minimax poly")
+    print("AT: " + " ".join(hexd(c) for c in ATAN_AT))
+    print("BP: " + " ".join(hexd(c) for c in ATAN_BP))
+    print("ATANHI: " + " ".join(hexd(c) for c in ATANHI))
+    print("ATANLO: " + " ".join(hexd(c) for c in ATANLO))
+    worst = 0.0; xw = None
+    for t in range(-500000, 500001, 7):
+        x = f64(mp.mpf(t) / 1000); got = atan_f64(x); tr = mp.atan(mp.mpf(x))
+        if abs(tr) < 1e-12 or not math.isfinite(got): continue
+        e = abs(ulps(got, tr))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in [-500,500]: {worst:.3f} ULP  at x={xw}")
+    print("expected:")
+    for x in [0.0, 0.5, 1.0, -1.0, 1.5, 2.0, 10.0, 0.1, -0.7]:
+        print(f"  atan({x}) -> {hexd(atan_f64(x))}   in={hexd(x)}")
+    for name, x in [('+inf', INF), ('-inf', -INF), ('nan', float('nan')), ('-0', -0.0)]:
+        o = atan_f64(x)
+        ib = "0x7ff0000000000000" if x==INF else "0xfff0000000000000" if x==-INF else \
+             "0x7ff8000000000000" if x!=x else hexd(x)
+        print(f"  atan({name:>5}) -> {hexd(o):>18}   in={ib}")
+
+# ============================ atan @rs ============================
+ATAN_AT_S = [f32(s) for s in ['3.3333328366e-01','-1.9999158382e-01',
+    '1.4253635705e-01','-1.0648017377e-01','6.1687607318e-02']]
+ATAN_BP_S = [f32(7)/16, f32(11)/16, f32(19)/16, f32(39)/16]
+ATANHI_S = [f32(mp.atan(mp.mpf('0.5'))), f32(mp.pi/4), f32(mp.atan(mp.mpf('1.5'))), f32(mp.pi/2)]
+ATANLO_S = [f32(mp.atan(mp.mpf('0.5')) - mp.mpf(ATANHI_S[0])), f32(mp.pi/4 - mp.mpf(ATANHI_S[1])),
+            f32(mp.atan(mp.mpf('1.5')) - mp.mpf(ATANHI_S[2])), f32(mp.pi/2 - mp.mpf(ATANHI_S[3]))]
+def atan_kernel32(x):
+    if x < ATAN_BP_S[0]:   idd = -1; xr = x
+    elif x < ATAN_BP_S[1]: idd = 0;  xr = f32(f32(f32(x+x)-1.0) / f32(2.0+x))
+    elif x < ATAN_BP_S[2]: idd = 1;  xr = f32(f32(x-1.0) / f32(x+1.0))
+    elif x < ATAN_BP_S[3]: idd = 2;  xr = f32(f32(x-1.5) / f32(1.0+f32(1.5*x)))
+    else:                  idd = 3;  xr = f32(-1.0 / x)
+    z = f32(xr*xr)
+    s = f32(z * horner32(ATAN_AT_S, z))
+    if idd < 0:  return f32(xr - f32(xr*s))
+    return f32(ATANHI_S[idd] - f32(f32(f32(xr*s) - ATANLO_S[idd]) - xr))
+def atan_f32(x):
+    x = f32(x)
+    if x != x:    return float('nan')
+    if x == INF:  return ATANHI_S[3]
+    if x == -INF: return f32(-ATANHI_S[3])
+    if x == 0.0:  return x
+    neg = bits32(x) >> 31; ax = f32(abs(x))
+    r = atan_kernel32(ax)
+    return f32(-r) if neg else r
+
+def check_atan_rs():
+    print("# atan @rs: fdlibm breakpoint reduction + degree-4 minimax poly (f32)")
+    print("AT: " + " ".join(hexs(c) for c in ATAN_AT_S))
+    print("BP: " + " ".join(hexs(c) for c in ATAN_BP_S))
+    print("ATANHI: " + " ".join(hexs(c) for c in ATANHI_S))
+    print("ATANLO: " + " ".join(hexs(c) for c in ATANLO_S))
+    worst = 0.0; xw = None
+    for t in range(-500000, 500001, 7):
+        x = f32(mp.mpf(t) / 1000); got = atan_f32(x); tr = mp.atan(mp.mpf(x))
+        if abs(tr) < 1e-7 or not math.isfinite(got): continue
+        e = abs(ulps32(got, tr))
+        if e > worst: worst, xw = e, x
+    print(f"max error over x in [-500,500]: {worst:.3f} ULP  at x={xw}")
+    print("expected:")
+    for x in [0.0, 0.5, 1.0, -1.0, 1.5, 2.0, 10.0, 0.1, -0.7]:
+        print(f"  atan({x}) -> {hexs(atan_f32(x))}   in={hexs(x)}")
+    for name, x in [('+inf', INF), ('-inf', -INF), ('nan', float('nan')), ('-0', -0.0)]:
+        o = atan_f32(x)
+        ib = "0x7f800000" if x==INF else "0xff800000" if x==-INF else \
+             "0x7fc00000" if x!=x else hexs(x)
+        print(f"  atan({name:>5}) -> {hexs(o):>12}   in={ib}")
+
 if __name__ == '__main__':
     fn = sys.argv[1] if len(sys.argv) > 1 else 'exp'
     {'exp': check_exp, 'exp-rs': check_exp_rs,
      'log': check_log, 'log-rs': check_log_rs,
      'sin': lambda: check_trig('sin'), 'cos': lambda: check_trig('cos'),
-     'sin-rs': lambda: check_trig_rs('sin'), 'cos-rs': lambda: check_trig_rs('cos')}[fn]()
+     'sin-rs': lambda: check_trig_rs('sin'), 'cos-rs': lambda: check_trig_rs('cos'),
+     'atan': check_atan, 'atan-rs': check_atan_rs}[fn]()

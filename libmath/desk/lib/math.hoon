@@ -643,15 +643,54 @@
   ::      .1.2626364
   ::
   ++  atan
+    ::  fdlibm breakpoint reduction + minimax poly; odd.  Round-nearest-even
+    ::  internally (the SoftFloat jet matches).
     |=  x=@rs  ^-  @rs
-    =/  a  (pow (add .1 (mul x x)) .-0.5)
-    =/  b  .1
-    |-
-    ?.  (gth (abs (sub a b)) rtol)
-      (div x (mul (pow (add .1 (mul x x)) .0.5) b))
-    =/  ai  (mul .0.5 (add a b))
-    =/  bi  (sqt (mul ai b))
-    $(a ai, b bi)
+    ?:  !(~(equ ^rs %n) x x)      `@rs`0x7fc0.0000   :: NaN
+    ?:  =(x `@rs`0x7f80.0000)     `@rs`0x3fc9.0fdb   :: +inf -> pi/2
+    ?:  =(x `@rs`0xff80.0000)     `@rs`0xbfc9.0fdb   :: -inf -> -pi/2
+    ?:  |(=(x `@rs`0x0) =(x `@rs`0x8000.0000))  x    :: +-0 -> +-0
+    =/  neg  (rsh [0 31] x)
+    =/  r    (ker:rs-atan `@rs`(dis x 0x7fff.ffff))
+    ?:(=(neg 1) (~(sub ^rs %n) `@rs`0x0 r) r)
+  ::  +rs-atan: atan kernel for the @rs door (reduction + poly), see +atan.
+  ++  rs-atan
+    |%
+    ++  at
+      ^-  (list @rs)
+      :~  `@rs`0x3eaa.aaa9  `@rs`0xbe4c.ca98  `@rs`0x3e11.f50d
+          `@rs`0xbdda.1247  `@rs`0x3d7c.ac25
+      ==
+    ++  atred
+      |=  ax=@rs  ^-  [xr=@rs hi=@rs lo=@rs dir=?]
+      =/  one  `@rs`0x3f80.0000
+      =/  two  `@rs`0x4000.0000
+      =/  ohf  `@rs`0x3fc0.0000
+      ?:  (~(lth ^rs %n) ax `@rs`0x3ee0.0000)
+        [ax `@rs`0x0 `@rs`0x0 %.y]
+      ?:  (~(lth ^rs %n) ax `@rs`0x3f30.0000)
+        :*  (~(div ^rs %n) (~(sub ^rs %n) (~(add ^rs %n) ax ax) one) (~(add ^rs %n) two ax))
+            `@rs`0x3eed.6338  `@rs`0x31ac.376a  %.n
+        ==
+      ?:  (~(lth ^rs %n) ax `@rs`0x3f98.0000)
+        :*  (~(div ^rs %n) (~(sub ^rs %n) ax one) (~(add ^rs %n) ax one))
+            `@rs`0x3f49.0fdb  `@rs`0xb2bb.bd2e  %.n
+        ==
+      ?:  (~(lth ^rs %n) ax `@rs`0x401c.0000)
+        :*  (~(div ^rs %n) (~(sub ^rs %n) ax ohf) (~(add ^rs %n) one (~(mul ^rs %n) ohf ax)))
+            `@rs`0x3f7b.985f  `@rs`0xb2d7.e096  %.n
+        ==
+      :*  (~(div ^rs %n) `@rs`0xbf80.0000 ax)
+          `@rs`0x3fc9.0fdb  `@rs`0xb33b.bd2e  %.n
+      ==
+    ++  ker
+      |=  ax=@rs  ^-  @rs
+      =/  q  (atred ax)
+      =/  z  (~(mul ^rs %n) xr.q xr.q)
+      =/  s  (~(mul ^rs %n) z (roll (flop at) |=([c=@rs a=@rs] (~(add ^rs %n) (~(mul ^rs %n) a z) c))))
+      ?:  dir.q  (~(sub ^rs %n) xr.q (~(mul ^rs %n) xr.q s))
+      (~(sub ^rs %n) hi.q (~(sub ^rs %n) (~(sub ^rs %n) (~(mul ^rs %n) xr.q s) lo.q) xr.q))
+    --
   ::  +atan2:  [@rs @rs] -> @rs
   ::
   ::  Returns the inverse tangent of a floating-point coordinate.
@@ -1575,15 +1614,58 @@
   ::      .~1.2626272558398273
   ::
   ++  atan
+    ::  fdlibm breakpoint reduction + minimax poly; odd.  Round-nearest-even
+    ::  internally (the SoftFloat jet matches).
     |=  x=@rd  ^-  @rd
-    =/  a  (pow (add .~1 (mul x x)) .~-0.5)
-    =/  b  .~1
-    |-
-    ?.  (gth (abs (sub a b)) rtol)
-      (div x (mul (pow (add .~1 (mul x x)) .~0.5) b))
-    =/  ai  (mul .~0.5 (add a b))
-    =/  bi  (sqt (mul ai b))
-    $(a ai, b bi)
+    ?:  !(~(equ ^rd %n) x x)              `@rd`0x7ff8.0000.0000.0000  :: NaN
+    ?:  =(x `@rd`0x7ff0.0000.0000.0000)   `@rd`0x3ff9.21fb.5444.2d18  :: +inf -> pi/2
+    ?:  =(x `@rd`0xfff0.0000.0000.0000)   `@rd`0xbff9.21fb.5444.2d18  :: -inf -> -pi/2
+    ?:  |(=(x `@rd`0x0) =(x `@rd`0x8000.0000.0000.0000))  x           :: +-0 -> +-0
+    =/  neg  (rsh [0 63] x)
+    =/  r    (ker:rd-atan `@rd`(dis x 0x7fff.ffff.ffff.ffff))
+    ?:(=(neg 1) (~(sub ^rd %n) `@rd`0x0 r) r)
+  ::  +rd-atan: atan kernel for the @rd door (reduction + poly), see +atan.
+  ++  rd-atan
+    |%
+    ++  at
+      ^-  (list @rd)
+      :~  `@rd`0x3fd5.5555.5555.550d  `@rd`0xbfc9.9999.9998.ebc4
+          `@rd`0x3fc2.4924.9200.83ff  `@rd`0xbfbc.71c6.fe23.1671
+          `@rd`0x3fb7.45cd.c54c.206e  `@rd`0xbfb3.b0f2.af74.9a6d
+          `@rd`0x3fb1.0d66.a0d0.3d51  `@rd`0xbfad.de2d.52de.fd9a
+          `@rd`0x3fa9.7b4b.2476.0deb  `@rd`0xbfa2.b444.2c6a.6c2f
+          `@rd`0x3f90.ad3a.e322.da11
+      ==
+    ++  atred
+      |=  ax=@rd  ^-  [xr=@rd hi=@rd lo=@rd dir=?]
+      =/  one  `@rd`0x3ff0.0000.0000.0000
+      =/  two  `@rd`0x4000.0000.0000.0000
+      =/  ohf  `@rd`0x3ff8.0000.0000.0000
+      ?:  (~(lth ^rd %n) ax `@rd`0x3fdc.0000.0000.0000)
+        [ax `@rd`0x0 `@rd`0x0 %.y]
+      ?:  (~(lth ^rd %n) ax `@rd`0x3fe6.0000.0000.0000)
+        :*  (~(div ^rd %n) (~(sub ^rd %n) (~(add ^rd %n) ax ax) one) (~(add ^rd %n) two ax))
+            `@rd`0x3fdd.ac67.0561.bb4f  `@rd`0x3c7a.2b7f.222f.65e2  %.n
+        ==
+      ?:  (~(lth ^rd %n) ax `@rd`0x3ff3.0000.0000.0000)
+        :*  (~(div ^rd %n) (~(sub ^rd %n) ax one) (~(add ^rd %n) ax one))
+            `@rd`0x3fe9.21fb.5444.2d18  `@rd`0x3c81.a626.3314.5c07  %.n
+        ==
+      ?:  (~(lth ^rd %n) ax `@rd`0x4003.8000.0000.0000)
+        :*  (~(div ^rd %n) (~(sub ^rd %n) ax ohf) (~(add ^rd %n) one (~(mul ^rd %n) ohf ax)))
+            `@rd`0x3fef.730b.d281.f69b  `@rd`0x3c70.0788.7af0.cbbd  %.n
+        ==
+      :*  (~(div ^rd %n) `@rd`0xbff0.0000.0000.0000 ax)
+          `@rd`0x3ff9.21fb.5444.2d18  `@rd`0x3c91.a626.3314.5c07  %.n
+      ==
+    ++  ker
+      |=  ax=@rd  ^-  @rd
+      =/  q  (atred ax)
+      =/  z  (~(mul ^rd %n) xr.q xr.q)
+      =/  s  (~(mul ^rd %n) z (roll (flop at) |=([c=@rd a=@rd] (~(add ^rd %n) (~(mul ^rd %n) a z) c))))
+      ?:  dir.q  (~(sub ^rd %n) xr.q (~(mul ^rd %n) xr.q s))
+      (~(sub ^rd %n) hi.q (~(sub ^rd %n) (~(sub ^rd %n) (~(mul ^rd %n) xr.q s) lo.q) xr.q))
+    --
   ::  +atan2:  [@rd @rd] -> @rd
   ::
   ::  Returns the inverse tangent of a floating-point coordinate.

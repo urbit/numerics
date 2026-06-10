@@ -3585,15 +3585,57 @@
   ::      .~~~1.2626272556789116834540013074115034
   ::
   ++  atan
+    ::  fdlibm breakpoint reduction + degree-30 minimax (f128); odd.
     |=  x=@rq  ^-  @rq
-    =/  a  (pow (add .~~~1 (mul x x)) .~~~-0.5)
-    =/  b  .~~~1
-    |-
-    ?.  (gth (abs (sub a b)) rtol)
-      (div x (mul (pow (add .~~~1 (mul x x)) .~~~0.5) b))
-    =/  ai  (mul .~~~0.5 (add a b))
-    =/  bi  (sqt (mul ai b))
-    $(a ai, b bi)
+    ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
+    ?:  =(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8
+    ?:  =(x `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0xbfff.921f.b544.42d1.8469.898c.c517.01b8
+    ?:  |(=(x `@rq`0x0) =(x `@rq`0x8000.0000.0000.0000.0000.0000.0000.0000))  x
+    =/  neg  (rsh [0 127] x)
+    =/  r    (ker:rq-atan `@rq`(dis x 0x7fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff))
+    ?:(=(neg 1) (~(sub ^rq %n) `@rq`0x0 r) r)
+  ++  rq-atan
+    |%
+    ++  at
+      ^-  (list @rq)
+      :~  `@rq`0x3ffd.5555.5555.5555.5555.5555.5555.5555  `@rq`0xbffc.9999.9999.9999.9999.9999.9999.999a
+          `@rq`0x3ffc.2492.4924.9249.2492.4924.9249.2492  `@rq`0xbffb.c71c.71c7.1c71.c71c.71c7.1c71.c705
+          `@rq`0x3ffb.745d.1745.d174.5d17.45d1.745c.f720  `@rq`0xbffb.3b13.b13b.13b1.3b13.b13b.1395.a0f6
+          `@rq`0x3ffb.1111.1111.1111.1111.1111.010e.24e1  `@rq`0xbffa.e1e1.e1e1.e1e1.e1e1.e1d4.8fd7.bd0f
+          `@rq`0x3ffa.af28.6bca.1af2.86bc.9d8a.1266.1ce3  `@rq`0xbffa.8618.6186.1861.8617.62af.171f.46fb
+          `@rq`0x3ffa.642c.8590.b216.4297.f77f.1796.654a  `@rq`0xbffa.47ae.147a.e147.a6ae.eb97.4d91.c763
+          `@rq`0x3ffa.2f68.4bda.12f5.982c.8384.0df4.8c76  `@rq`0xbffa.1a7b.9611.a7a0.f241.3484.8b6f.9bc3
+          `@rq`0x3ffa.0842.1084.1eed.46f1.272e.8718.edfe  `@rq`0xbff9.f07c.1f07.73e1.dac4.76af.1946.ed1a
+          `@rq`0x3ff9.d41d.41cf.56a0.771b.4773.d1fd.bc46  `@rq`0xbff9.bacf.910c.a5ea.d9a2.c9f0.ffa2.8317
+          `@rq`0x3ff9.a41a.3ed6.e709.5da3.c3e4.8cd5.5593  `@rq`0xbff9.8f9b.fe02.ad67.4d8a.c158.72fb.b51c
+          `@rq`0x3ff9.7d05.170d.1702.069f.17b9.5f6e.54f4  `@rq`0xbff9.6c10.bc42.d041.6ea0.5add.542a.f078
+          `@rq`0x3ff9.5c74.e7f6.f412.eab1.21f2.0635.a41a  `@rq`0xbff9.4dac.2e21.aa0e.283b.7552.8258.306b
+          `@rq`0x3ff9.3e57.3faa.c561.db9d.4b05.d70c.99cf  `@rq`0xbff9.2af3.2cae.28f7.4f59.6690.8860.d11a
+          `@rq`0x3ff9.0c8b.03c5.5304.dec0.acdf.4b35.6e20  `@rq`0xbff8.b4ed.3a33.49ac.f7ad.9702.76c5.cf2b
+          `@rq`0x3ff8.261c.1a9e.da3a.d5dd.688f.198a.e3cb  `@rq`0xbff7.1a7a.c449.b285.876f.4b57.d627.e71e
+          `@rq`0x3ff5.1a4e.a418.ebe8.1381.31c1.5128.032a
+      ==
+    ++  atred
+      |=  ax=@rq  ^-  [xr=@rq hi=@rq lo=@rq dir=?]
+      ?:  (~(lth ^rq %n) ax `@rq`0x3ffd.c000.0000.0000.0000.0000.0000.0000)  [ax `@rq`0x0 `@rq`0x0 %.y]
+      ?:  (~(lth ^rq %n) ax `@rq`0x3ffe.6000.0000.0000.0000.0000.0000.0000)
+        :*  (~(div ^rq %n) (~(sub ^rq %n) (~(add ^rq %n) ax ax) `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000) (~(add ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 ax))
+            `@rq`0x3ffd.dac6.7056.1bb4.f68a.dfc8.8bd9.7875  `@rq`0x3f89.a06d.c282.b0e4.c39b.e01c.59e2.dcdd  %.n  ==
+      ?:  (~(lth ^rq %n) ax `@rq`0x3fff.3000.0000.0000.0000.0000.0000.0000)
+        :*  (~(div ^rq %n) (~(sub ^rq %n) ax `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000) (~(add ^rq %n) ax `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000))
+            `@rq`0x3ffe.921f.b544.42d1.8469.898c.c517.01b8  `@rq`0x3f8b.cd12.9024.e088.a67c.c740.20bb.ea64  %.n  ==
+      ?:  (~(lth ^rq %n) ax `@rq`0x4000.3800.0000.0000.0000.0000.0000.0000)
+        :*  (~(div ^rq %n) (~(sub ^rq %n) ax `@rq`0x3fff.8000.0000.0000.0000.0000.0000.0000) (~(add ^rq %n) `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000 (~(mul ^rq %n) `@rq`0x3fff.8000.0000.0000.0000.0000.0000.0000 ax)))
+            `@rq`0x3ffe.f730.bd28.1f69.b200.f10f.5e19.7794  `@rq`0xbf8b.ebe5.66c9.9ada.9f23.1bcc.ae27.916c  %.n  ==
+      :*  (~(div ^rq %n) `@rq`0xbfff.0000.0000.0000.0000.0000.0000.0000 ax)  `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8  `@rq`0x3f8c.cd12.9024.e088.a67c.c740.20bb.ea64  %.n  ==
+    ++  ker
+      |=  ax=@rq  ^-  @rq
+      =/  q   (atred ax)
+      =/  z   (~(mul ^rq %n) xr.q xr.q)
+      =/  s   (~(mul ^rq %n) z (roll (flop at) |=([c=@rq a=@rq] (~(add ^rq %n) (~(mul ^rq %n) a z) c))))
+      ?:  dir.q  (~(sub ^rq %n) xr.q (~(mul ^rq %n) xr.q s))
+      (~(sub ^rq %n) hi.q (~(sub ^rq %n) (~(sub ^rq %n) (~(mul ^rq %n) xr.q s) lo.q) xr.q))
+    --
   ::  +atan2:  [@rq @rq] -> @rq
   ::
   ::  Returns the inverse tangent of a floating-point coordinate.
@@ -3607,17 +3649,13 @@
   ::
   ++  atan2
     |=  [y=@rq x=@rq]  ^-  @rq
-    ?:  (gth x .~~~0)
-      (atan (div y x))
-    ?:  &((lth x .~~~0) (gte y .~~~0))
-      (add (atan (div y x)) pi)
-    ?:  &((lth x .~~~0) (lth y .~~~0))
-      (sub (atan (div y x)) pi)
-    ?:  &(=(.~~~0 x) (gth y .~~~0))
-      (div pi .~~~2)
-    ?:  &(=(.~~~0 x) (lth y .~~~0))
-      (mul .~~~-1 (div pi .~~~2))
-    .~~~0  ::  undefined
+    ?:  (~(gth ^rq %n) x `@rq`0x0)  (atan (~(div ^rq %n) y x))
+    ?:  &((~(lth ^rq %n) x `@rq`0x0) (~(gte ^rq %n) y `@rq`0x0))  (~(add ^rq %n) (atan (~(div ^rq %n) y x)) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8)
+    ?:  &((~(lth ^rq %n) x `@rq`0x0) (~(lth ^rq %n) y `@rq`0x0))  (~(sub ^rq %n) (atan (~(div ^rq %n) y x)) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8)
+    ?:  &(=(`@rq`0x0 x) (~(gth ^rq %n) y `@rq`0x0))  `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8
+    ?:  &(=(`@rq`0x0 x) (~(lth ^rq %n) y `@rq`0x0))  `@rq`0xbfff.921f.b544.42d1.8469.898c.c517.01b8
+    `@rq`0x0
+
   ::    +pow-n:  [@rq @rq] -> @rq
   ::
   ::  Returns the power of a floating-point atom to a signed integer exponent.

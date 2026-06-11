@@ -10,9 +10,12 @@
 // to `_13X_non_d[]` as a sibling of "lagoon".  Replace 13X with 135/136/137.
 
 //  --- decls (before _13X_non_d) ------------------------------------------
+//  One harm per arm of the rd door; add a line here per jetted @rd fn.
 static u3j_harm _13X_non__math_rd_exp_a[] = {{".2", u3wi_rd_exp}, {}};
+static u3j_harm _13X_non__math_rd_log_a[] = {{".2", u3wi_rd_log}, {}};
 static u3j_core _13X_non__math_rd_d[] =
   { { "exp", 7, _13X_non__math_rd_exp_a, 0, no_hashes },
+    { "log", 7, _13X_non__math_rd_log_a, 0, no_hashes },
     {}
   };
 static u3j_core _13X_non__math_d[] =

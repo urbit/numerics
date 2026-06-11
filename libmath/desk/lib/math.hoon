@@ -1961,6 +1961,7 @@
     ::      .~inf
     ::  Source
     ++  log
+      ~/  %log
       |=  x=@rd  ^-  @rd
       ::  Reduce x = 2^e * m with m in [sqrt(1/2), sqrt(2)); then
       ::  log(x) = e*ln2 + log(1+f), f = m-1, s = f/(2+f),

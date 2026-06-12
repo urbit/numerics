@@ -1,14 +1,16 @@
 // rd_check.c -- bit-exact harness for the @rd math jets.
 //
-// Includes the MASTER jet algorithms (jets/i/math.c) with -DMATH_JET_HARNESS,
-// so the C tested here is byte-for-byte the C the runtime jet runs.  Prints
-// `<fn> 0x<in> 0x<out>` per case; compare each <out> against the Hoon
-// `(<fn>:rd:math <in>)` (see build.sh for the generated dojo expression).
+// Includes the MASTER jet algorithms (noun/jets/i/math.c) with
+// -DMATH_JET_HARNESS, so the C tested here is byte-for-byte the C the runtime
+// jet runs.  Prints `<fn> 0x<in> 0x<out>` per case; compare each <out> against
+// the Hoon `(<fn>:rd:math <in>)` (see build.sh for the generated dojo
+// expression).  The shared `_rd_*` cores are word-size-agnostic, so this 64-bit
+// copy and the 32-bit libmath/vere/ copy produce identical results.
 //
 // Build/run: ./build.sh   (re-archives the zig softfloat .a for Apple ld).
 
 #define MATH_JET_HARNESS
-#include "../jets/i/math.c"
+#include "../noun/jets/i/math.c"
 
 #include <stdio.h>
 

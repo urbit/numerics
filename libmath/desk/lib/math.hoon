@@ -20,6 +20,7 @@
   ~/  %math
   |%
   ++  rs
+    ~/  %rs
     ^|
     |_  $:  r=$?(%n %u %d %z)   :: round nearest, up, down, to zero
             rtol=_.1e-5         :: relative tolerance for precision of operations
@@ -146,7 +147,7 @@
     ::      > (sun 1.000)
     ::      .1e3
     ::  Source
-    ++  sun  sun:^rs
+    ++  sun  ~(sun ^rs r)
     ::    +san:  @sd -> @rs
     ::
     ::  Returns the floating-point atom of a signed integer atom.
@@ -156,7 +157,7 @@
     ::      > (san -1)
     ::      .-1
     ::  Source
-    ++  san  san:^rs
+    ++  san  ~(san ^rs r)
     ::++  exp  exp:^rs  :: no pass-through because of exp function
     ::    +toi:  @rs -> @sd
     ::
@@ -167,7 +168,7 @@
     ::      > (toi .1.1)
     ::      [~ --1]
     ::  Source
-    ++  toi  toi:^rs
+    ++  toi  ~(toi ^rs r)
     ::    +drg:  @rs -> dn
     ::
     ::  Returns the decimal form of a floating-point atom using the Dragon4
@@ -178,7 +179,7 @@
     ::      > (drg .1.1)
     ::      [%d s=%.y e=-1 a=11]
     ::  Source
-    ++  drg  drg:^rs
+    ++  drg  ~(drg ^rs r)
     ::    +grd:  dn -> @rs
     ::
     ::  Returns the floating-point atom of a decimal form.
@@ -188,7 +189,7 @@
     ::      > (grd [%d s=%.y e=-1 a=11])
     ::      .1.1
     ::  Source
-    ++  grd  grd:^rs
+    ++  grd  ~(grd ^rs r)
     ::
     ::  Comparison
     ::
@@ -349,7 +350,7 @@
     ::      > (add .1 .2)
     ::      .3
     ::  Source
-    ++  add  add:^rs
+    ++  add  ~(add ^rs r)
     ::    +sub:  [@rs @rs] -> @rs
     ::
     ::  Returns the difference of two floating-point atoms.
@@ -357,7 +358,7 @@
     ::      > (sub .1 .2)
     ::      .-1
     ::  Source
-    ++  sub  sub:^rs
+    ++  sub  ~(sub ^rs r)
     ::    +mul:  [@rs @rs] -> @rs
     ::
     ::  Returns the product of two floating-point atoms.
@@ -367,7 +368,7 @@
     ::      > (mul .2 .3)
     ::      .6
     ::  Source
-    ++  mul  mul:^rs
+    ++  mul  ~(mul ^rs r)
     ::    +div:  [@rs @rs] -> @rs
     ::
     ::  Returns the quotient of two floating-point atoms.
@@ -375,7 +376,7 @@
     ::      > (div .1 .2)
     ::      .0.5
     ::  Source
-    ++  div  div:^rs
+    ++  div  ~(div ^rs r)
     ::  +mod:  [@rs @rs] -> @rs
     ::
     ::  Returns the modulus of two floating-point atoms.
@@ -399,7 +400,7 @@
     ::      > (fma .2 .3 .4)
     ::      .10
     ::  Source
-    ++  fma  fma:^rs
+    ++  fma  ~(fma ^rs r)
     ::    +sig:  @rs -> ?
     ::
     ::  Returns the sign of a floating-point atom.
@@ -478,6 +479,7 @@
     ::      .inf
     ::  Source
     ++  exp
+      ~/  %exp
       |=  x=@rs  ^-  @rs
       ::  Chebyshev: x = k*ln2 + r (Cody-Waite reduction); exp(x) = 2^k * P(r),
       ::  P a degree-6 minimax polynomial faithful to <=1 ULP.  Internals are
@@ -527,6 +529,7 @@
     ::    .3.1609193e-7
     ::  Source
     ++  sin
+      ~/  %sin
       |=  x=@rs  ^-  @rs
       ::  Reduce x = q*(pi/2) + (rhi+rlo) with a 3-part pi/2 (f32 needs the bits),
       ::  then fdlibm sin/cos kernels picked by q&3.  Faithful to <=1 ULP for
@@ -548,6 +551,7 @@
     ::      .-0.9999998
     ::  Source
     ++  cos
+      ~/  %cos
       |=  x=@rs  ^-  @rs
       ?:  !(~(equ ^rs %n) x x)  `@rs`0x7fc0.0000
       ?:  |(=(x `@rs`0x7f80.0000) =(x `@rs`0xff80.0000))  `@rs`0x7fc0.0000
@@ -607,6 +611,7 @@
     ::      .-7.0094916e-7
     ::  Source
     ++  tan
+      ~/  %tan
       |=  x=@rs  ^-  @rs
       (div (sin x) (cos x))
     ::  +asin:  @rs -> @rs
@@ -621,6 +626,7 @@
     ::      .0.7753969
     ::
     ++  asin
+      ~/  %asin
       ::  fdlibm rational kernel; see +rs-ainv.  Faithful to <=1 ULP; |x|>1 -> NaN.
       |=  x=@rs  ^-  @rs
       (asn:rs-ainv x)
@@ -636,6 +642,7 @@
     ::      .0.7953982
     ::
     ++  acos
+      ~/  %acos
       |=  x=@rs  ^-  @rs
       (acs:rs-ainv x)
     ::  +rs-ainv: shared asin/acos engine for the @rs door (rational P/Q kernel),
@@ -709,6 +716,7 @@
     ::      .1.2626364
     ::
     ++  atan
+      ~/  %atan
       ::  fdlibm breakpoint reduction + minimax poly; odd.  Round-nearest-even
       ::  internally (the SoftFloat jet matches).
       |=  x=@rs  ^-  @rs
@@ -769,6 +777,7 @@
     ::      .2.356195
     ::
     ++  atan2
+      ~/  %atan2
       |=  [y=@rs x=@rs]  ^-  @rs
       ?:  (gth x .0)
         (atan (div y x))
@@ -793,6 +802,7 @@
     ::      .8
     ::  Source
     ++  pow-n
+      ~/  %pow-n
       |=  [x=@rs n=@rs]  ^-  @rs
       ?:  =(n .0)  .1
       ?>  &((gth n .0) (is-int n))
@@ -819,6 +829,7 @@
     ::      .0.9999994
     ::  Source
     ++  log
+      ~/  %log
       |=  x=@rs  ^-  @rs
       ::  Reduce x = 2^e * m with m in [sqrt(1/2), sqrt(2)); then
       ::  log(x) = e*ln2 + log(1+f), f = m-1, s = f/(2+f),
@@ -868,6 +879,7 @@
     ::      .inf
     ::  Source
     ++  log-10
+      ~/  %log-10
       ::  e*log10(2) + log(m)/ln10, reusing +lr so the integer part is added with
       ::  no division rounding (more accurate than log(x)/ln10).
       |=  x=@rs  ^-  @rs
@@ -887,6 +899,7 @@
     ::      .1.5849625
     ::  Source
     ++  log-2
+      ~/  %log-2
       ::  e + log(m)/ln2 (integer part exact); see +lr.
       |=  x=@rs  ^-  @rs
       ?:  !(~(equ ^rs %n) x x)  `@rs`0x7fc0.0000
@@ -935,6 +948,7 @@
     ::      .11.313687
     ::  Source
     ++  pow
+      ~/  %pow
       |=  [x=@rs n=@rs]  ^-  @rs
       ::  fall through on positive integers (faster)
       ?:  &(=(n (san (need (toi n)))) (gth n .0))  (pow-n x (san (need (toi n))))
@@ -964,6 +978,7 @@
     ::      .316.22775
     ::  Source
     ++  sqt
+      ~/  %sqt
       ::  Correctly-rounded: delegate to the stdlib (SoftFloat) f32 square root.
       |=  x=@rs  ^-  @rs
       (sqt:^rs x)
@@ -992,6 +1007,7 @@
     ::      .1.2599207
     ::  Source
     ++  cbt
+      ~/  %cbt
       ::  cbrt(x) = sign(x) * exp(log|x| / 3); defined for all reals (unlike pow).
       |=  x=@rs  ^-  @rs
       ?:  !(~(equ ^rs %n) x x)  x                    :: NaN -> NaN
@@ -1206,7 +1222,7 @@
     ::      > (sun 1.000)
     ::      .~1e3
     ::  Source
-    ++  sun  sun:^rd
+    ++  sun  ~(sun ^rd r)
     ::    +san:  @sd -> @rd
     ::
     ::  Returns the floating-point atom of a signed integer atom.
@@ -1216,7 +1232,7 @@
     ::      > (san -1)
     ::      .~-1
     ::  Source
-    ++  san  san:^rd
+    ++  san  ~(san ^rd r)
     ::++  exp  exp:^rd  :: no pass-through because of exp function
     ::    +toi:  @rd -> @sd
     ::
@@ -1227,7 +1243,7 @@
     ::      > (toi .~1.1)
     ::      [~ --1]
     ::  Source
-    ++  toi  toi:^rd
+    ++  toi  ~(toi ^rd r)
     ::    +drg:  @rd -> dn
     ::
     ::  Returns the decimal form of a floating-point atom using the Dragon4
@@ -1238,7 +1254,7 @@
     ::      > (drg .~1.1)
     ::      [%d s=%.y e=-1 a=11]
     ::  Source
-    ++  drg  drg:^rd
+    ++  drg  ~(drg ^rd r)
     ::    +grd:  dn -> @rd
     ::
     ::  Returns the floating-point atom of a decimal form.
@@ -1248,7 +1264,7 @@
     ::      > (grd [%d s=%.y e=-1 a=11])
     ::      .~1.1
     ::  Source
-    ++  grd  grd:^rd
+    ++  grd  ~(grd ^rd r)
     ::
     ::  Comparison
     ::
@@ -1409,7 +1425,7 @@
     ::      > (add .~1 .~2)
     ::      .~3
     ::  Source
-    ++  add  add:^rd
+    ++  add  ~(add ^rd r)
     ::    +sub:  [@rd @rd] -> @rd
     ::
     ::  Returns the difference of two floating-point atoms.
@@ -1417,7 +1433,7 @@
     ::      > (sub .~1 .~2)
     ::      .~-1
     ::  Source
-    ++  sub  sub:^rd
+    ++  sub  ~(sub ^rd r)
     ::    +mul:  [@rd @rd] -> @rd
     ::
     ::  Returns the product of two floating-point atoms.
@@ -1427,7 +1443,7 @@
     ::      > (mul .~2 .~3)
     ::      .~6
     ::  Source
-    ++  mul  mul:^rd
+    ++  mul  ~(mul ^rd r)
     ::    +div:  [@rd @rd] -> @rd
     ::
     ::  Returns the quotient of two floating-point atoms.
@@ -1435,7 +1451,7 @@
     ::      > (div .~1 .~2)
     ::      .~0.5
     ::  Source
-    ++  div  div:^rd
+    ++  div  ~(div ^rd r)
     ::    +fma:  [@rd @rd @rd] -> @rd
     ::
     ::  Returns the fused multiply-add of three floating-point atoms.
@@ -1445,7 +1461,7 @@
     ::      > (fma .~2 .~3 .~4)
     ::      .~10
     ::  Source
-    ++  fma  fma:^rd
+    ++  fma  ~(fma ^rd r)
     ::    +sig:  @rd -> ?
     ::
     ::  Returns the sign of a floating-point atom.

@@ -979,8 +979,44 @@ static u3j_core _135_non__math_rd_d[] =
     { "log-10", 7, _135_non__math_rd_log10_a, 0, no_hashes },
     {}
   };
+//  numerics math.hoon @rs transcendentals: non -> math -> rs -> <fn>
+static u3j_harm _135_non__math_rs_exp_a[] = {{".2", u3wi_rs_exp}, {}};
+static u3j_harm _135_non__math_rs_log_a[] = {{".2", u3wi_rs_log}, {}};
+static u3j_harm _135_non__math_rs_sin_a[] = {{".2", u3wi_rs_sin}, {}};
+static u3j_harm _135_non__math_rs_cos_a[] = {{".2", u3wi_rs_cos}, {}};
+static u3j_harm _135_non__math_rs_tan_a[] = {{".2", u3wi_rs_tan}, {}};
+static u3j_harm _135_non__math_rs_atan_a[] = {{".2", u3wi_rs_atan}, {}};
+static u3j_harm _135_non__math_rs_atan2_a[] = {{".2", u3wi_rs_atan2}, {}};
+static u3j_harm _135_non__math_rs_asin_a[] = {{".2", u3wi_rs_asin}, {}};
+static u3j_harm _135_non__math_rs_acos_a[] = {{".2", u3wi_rs_acos}, {}};
+static u3j_harm _135_non__math_rs_sqt_a[] = {{".2", u3wi_rs_sqt}, {}};
+static u3j_harm _135_non__math_rs_cbt_a[] = {{".2", u3wi_rs_cbt}, {}};
+static u3j_harm _135_non__math_rs_pow_a[] = {{".2", u3wi_rs_pow}, {}};
+static u3j_harm _135_non__math_rs_pow_n_a[] = {{".2", u3wi_rs_pow_n}, {}};
+static u3j_harm _135_non__math_rs_log2_a[] = {{".2", u3wi_rs_log2}, {}};
+static u3j_harm _135_non__math_rs_log10_a[] = {{".2", u3wi_rs_log10}, {}};
+static u3j_core _135_non__math_rs_d[] =
+  { 
+    { "exp", 7, _135_non__math_rs_exp_a, 0, no_hashes },
+    { "log", 7, _135_non__math_rs_log_a, 0, no_hashes },
+    { "sin", 7, _135_non__math_rs_sin_a, 0, no_hashes },
+    { "cos", 7, _135_non__math_rs_cos_a, 0, no_hashes },
+    { "tan", 7, _135_non__math_rs_tan_a, 0, no_hashes },
+    { "atan", 7, _135_non__math_rs_atan_a, 0, no_hashes },
+    { "atan2", 7, _135_non__math_rs_atan2_a, 0, no_hashes },
+    { "asin", 7, _135_non__math_rs_asin_a, 0, no_hashes },
+    { "acos", 7, _135_non__math_rs_acos_a, 0, no_hashes },
+    { "sqt", 7, _135_non__math_rs_sqt_a, 0, no_hashes },
+    { "cbt", 7, _135_non__math_rs_cbt_a, 0, no_hashes },
+    { "pow", 7, _135_non__math_rs_pow_a, 0, no_hashes },
+    { "pow-n", 7, _135_non__math_rs_pow_n_a, 0, no_hashes },
+    { "log-2", 7, _135_non__math_rs_log2_a, 0, no_hashes },
+    { "log-10", 7, _135_non__math_rs_log10_a, 0, no_hashes },
+    {}
+  };
 static u3j_core _135_non__math_d[] =
   { { "rd", 7, 0, _135_non__math_rd_d, no_hashes },
+    { "rs", 7, 0, _135_non__math_rs_d, no_hashes },
     {}
   };
 

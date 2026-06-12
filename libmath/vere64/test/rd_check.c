@@ -35,8 +35,49 @@ static void emit2(const char* nm, double a, double b,
          (unsigned long long)out.c, a, b);
 }
 
+// @rs single-arg: input given as the 32-bit bit pattern directly.
+static void emits(const char* nm, unsigned in, float32_t (*fun)(float32_t)) {
+  union sing x, out;
+  x.c = (uint32_t)in;
+  out.s = fun(x.s);
+  printf("%-6s 0x%08x 0x%08x\n", nm, (unsigned)x.c, (unsigned)out.c);
+}
+
 int main(void) {
   softfloat_roundingMode = softfloat_round_near_even;
+  // @rs exp: core + edges (expected from math.hoon tests/lib/math-exp.hoon)
+  static const unsigned rsex[] = { 0x0, 0x3f000000, 0x3f800000, 0xbf800000,
+    0x40000000, 0x41200000, 0xc0a00000, 0x3dcccccd, 0x7f800000, 0xff800000,
+    0x7fc00000, 0x42b00000, 0x42b20000, 0x42c80000, 0xc2ce0000, 0xc2d00000,
+    0xc2dc0000 };
+  for (unsigned i = 0; i < sizeof rsex/sizeof rsex[0]; i++)
+    emits("exp-s", rsex[i], _rs_exp);
+  static const unsigned rstr[] = { 0x0, 0x3f000000, 0x3f800000, 0xbf800000,
+    0x41200000, 0x42c80000, 0x7f800000, 0xff800000, 0x80000000, 0x40000000,
+    0x40490fdb, 0x42652ee0 };
+  for (unsigned i = 0; i < sizeof rstr/sizeof rstr[0]; i++) emits("sin-s", rstr[i], _rs_sin);
+  for (unsigned i = 0; i < sizeof rstr/sizeof rstr[0]; i++) emits("cos-s", rstr[i], _rs_cos);
+  for (unsigned i = 0; i < sizeof rstr/sizeof rstr[0]; i++) emits("tan-s", rstr[i], _rs_tan);
+  // atan / asin / acos / log / log-2 / log-10 / sqt / cbt (expected: math-*.hoon)
+  static const unsigned at_s[] = { 0x3f000000, 0x3f800000, 0xbf800000, 0x40000000,
+    0x41200000, 0x7f800000, 0x7fc00000, 0xff800000, 0x0, 0x40490fdb, 0x3dcccccd };
+  for (unsigned i=0;i<sizeof at_s/sizeof at_s[0];i++) emits("atan-s", at_s[i], _rs_atan);
+  static const unsigned iv_s[] = { 0x0, 0x3f000000, 0x3f800000, 0xbf800000, 0x3f400000,
+    0x3f666666, 0xbf19999a, 0x7fc00000, 0x3dcccccd };
+  for (unsigned i=0;i<sizeof iv_s/sizeof iv_s[0];i++) emits("asin-s", iv_s[i], _rs_asin);
+  for (unsigned i=0;i<sizeof iv_s/sizeof iv_s[0];i++) emits("acos-s", iv_s[i], _rs_acos);
+  static const unsigned lg_s[] = { 0x3f800000, 0x40000000, 0x3f000000, 0x41200000,
+    0x42c80000, 0x3dcccccd, 0x40ec7326, 0x000116c2, 0x7f800000, 0xff800000,
+    0x7fc00000, 0x0, 0xbf800000, 0x41000000, 0x447a0000, 0x40c90fdb };
+  for (unsigned i=0;i<sizeof lg_s/sizeof lg_s[0];i++) emits("log-s", lg_s[i], _rs_log);
+  for (unsigned i=0;i<sizeof lg_s/sizeof lg_s[0];i++) emits("log2-s", lg_s[i], _rs_log2);
+  for (unsigned i=0;i<sizeof lg_s/sizeof lg_s[0];i++) emits("log10-s", lg_s[i], _rs_log10);
+  static const unsigned sq_s[] = { 0x40000000, 0x3f000000, 0x40800000, 0x47c35000,
+    0x3dcccccd, 0x41100000, 0x0, 0x7f800000, 0xbf800000 };
+  for (unsigned i=0;i<sizeof sq_s/sizeof sq_s[0];i++) emits("sqt-s", sq_s[i], _rs_sqt);
+  static const unsigned cb_s[] = { 0x41000000, 0xc1000000, 0x40000000, 0x0, 0x3f800000,
+    0xbf800000, 0x40400000 };
+  for (unsigned i=0;i<sizeof cb_s/sizeof cb_s[0];i++) emits("cbt-s", cb_s[i], _rs_cbt);
 
   // exp: full range incl overflow/subnormal tails
   static const double ex[] = { 0.0, 0.5, 1.0, 2.0, 3.0, -1.0, -2.0, 5.0, 10.0,
@@ -90,7 +131,7 @@ int main(void) {
     emit2("atan2", a2[i][0], a2[i][1], _rd_atan2);
   // pow(x,n): integer + fractional exponents, negatives, fast-path + exp/log
   static const double pw[][2] = {
-    {2.0,10.0}, {2.0,0.5}, {2.0,-1.0}, {3.0,3.0}, {10.0,2.0}, {0.5,2.0},
+    {2.0,10.0}, {2.0,0.5}, {2.0,-1.0}, {3.0,3.0}, {10.0,2.0}, {0.5,2.0}, {3.0,2.5},
     {2.0,3.0}, {5.0,0.0}, {9.0,0.5}, {2.0,0.1}, {1.5,4.0}, {7.0,2.0} };
   for (unsigned i = 0; i < sizeof pw/sizeof pw[0]; i++)
     emit2("pow", pw[i][0], pw[i][1], _rd_pow);

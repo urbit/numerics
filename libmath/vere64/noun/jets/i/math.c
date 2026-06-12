@@ -967,12 +967,14 @@ typedef int64_t  c3_ds;
   }
 
 /* ===================================================================
-** @rh (half-precision) cores -- math.hoon ++rh.  Every arm is
-**   narrow-sh(rs_fn(widen-hs(x))): widen f16->f32 (exact = f16_to_f32),
-**   compute in @rs, narrow f32->f16 (= f32_to_f16) honoring the door's r.
-** The rs call inherits r too (composites honor it; kernels stay %n).  No new
-** algorithm cores -- the @rs cores are reused.  Verified: the Hoon narrow-sh
-** is bit-exact to f32_to_f16 in all four rounding modes.
+** @rh (half-precision) cores -- math.hoon ++rh.  NATIVE f16: each core
+** computes entirely in half-precision (SoftFloat f16 ops), mirroring the
+** native Hoon arms op-for-op -- NOT widen-to-f32-and-narrow.  Same reductions
+** and Horner order as @rd/@rs but with the f16 minimax coeffs read from the
+** Hoon (lower polynomial degrees: sin/cos/atan/ainv are shorter, ainv has no
+** denominator, acos has no tiny branch).  Marshalling is chub-based (low 16
+** bits), so word-size-agnostic like @rd/@rs.  Kernels round near-even; the
+** composites (tan/atan2/pow/pow-n) honor the door's r via _math_rnd.
 ** =================================================================== */
 
   union half {
@@ -980,37 +982,383 @@ typedef int64_t  c3_ds;
     uint16_t  c;
   };
 
-  //  widen f16->f32 (exact), run an @rs core, narrow f32->f16 per _math_rnd.
-  //  _math_rnd is the door's r (set by the wrapper): the rs composites honor it
-  //  and the narrow rounds by it; the rs kernels run at near-even.
-  static inline float16_t _rh_1(float16_t x, float32_t (*fun)(float32_t)) {
-    softfloat_roundingMode = softfloat_round_near_even;
-    float32_t v = fun(f16_to_f32(x));
-    softfloat_roundingMode = _math_rnd;
-    return f32_to_f16(v);
+  static const uint16_t _RH_QNAN = 0x7e00U;
+  static const uint16_t _RH_PINF = 0x7c00U;
+  static const uint16_t _RH_NINF = 0xfc00U;
+
+  static inline union half _rh_bits(uint16_t b) { union half u; u.c = b; return u; }
+  static inline float16_t  _rh_neg(float16_t a) {            // (sub .0 a)
+    union half z; z.c = 0; return f16_sub(z.h, a);
   }
-  static inline float16_t _rh_2(float16_t x, float16_t n,
-                                float32_t (*fun)(float32_t, float32_t)) {
-    softfloat_roundingMode = softfloat_round_near_even;
-    float32_t v = fun(f16_to_f32(x), f16_to_f32(n));
-    softfloat_roundingMode = _math_rnd;
-    return f32_to_f16(v);
+
+/* @rh exp -- math.hoon ++rh ++exp
+**   x = k*ln2 + r (Cody-Waite), exp(x) = 2^k * P(r), P a degree-4 minimax.
+*/
+  //  pow2(j) = (|j+15|)<<10 as f16 bits = 2^j  (normal range j in [-14,15])
+  static inline float16_t _rh_pow2(c3_ds j) {
+    int v = (int)(j + 15); if ( v < 0 ) v = -v;
+    union half u; u.c = (uint16_t)(v << 10); return u.h;
   }
-  static float16_t _rh_exp(float16_t x)   { return _rh_1(x, _rs_exp); }
-  static float16_t _rh_log(float16_t x)   { return _rh_1(x, _rs_log); }
-  static float16_t _rh_sin(float16_t x)   { return _rh_1(x, _rs_sin); }
-  static float16_t _rh_cos(float16_t x)   { return _rh_1(x, _rs_cos); }
-  static float16_t _rh_tan(float16_t x)   { return _rh_1(x, _rs_tan); }
-  static float16_t _rh_atan(float16_t x)  { return _rh_1(x, _rs_atan); }
-  static float16_t _rh_asin(float16_t x)  { return _rh_1(x, _rs_asin); }
-  static float16_t _rh_acos(float16_t x)  { return _rh_1(x, _rs_acos); }
-  static float16_t _rh_sqt(float16_t x)   { return _rh_1(x, _rs_sqt); }
-  static float16_t _rh_cbt(float16_t x)   { return _rh_1(x, _rs_cbt); }
-  static float16_t _rh_log2(float16_t x)  { return _rh_1(x, _rs_log2); }
-  static float16_t _rh_log10(float16_t x) { return _rh_1(x, _rs_log10); }
-  static float16_t _rh_atan2(float16_t y, float16_t x) { return _rh_2(y, x, _rs_atan2); }
-  static float16_t _rh_pow(float16_t x, float16_t n)   { return _rh_2(x, n, _rs_pow); }
-  static float16_t _rh_pow_n(float16_t x, float16_t n) { return _rh_2(x, n, _rs_pow_n); }
+  //  scale2: ldexp with overflow/subnormal tails (math.hoon ++rh ++exp)
+  static inline float16_t _rh_scale2(float16_t p, c3_ds k) {
+    if ( (k - 16) >= 0 ) {                             // k>=16
+      return f16_mul(f16_mul(p, _rh_pow2(15)), _rh_pow2(k - 15));
+    }
+    if ( !((k + 14) >= 0) ) {                          // k<-14
+      return f16_mul(f16_mul(p, _rh_pow2(k + 11)), _rh_pow2(-11));
+    }
+    return f16_mul(p, _rh_pow2(k));
+  }
+  static float16_t _rh_exp(float16_t x) {
+    union half r0;
+    static const uint16_t cs[5] = { 0x3c00, 0x3c00, 0x3800, 0x3160, 0x295c };
+    union half log2e, ln2hi, ln2lo, ka, kf, rr, p, c, zero;
+    zero.c = 0;
+    r0.h = x;
+    if ( !f16_eq(x, x) )    { r0.c = _RH_QNAN; return r0.h; }  // NaN
+    if ( r0.c == _RH_PINF ) { return x; }                      // +inf
+    if ( r0.c == _RH_NINF ) { r0.c = 0; return r0.h; }         // -inf -> 0
+
+    log2e.c = 0x3dc5; ln2hi.c = 0x3980; ln2lo.c = 0x1dc8;
+
+    c3_ds k = (c3_ds)f16_to_i32(f16_mul(x, log2e.h), softfloat_round_near_even, 0);
+    if ( (k - 17) >= 0 )    { r0.c = _RH_PINF; return r0.h; }   // overflow -> inf
+    if ( !((k + 24) >= 0) ) { r0.c = 0; return r0.h; }          // underflow -> 0
+
+    ka.h = ui32_to_f16( (uint32_t)(k < 0 ? -k : k) );
+    kf.h = (k >= 0) ? ka.h : f16_sub(zero.h, ka.h);
+    rr.h = f16_sub( f16_sub(x, f16_mul(kf.h, ln2hi.h)), f16_mul(kf.h, ln2lo.h) );
+
+    p.c = 0;
+    for ( int i = 5; i-- != 0; ) {        // Horner over flop(cs): c4..c0
+      c.c = cs[i];
+      p.h = f16_add(f16_mul(p.h, rr.h), c.h);
+    }
+    return _rh_scale2(p.h, k);
+  }
+
+/* @rh sin/cos/tan -- math.hoon ++rh ++sin/++cos/++rh-trig/++tan
+**   x = q*(pi/2) + (rhi+rlo) (3-part pi/2), fdlibm sin/cos kernels by q&3 (each
+**   with just 2 coeffs).  tan = sin/cos (the div honors the door r).
+*/
+  static const uint16_t _RH_SC[2] = { 0xb155, 0x2044 };   // sin kernel coeffs
+  static const uint16_t _RH_CC[2] = { 0x2955, 0x95b0 };   // cos kernel coeffs
+  static float16_t _rh_ksin(float16_t xx, float16_t yy) {
+    union half z, r, v, aa, bb, dd, c, half;
+    half.c = 0x3800;
+    z.h = f16_mul(xx, xx);
+    r.c = 0;                            // Horner over flop(tail sc): sc[1]
+    for ( int i = 2; i-- != 1; ) { c.c = _RH_SC[i]; r.h = f16_add(f16_mul(r.h, z.h), c.h); }
+    v.h = f16_mul(z.h, xx);
+    aa.h = f16_sub(f16_mul(half.h, yy), f16_mul(v.h, r.h));
+    bb.h = f16_sub(f16_mul(z.h, aa.h), yy);
+    dd.h = f16_sub(bb.h, f16_mul(v.h, _rh_bits(_RH_SC[0]).h));
+    return f16_sub(xx, dd.h);
+  }
+  static float16_t _rh_kcos(float16_t xx, float16_t yy) {
+    union half z, rc, hz, w2, aa, bb, c, half, one;
+    half.c = 0x3800; one.c = 0x3c00;
+    z.h = f16_mul(xx, xx);
+    rc.c = 0;                          // Horner over flop(cc): cc[1..0]
+    for ( int i = 2; i-- != 0; ) { c.c = _RH_CC[i]; rc.h = f16_add(f16_mul(rc.h, z.h), c.h); }
+    hz.h = f16_mul(half.h, z.h);
+    w2.h = f16_sub(one.h, hz.h);
+    aa.h = f16_sub(f16_sub(one.h, w2.h), hz.h);
+    bb.h = f16_sub(f16_mul(f16_mul(z.h, z.h), rc.h), f16_mul(xx, yy));
+    return f16_add(w2.h, f16_add(aa.h, bb.h));
+  }
+  //  trig-fin: is_sin ? sin(x) : cos(x); ax=|x|, sb=sign bit
+  static float16_t _rh_trigfin(int is_sin, float16_t ax, uint16_t sb) {
+    union half qf, r1, r2, w, rhi, rlo, ks, kc, v;
+    c3_ds q = (c3_ds)f16_to_i32(f16_mul(ax, _rh_bits(0x3918).h),
+                                softfloat_round_near_even, 0);          // round(ax*2/pi)
+    c3_d  aq = (c3_d)(q < 0 ? -q : q);
+    qf.h = ui32_to_f16((uint32_t)aq);
+    r1.h = f16_sub(ax, f16_mul(qf.h, _rh_bits(0x3e00).h));             // ax - qf*pio2_1
+    r2.h = f16_sub(r1.h, f16_mul(qf.h, _rh_bits(0x2c80).h));           // r1 - qf*pio2_2
+    w.h = f16_mul(qf.h, _rh_bits(0x0fed).h);                           // qf*pio2_3
+    rhi.h = f16_sub(r2.h, w.h);
+    rlo.h = f16_sub(f16_sub(r2.h, rhi.h), w.h);
+    int m = (int)(aq & 3);
+    ks.h = _rh_ksin(rhi.h, rlo.h);
+    kc.h = _rh_kcos(rhi.h, rlo.h);
+    if ( is_sin ) {
+      v.h = (m==0) ? ks.h : (m==1) ? kc.h : (m==2) ? _rh_neg(ks.h) : _rh_neg(kc.h);
+      return (sb == 1) ? _rh_neg(v.h) : v.h;
+    }
+    return (m==0) ? kc.h : (m==1) ? _rh_neg(ks.h) : (m==2) ? _rh_neg(kc.h) : ks.h;
+  }
+  static float16_t _rh_sin(float16_t x) {
+    union half r0, ax;
+    r0.h = x;
+    if ( !f16_eq(x, x) )                      { r0.c = _RH_QNAN; return r0.h; }  // NaN
+    if ( (r0.c == _RH_PINF)||(r0.c == _RH_NINF) ) { r0.c = _RH_QNAN; return r0.h; }  // +-inf -> NaN
+    if ( (r0.c == 0)||(r0.c == 0x8000U) )     { return x; }                      // +-0 -> +-0
+    ax.c = r0.c & 0x7fffU;
+    return _rh_trigfin(1, ax.h, r0.c >> 15);
+  }
+  static float16_t _rh_cos(float16_t x) {
+    union half r0, ax;
+    r0.h = x;
+    if ( !f16_eq(x, x) )                      { r0.c = _RH_QNAN; return r0.h; }  // NaN
+    if ( (r0.c == _RH_PINF)||(r0.c == _RH_NINF) ) { r0.c = _RH_QNAN; return r0.h; }  // +-inf -> NaN
+    ax.c = r0.c & 0x7fffU;
+    return _rh_trigfin(0, ax.h, 0);
+  }
+  //  tan = (div (sin x) (cos x)): sin/cos kernels %n, the bare div per door r
+  static float16_t _rh_tan(float16_t x) {
+    float16_t s = _rh_sin(x), c = _rh_cos(x);
+    softfloat_roundingMode = _math_rnd;
+    float16_t r = f16_div(s, c);
+    softfloat_roundingMode = softfloat_round_near_even;
+    return r;
+  }
+
+/* @rh sqt -- math.hoon ++rh ++sqt = (sqt:^rh x): correctly-rounded f16 sqrt. */
+  static float16_t _rh_sqt(float16_t x) {
+    union half r; r.h = f16_sqrt(x);
+    if ( !f16_eq(r.h, r.h) ) r.c = _RH_QNAN;        // _nan_unify
+    return r.h;
+  }
+
+/* @rh log/log-2/log-10 -- math.hoon ++rh ++log/++lr/++log-2/++log-10
+**   x = 2^e * m, m in [sqrt(1/2),sqrt(2)); log(1+f) via atanh series (deg-1).
+*/
+  //  +lr: finite positive x -> *ef = e as @rh, *l1 = log(mantissa)
+  static void _rh_lr(float16_t x, float16_t* ef, float16_t* l1) {
+    static const uint16_t cs[2] = { 0x3555, 0x3266 };
+    union half xb, m, f, s, z, p2, r, ll, efa, c, one, half;
+    one.c = 0x3c00; half.c = 0x3800;
+    xb.h = x;
+    int sub = (((xb.c >> 10) & 0x1fU) == 0);
+    if ( sub ) xb.h = f16_mul(x, _rh_bits(0x6400).h);         // *2^10
+    int32_t ae = sub ? -10 : 0;
+    int32_t e = (int32_t)((xb.c >> 10) & 0x1fU) - 15;
+    m.c = (xb.c & 0x3ffU) | 0x3c00U;
+    if ( !f16_lt(m.h, _rh_bits(0x3da8).h) ) {                // m >= sqrt(2)
+      m.h = f16_mul(m.h, half.h); e += 1;
+    }
+    e += ae;
+    f.h = f16_sub(m.h, one.h);
+    s.h = f16_div(f.h, f16_add(m.h, one.h));
+    z.h = f16_mul(s.h, s.h);
+    p2.c = 0; for ( int i = 2; i-- != 0; ) { c.c = cs[i]; p2.h = f16_add(f16_mul(p2.h, z.h), c.h); }
+    r.h = f16_mul(f16_add(z.h, z.h), p2.h);
+    ll.h = f16_sub(f.h, f16_mul(s.h, f16_sub(f.h, r.h)));
+    efa.h = ui32_to_f16((uint32_t)(e < 0 ? -e : e));
+    *ef = (e >= 0) ? efa.h : _rh_neg(efa.h);
+    *l1 = ll.h;
+  }
+  //  shared guards for log/log-2/log-10; returns 1 (and sets *g) on a special case
+  static int _rh_log_guard(float16_t x, float16_t* g) {
+    union half r0; r0.h = x;
+    if ( !f16_eq(x, x) )    { r0.c = _RH_QNAN; *g = r0.h; return 1; }       // NaN
+    if ( r0.c == _RH_PINF ) { *g = x; return 1; }                          // +inf -> inf
+    if ( (r0.c == 0)||(r0.c == 0x8000U) ) { r0.c = _RH_NINF; *g = r0.h; return 1; }  // +-0 -> -inf
+    if ( (r0.c >> 15) == 1 ){ r0.c = _RH_QNAN; *g = r0.h; return 1; }       // x<0 -> NaN
+    return 0;
+  }
+  static float16_t _rh_log(float16_t x) {
+    union half g, ef, l1, hi, lo;
+    if ( _rh_log_guard(x, &g.h) ) return g.h;
+    _rh_lr(x, &ef.h, &l1.h);
+    hi.h = f16_mul(ef.h, _rh_bits(0x3980).h);                // e*ln2hi
+    lo.h = f16_mul(ef.h, _rh_bits(0x1dc8).h);                // e*ln2lo
+    return f16_add(hi.h, f16_add(l1.h, lo.h));
+  }
+  static float16_t _rh_log2(float16_t x) {
+    union half g, ef, l1;
+    if ( _rh_log_guard(x, &g.h) ) return g.h;
+    _rh_lr(x, &ef.h, &l1.h);
+    return f16_add(ef.h, f16_mul(l1.h, _rh_bits(0x3dc5).h));  // e + lm/ln2
+  }
+  static float16_t _rh_log10(float16_t x) {
+    union half g, ef, l1;
+    if ( _rh_log_guard(x, &g.h) ) return g.h;
+    _rh_lr(x, &ef.h, &l1.h);
+    return f16_add(f16_mul(ef.h, _rh_bits(0x34d1).h),         // e*log10(2)
+                   f16_mul(l1.h, _rh_bits(0x36f3).h));        // + lm/ln10
+  }
+
+/* @rh cbt -- math.hoon ++rh ++cbt = sign(x) * exp(log|x| / 3). */
+  static float16_t _rh_cbt(float16_t x) {
+    union half r0, ax, r;
+    r0.h = x;
+    if ( !f16_eq(x, x) )                   { return x; }                          // NaN
+    if ( (r0.c == 0)||(r0.c == 0x8000U) )  { return x; }                          // +-0
+    ax.c = r0.c & 0x7fffU;
+    r.h = _rh_exp(f16_mul(_rh_log(ax.h), _rh_bits(0x3555).h));                    // exp(log|x|/3)
+    return ((r0.c >> 15) == 1) ? _rh_neg(r.h) : r.h;
+  }
+
+/* @rh asin/acos -- math.hoon ++rh ++asin/++acos/++rh-ainv
+**   poly kernel R(t) = t*P(t) (deg-4, NO denominator); sqt = f16_sqrt.  The
+**   near-1 asin branch omits pio2l (f16 script), acos has no tiny branch.
+*/
+  static float16_t _rh_ainv_rr(float16_t t) {
+    static const uint16_t ps[4] = { 0x3155, 0x2cea, 0x2729, 0x2ccc };
+    union half pp, c;
+    pp.c = 0; for ( int i = 4; i-- != 0; ) { c.c = ps[i]; pp.h = f16_add(f16_mul(pp.h, t), c.h); }
+    return f16_mul(t, pp.h);
+  }
+  static float16_t _rh_asin(float16_t x) {
+    union half r0, ax, t, w, r, s, res, half, one, two, pio2h, pio2l, pio4, near;
+    half.c=0x3800; one.c=0x3c00; two.c=0x4000;
+    pio2h.c=0x3e48; pio2l.c=0x0fed; pio4.c=0x3a48; near.c=0x3bcd;
+    r0.h = x;
+    if ( !f16_eq(x, x) )       { r0.c = _RH_QNAN; return r0.h; }   // NaN
+    uint16_t sgn = r0.c >> 15;
+    ax.c = r0.c & 0x7fffU;
+    if ( f16_lt(one.h, ax.h) ) { r0.c = _RH_QNAN; return r0.h; }   // |x|>1 -> NaN
+    if ( ax.c == one.c )                                          // |x|==1
+      return f16_add(f16_mul(x, pio2h.h), f16_mul(x, pio2l.h));
+    if ( f16_lt(ax.h, half.h) ) {                                // |x|<0.5
+      if ( f16_lt(ax.h, _rh_bits(0x0c00).h) ) return x;           // |x|<2^-12 -> x
+      t.h = f16_mul(x, x);
+      return f16_add(x, f16_mul(x, _rh_ainv_rr(t.h)));
+    }
+    w.h = f16_sub(one.h, ax.h);
+    t.h = f16_mul(w.h, half.h);
+    r.h = _rh_ainv_rr(t.h);
+    s.h = f16_sqrt(t.h);
+    if ( f16_le(near.h, ax.h) ) {                                // |x|>=0.975
+      res.h = f16_sub(pio2h.h, f16_mul(two.h, f16_add(s.h, f16_mul(s.h, r.h))));
+      return (sgn == 1) ? _rh_neg(res.h) : res.h;
+    }
+    { union half df, cc, p2, q2;
+      df.c = s.c & 0xfff0U;
+      cc.h = f16_div(f16_sub(t.h, f16_mul(df.h, df.h)), f16_add(s.h, df.h));
+      p2.h = f16_sub(f16_mul(two.h, f16_mul(s.h, r.h)), f16_sub(pio2l.h, f16_mul(two.h, cc.h)));
+      q2.h = f16_sub(pio4.h, f16_mul(two.h, df.h));
+      res.h = f16_sub(pio4.h, f16_sub(p2.h, q2.h));
+      return (sgn == 1) ? _rh_neg(res.h) : res.h;
+    }
+  }
+  static float16_t _rh_acos(float16_t x) {
+    union half r0, ax, z, s, r, w, half, one, two, pih, pio2h, pio2l;
+    half.c=0x3800; one.c=0x3c00; two.c=0x4000;
+    pih.c=0x4248; pio2h.c=0x3e48; pio2l.c=0x0fed;
+    r0.h = x;
+    if ( !f16_eq(x, x) )       { r0.c = _RH_QNAN; return r0.h; }   // NaN
+    uint16_t neg = r0.c >> 15;
+    ax.c = r0.c & 0x7fffU;
+    if ( f16_lt(one.h, ax.h) ) { r0.c = _RH_QNAN; return r0.h; }   // |x|>1 -> NaN
+    if ( ax.c == one.c ) {                                        // |x|==1
+      if ( neg == 0 ) { union half z0; z0.c = 0; return z0.h; }    // 1 -> 0
+      return f16_add(pih.h, f16_mul(two.h, pio2l.h));              // -1 -> pi
+    }
+    if ( f16_lt(ax.h, half.h) ) {                                // |x|<0.5
+      z.h = f16_mul(x, x);
+      r.h = _rh_ainv_rr(z.h);
+      return f16_sub(pio2h.h, f16_sub(x, f16_sub(pio2l.h, f16_mul(x, r.h))));
+    }
+    if ( neg == 1 ) {                                            // x <= -0.5
+      z.h = f16_mul(f16_add(one.h, x), half.h);
+      s.h = f16_sqrt(z.h);
+      r.h = _rh_ainv_rr(z.h);
+      w.h = f16_sub(f16_mul(r.h, s.h), pio2l.h);
+      return f16_sub(pih.h, f16_mul(two.h, f16_add(s.h, w.h)));
+    }
+    z.h = f16_mul(f16_sub(one.h, x), half.h);                    // x >= 0.5
+    s.h = f16_sqrt(z.h);
+    r.h = _rh_ainv_rr(z.h);
+    return f16_mul(two.h, f16_add(s.h, f16_mul(s.h, r.h)));
+  }
+
+/* @rh atan/atan2 -- math.hoon ++rh ++atan/++rh-atan/++atan2
+**   fdlibm breakpoint reduction (7/16,11/16,19/16,39/16) + deg-2 minimax.
+*/
+  static float16_t _rh_atan(float16_t x) {
+    static const uint16_t at[3] = { 0x3555, 0xb266, 0x3092 };
+    union half r0, ax, xr, hi, lo, z, sp, s, res, one, two, ohf, c;
+    r0.h = x;
+    if ( !f16_eq(x, x) )    { r0.c = _RH_QNAN; return r0.h; }       // NaN
+    if ( r0.c == _RH_PINF ) { r0.c = 0x3e48; return r0.h; }         // +inf -> pi/2
+    if ( r0.c == _RH_NINF ) { r0.c = 0xbe48; return r0.h; }         // -inf -> -pi/2
+    if ( (r0.c == 0)||(r0.c == 0x8000U) ) { return x; }            // +-0
+    uint16_t neg = r0.c >> 15;
+    ax.c = r0.c & 0x7fffU;
+    one.c=0x3c00; two.c=0x4000; ohf.c=0x3e00;
+    int dir = 0;
+    if ( f16_lt(ax.h, _rh_bits(0x3700).h) ) {                     // |x| < 7/16
+      xr.h = ax.h; hi.c = 0; lo.c = 0; dir = 1;
+    } else if ( f16_lt(ax.h, _rh_bits(0x3980).h) ) {              // < 11/16
+      xr.h = f16_div(f16_sub(f16_add(ax.h, ax.h), one.h), f16_add(two.h, ax.h));
+      hi.c = 0x376b; lo.c = 0x019c;                               // atan(0.5)
+    } else if ( f16_lt(ax.h, _rh_bits(0x3cc0).h) ) {              // < 19/16
+      xr.h = f16_div(f16_sub(ax.h, one.h), f16_add(ax.h, one.h));
+      hi.c = 0x3a48; lo.c = 0x0bed;                               // pi/4
+    } else if ( f16_lt(ax.h, _rh_bits(0x40e0).h) ) {              // < 39/16
+      xr.h = f16_div(f16_sub(ax.h, ohf.h), f16_add(one.h, f16_mul(ohf.h, ax.h)));
+      hi.c = 0x3bdd; lo.c = 0x87a1;                               // atan(1.5)
+    } else {                                                       // -1/x
+      xr.h = f16_div(_rh_bits(0xbc00).h, ax.h);
+      hi.c = 0x3e48; lo.c = 0x0fed;                               // pi/2
+    }
+    z.h = f16_mul(xr.h, xr.h);
+    sp.c = 0; for ( int i = 3; i-- != 0; ) { c.c = at[i]; sp.h = f16_add(f16_mul(sp.h, z.h), c.h); }
+    s.h = f16_mul(z.h, sp.h);
+    if ( dir ) res.h = f16_sub(xr.h, f16_mul(xr.h, s.h));
+    else       res.h = f16_sub(hi.h, f16_sub(f16_sub(f16_mul(xr.h, s.h), lo.h), xr.h));
+    return (neg == 1) ? _rh_neg(res.h) : res.h;
+  }
+  //  bare door ops (div/add/sub/mul) round per _math_rnd; atan kernel is %n.
+  static float16_t _rh_atan2(float16_t y, float16_t x) {
+    union half xb, pi, two, zero, mone, q, a, r;
+    zero.c = 0; pi.c = 0x4248; two.c = 0x4000; mone.c = 0xbc00;
+    xb.h = x;
+    if ( f16_lt(zero.h, x) ) {                                     // x>0: atan(div y x)
+      softfloat_roundingMode = _math_rnd; q.h = f16_div(y, x);
+      softfloat_roundingMode = softfloat_round_near_even; return _rh_atan(q.h);
+    }
+    if ( f16_lt(x, zero.h) && f16_le(zero.h, y) ) {                // x<0,y>=0: add(atan,pi)
+      softfloat_roundingMode = _math_rnd; q.h = f16_div(y, x);
+      softfloat_roundingMode = softfloat_round_near_even; a.h = _rh_atan(q.h);
+      softfloat_roundingMode = _math_rnd; r.h = f16_add(a.h, pi.h);
+      softfloat_roundingMode = softfloat_round_near_even; return r.h;
+    }
+    if ( f16_lt(x, zero.h) && f16_lt(y, zero.h) ) {                // x<0,y<0: sub(atan,pi)
+      softfloat_roundingMode = _math_rnd; q.h = f16_div(y, x);
+      softfloat_roundingMode = softfloat_round_near_even; a.h = _rh_atan(q.h);
+      softfloat_roundingMode = _math_rnd; r.h = f16_sub(a.h, pi.h);
+      softfloat_roundingMode = softfloat_round_near_even; return r.h;
+    }
+    if ( (xb.c == 0) && f16_lt(zero.h, y) ) {                      // x==+0,y>0: div(pi,2)
+      softfloat_roundingMode = _math_rnd; r.h = f16_div(pi.h, two.h);
+      softfloat_roundingMode = softfloat_round_near_even; return r.h;
+    }
+    if ( (xb.c == 0) && f16_lt(y, zero.h) ) {                      // x==+0,y<0: mul(-1,div(pi,2))
+      softfloat_roundingMode = _math_rnd;
+      r.h = f16_mul(mone.h, f16_div(pi.h, two.h));
+      softfloat_roundingMode = softfloat_round_near_even; return r.h;
+    }
+    return zero.h;
+  }
+
+/* @rh pow/pow-n -- math.hoon ++rh ++pow/++pow-n */
+  static float16_t _rh_pow_n(float16_t x, float16_t n) {
+    union half nn, p, one, two;
+    one.c = 0x3c00; two.c = 0x4000;
+    nn.h = n;
+    if ( nn.c == 0 ) return one.h;                 // n == +0 -> 1
+    softfloat_roundingMode = _math_rnd;            // bare mul/sub round per door r
+    p.h = x;
+    while ( !f16_lt(n, two.h) ) { p.h = f16_mul(p.h, x); n = f16_sub(n, one.h); }
+    softfloat_roundingMode = softfloat_round_near_even;
+    return p.h;
+  }
+  static float16_t _rh_pow(float16_t x, float16_t n) {
+    union half nn, ni, zero, lg, prod;
+    zero.c = 0; nn.h = n;
+    ni.h = i32_to_f16(f16_to_i32(n, softfloat_round_near_even, 0));   // san (need (toi n))
+    if ( (nn.c == ni.c) && f16_lt(zero.h, n) )                        // positive integer
+      return _rh_pow_n(x, ni.h);
+    lg.h = _rh_log(x);                                               // %n kernel
+    softfloat_roundingMode = _math_rnd;                             // bare mul per door r
+    prod.h = f16_mul(n, lg.h);
+    softfloat_roundingMode = softfloat_round_near_even;
+    return _rh_exp(prod.h);                                          // %n kernel: exp(n*log x)
+  }
 
 /* ===================================================================
 ** @rq (quad, 128-bit) cores -- math.hoon ++rq.  Native f128 algorithms (the

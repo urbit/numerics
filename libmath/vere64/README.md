@@ -28,10 +28,22 @@ because the `u3r_mean` macro's API diverged between the runtimes:
 Keep the two copies in sync **except** those two lines.
 
 ## What's covered
-All 15 `@rd` transcendentals, bit-exact to the Hoon `++ rd` door (same reduction,
-coefficients, Horner order — not merely faithful): `exp log sin cos tan atan
-atan2 asin acos sqt cbt pow pow-n log-2 log-10`. The other width doors
-(`rs`/`rh`/`rq`) are not yet jetted.
+All 15 transcendentals for **both `@rd` (double) and `@rs` (single)**, bit-exact
+to their Hoon door (same reduction, coefficients, Horner order — not merely
+faithful): `exp log sin cos tan atan atan2 asin acos sqt cbt pow pow-n log-2
+log-10`. The `@rs` cores are single-precision twins of the `@rd` ones (SoftFloat
+`f32`, `uint32_t` bit pattern, but the same chub I/O). The `@rh`/`@rq` doors are
+not yet jetted.
+
+### Rounding modes (composite arms honor the door's `r`)
+The math doors carry `r=?(%n %u %d %z)` (bunt `%z`). The transcendental KERNELS
+are correctly-rounded and hardcode `~(mul ^rd %n)` (no rounding axis). The
+*composite* arms (`pow`/`atan2`/`tan`/`pow-n`) assemble their result with bare
+door ops that honor `r` — so the jet must too. A file-static `_math_rnd` is set
+from the door's `r` (gate **axis 60**: sample `[r rtol]` → door-axis 12 →
+`peg(7,12)`; base hoon `^rd` with a bare `r` is axis 30) via `'n'/'u'/'d'/'z'` ->
+`near_even`/`max`/`min`/`minMag`, and brackets only the composite bare ops;
+kernel calls run at `near_even`.
 
 Only the **135** kelvin tree is vendored: the stock test ships (`~dev`, fresh
 fakeships from `brass.pill`) are `hoon-version` 135, and that is where these jets

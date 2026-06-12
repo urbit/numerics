@@ -43,8 +43,31 @@ static void emits(const char* nm, unsigned in, float32_t (*fun)(float32_t)) {
   printf("%-6s 0x%08x 0x%08x\n", nm, (unsigned)x.c, (unsigned)out.c);
 }
 
+// narrow spike: f32 -> f16 via SoftFloat in each rounding mode; tag is the
+// mode letter so the Hoon (~(narrow-sh rh [<mode> ..]) <f32>) can be compared.
+static void emit_narrow(unsigned f32bits) {
+  union sing x; x.c = (uint32_t)f32bits;
+  const struct { char m; int sf; } modes[] = {
+    {'n', softfloat_round_near_even}, {'z', softfloat_round_minMag},
+    {'u', softfloat_round_max}, {'d', softfloat_round_min} };
+  for (unsigned k = 0; k < 4; k++) {
+    softfloat_roundingMode = modes[k].sf;
+    float16_t h = f32_to_f16(x.s);
+    union { float16_t h; uint16_t c; } o; o.h = h;
+    printf("narrow-%c 0x%08x 0x%04x\n", modes[k].m, (unsigned)x.c, (unsigned)o.c);
+  }
+  softfloat_roundingMode = softfloat_round_near_even;
+}
+
 int main(void) {
   softfloat_roundingMode = softfloat_round_near_even;
+  // --- @rh narrow spike: stress f32->f16 in all 4 modes ---
+  static const unsigned nrw[] = {
+    0x3f800000, 0x40490fdb, 0xc0490fdb, 0x477fe000, 0x477ff000, 0x477ff001,
+    0x47800000, 0x7f7fffff, 0xff7fffff, 0x33800000, 0x33000000, 0x33000001,
+    0x387fc000, 0x38800000, 0x38801000, 0x33c00000, 0x7f800000, 0xff800000,
+    0x7fc00000, 0x00000000, 0x80000000, 0x38ffe000, 0x477fefff };
+  for (unsigned i = 0; i < sizeof nrw/sizeof nrw[0]; i++) emit_narrow(nrw[i]);
   // @rs exp: core + edges (expected from math.hoon tests/lib/math-exp.hoon)
   static const unsigned rsex[] = { 0x0, 0x3f000000, 0x3f800000, 0xbf800000,
     0x40000000, 0x41200000, 0xc0a00000, 0x3dcccccd, 0x7f800000, 0xff800000,

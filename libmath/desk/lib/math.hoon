@@ -2265,6 +2265,7 @@
     --
   ::  half precision
   ++  rh
+    ~/  %rh
     ^|
     |_  $:  r=$?(%n %u %d %z)   :: round nearest, up, down, to zero
             rtol=_.~~1e-2       :: relative tolerance for precision of operations
@@ -2719,34 +2720,55 @@
       ?:  =(e 0x1f)  (con s (con 0x7f80.0000 (lsh [0 13] m)))
       ?:  =(e 0)
         ?:  =(m 0)  s
-        (con s `@`(~(mul rs [%n .1e-5]) (~(sun rs [%n .1e-5]) m) `@rs`0x3380.0000))
+        (con s `@`(~(mul rs [r .1e-5]) (~(sun rs [r .1e-5]) m) `@rs`0x3380.0000))
       (con s (con (lsh [0 23] (^add e 112)) (lsh [0 13] m)))
+    ::  +rndup: should the magnitude be incremented?  rem=discarded bits,
+    ::  half=tie point, lsb=kept low bit, neg=sign.  Honors the door's r.
+    ++  rndup
+      |=  [rem=@ half=@ lsb=@ neg=?]  ^-  ?
+      ?-  r
+        %n  ?|((^gth rem half) &(=(rem half) =(1 lsb)))
+        %z  %.n
+        %u  &(!neg !=(0 rem))
+        %d  &(neg !=(0 rem))
+      ==
     ++  narrow-sh
       |=  uu=@rs  ^-  @
-      =/  u   `@`uu
-      =/  s   (dis (rsh [0 16] u) 0x8000)
-      =/  e   (dis (rsh [0 23] u) 0xff)
-      =/  m   (dis u 0x7f.ffff)
-      ?:  =(e 0xff)     (con s ?:(=(m 0) 0x7c00 0x7e00))
-      ?:  (^gte e 143)  (con s 0x7c00)
-      ?:  (^gte e 113)
+      =/  u    `@`uu
+      =/  s    (dis (rsh [0 16] u) 0x8000)            ::  sign in f16 position
+      =/  neg  =(0x8000 s)
+      =/  e    (dis (rsh [0 23] u) 0xff)
+      =/  m    (dis u 0x7f.ffff)
+      ?:  =(e 0xff)     (con s ?:(=(m 0) 0x7c00 0x7e00))   ::  inf / nan
+      ?:  (^gte e 143)                                     ::  overflow: inf / max-finite per r
+        ?-  r
+          %n  (con s 0x7c00)
+          %u  (con s ?:(neg 0x7bff 0x7c00))
+          %d  (con s ?:(neg 0x7c00 0x7bff))
+          %z  (con s 0x7bff)
+        ==
+      ?:  (^gte e 113)                                     ::  normal
         =/  ne    (^sub e 112)
         =/  mant  (rsh [0 13] m)
         =/  rem   (dis m 0x1fff)
-        =/  rup   ?|((^gth rem 0x1000) &(=(rem 0x1000) =(1 (dis mant 1))))
+        =/  rup   (rndup rem 0x1000 (dis mant 1) neg)
         (con s (^add (lsh [0 10] ne) (^add mant ?:(rup 1 0))))
-      ?:  (^lth e 102)  (con s 0x0)
-      =/  shift  (^sub 126 e)
+      ?:  (^lth e 102)                                     ::  underflow: 0 / min-subnormal per r
+        =/  nz  |(!=(0 e) !=(0 m))                          ::  nonzero? (exact 0 never bumps)
+        =/  up  ?&(nz ?-(r %n %.n, %z %.n, %u !neg, %d neg))
+        (con s ?:(up 1 0))
+      =/  shift  (^sub 126 e)                              ::  subnormal
       =/  mf     (con 0x80.0000 m)
       =/  mant   (rsh [0 shift] mf)
       =/  half   (bex (dec shift))
       =/  rem    (dis mf (dec (bex shift)))
-      =/  rup    ?|((^gth rem half) &(=(rem half) =(1 (dis mant 1))))
+      =/  rup    (rndup rem half (dis mant 1) neg)
       (con s (^add mant ?:(rup 1 0)))
     ++  exp
+      ~/  %exp
       ::  compute in @rs, round to f16 (see +narrow-sh).
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(exp rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(exp rs [r .1e-5]) `@rs`(widen-hs x)))
     ::    +sin:  @rh -> @rh
     ::
     ::  Returns the sine of a floating-point atom.
@@ -2759,8 +2781,9 @@
     ::    .~~3.437e-3
     ::  Source
     ++  sin
+      ~/  %sin
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(sin rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(sin rs [r .1e-5]) `@rs`(widen-hs x)))
     ::    +cos:  @rh -> @rh
     ::
     ::  Returns the cosine of a floating-point atom.
@@ -2773,8 +2796,9 @@
     ::      .~~-1.001
     ::  Source
     ++  cos
+      ~/  %cos
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(cos rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(cos rs [r .1e-5]) `@rs`(widen-hs x)))
     ::    +tan:  @rh -> @rh
     ::
     ::  Returns the tangent of a floating-point atom.
@@ -2787,8 +2811,9 @@
     ::      .~~-3.433e-3
     ::  Source
     ++  tan
+      ~/  %tan
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(tan rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(tan rs [r .1e-5]) `@rs`(widen-hs x)))
     ::  +asin:  @rh -> @rh
     ::
     ::  Returns the inverse sine of a floating-point atom.
@@ -2801,8 +2826,9 @@
     ::      .~~0.7773
     ::
     ++  asin
+      ~/  %asin
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(asin rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(asin rs [r .1e-5]) `@rs`(widen-hs x)))
     ::  +acos:  @rh -> @rh
     ::
     ::  Returns the inverse cosine of a floating-point atom.
@@ -2815,8 +2841,9 @@
     ::      .~~0.7964
     ::
     ++  acos
+      ~/  %acos
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(acos rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(acos rs [r .1e-5]) `@rs`(widen-hs x)))
     ::  +atan:  @rh -> @rh
     ::
     ::  Returns the inverse tangent of a floating-point atom.
@@ -2829,8 +2856,9 @@
     ::      .~~1.281
     ::
     ++  atan
+      ~/  %atan
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(atan rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(atan rs [r .1e-5]) `@rs`(widen-hs x)))
     ::  +atan2:  [@rh @rh] -> @rh
     ::
     ::  Returns the inverse tangent of a floating-point coordinate.
@@ -2843,8 +2871,9 @@
     ::      .~~2.354
     ::
     ++  atan2
+      ~/  %atan2
       |=  [y=@rh x=@rh]  ^-  @rh
-      `@rh`(narrow-sh (~(atan2 rs [%n .1e-5]) `@rs`(widen-hs y) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(atan2 rs [r .1e-5]) `@rs`(widen-hs y) `@rs`(widen-hs x)))
     ::    +pow-n:  [@rh @rh] -> @rh
     ::
     ::  Returns the power of a floating-point atom to an integer exponent.
@@ -2857,8 +2886,9 @@
     ::      .~~8
     ::  Source
     ++  pow-n
+      ~/  %pow-n
       |=  [x=@rh n=@rh]  ^-  @rh
-      `@rh`(narrow-sh (~(pow-n rs [%n .1e-5]) `@rs`(widen-hs x) `@rs`(widen-hs n)))
+      `@rh`(narrow-sh (~(pow-n rs [r .1e-5]) `@rs`(widen-hs x) `@rs`(widen-hs n)))
     ::    +log:  @rh -> @rh
     ::
     ::  Returns the natural logarithm of a floating-point atom.
@@ -2870,8 +2900,9 @@
     ::      > (~(log rh [%z .~~1e-1]) .~~2)
     ::      .~~0.6904
     ++  log
+      ~/  %log
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(log rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(log rs [r .1e-5]) `@rs`(widen-hs x)))
     ::    +log-10:  @rh -> @rh
     ::
     ::  Returns the base-10 logarithm of a floating-point atom.
@@ -2879,8 +2910,9 @@
     ::      TODO
     ::  Source
     ++  log-10
+      ~/  %log-10
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(log-10 rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(log-10 rs [r .1e-5]) `@rs`(widen-hs x)))
     ::    +log-2:  @rh -> @rh
     ::
     ::  Returns the base-2 logarithm of a floating-point atom.
@@ -2888,8 +2920,9 @@
     ::      TODO
     ::  Source
     ++  log-2
+      ~/  %log-2
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(log-2 rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(log-2 rs [r .1e-5]) `@rs`(widen-hs x)))
     ::    +pow:  [@rh @rh] -> @rh
     ::
     ::  Returns the power of a floating-point atom to a floating-point exponent.
@@ -2902,8 +2935,9 @@
     ::      .~~11.14
     ::  Source
     ++  pow
+      ~/  %pow
       |=  [x=@rh n=@rh]  ^-  @rh
-      `@rh`(narrow-sh (~(pow rs [%n .1e-5]) `@rs`(widen-hs x) `@rs`(widen-hs n)))
+      `@rh`(narrow-sh (~(pow rs [r .1e-5]) `@rs`(widen-hs x) `@rs`(widen-hs n)))
     ::    +sqrt:  @rh -> @rh
     ::
     ::  Returns the square root of a floating-point atom.
@@ -2929,8 +2963,9 @@
     ::      .~~31.61
     ::  Source
     ++  sqt
+      ~/  %sqt
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(sqt rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(sqt rs [r .1e-5]) `@rs`(widen-hs x)))
     ::    +cbrt:  @rh -> @rh
     ::
     ::  Returns the cube root of a floating-point atom.
@@ -2956,8 +2991,9 @@
     ::      .~~1.256
     ::  Source
     ++  cbt
+      ~/  %cbt
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(cbt rs [%n .1e-5]) `@rs`(widen-hs x)))
+      `@rh`(narrow-sh (~(cbt rs [r .1e-5]) `@rs`(widen-hs x)))
     ::    +arg:  @rh -> @rh
     ::
     ::  Returns the argument of a floating-point atom (real argument = absolute

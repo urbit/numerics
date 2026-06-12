@@ -45,6 +45,30 @@ from the door's `r` (gate **axis 60**: sample `[r rtol]` → door-axis 12 →
 `near_even`/`max`/`min`/`minMag`, and brackets only the composite bare ops;
 kernel calls run at `near_even`.
 
+#### Why the kernels hardcode round-nearest-even (no rounding axis)
+A faithful transcendental promises that its output is the *true* value
+`exp(x)`/`log(x)`/… rounded to ≤1 ULP (correctly rounded = ≤½ ULP). That promise
+is defined **with respect to round-to-nearest**: the minimax coefficients, the
+argument reduction, and the whole error budget are derived so the polynomial lands
+within that bound *under nearest rounding*. Round-nearest-even is therefore not a
+free parameter — it is part of the function's definition.
+
+You cannot get directed rounding by simply flipping the internal ops to, say,
+round-toward-zero. That yields the *approximation's* accumulated directed-rounding
+error, not "the true `exp(x)` rounded toward zero" — it can be many ULPs off and
+non-monotonic. Correctly directed-rounding a transcendental requires resolving the
+true result to more precision than the output, just to know which way it falls at
+the rounding boundary (the Table-Maker's Dilemma) — a far harder problem this
+library does not attempt. So a correctly/faithfully-rounded transcendental is a
+function of `x` alone: it fixes its internal arithmetic to nearest-even and takes
+**no** rounding-mode axis.
+
+The door's `r` only governs the *composite* arithmetic that assembles already-
+rounded kernel outputs — `pow = exp(n·log x)` (the `n·log x` multiply), `atan2`'s
+`div`/`±π`, `tan = sin/cos`'s final `div`, `pow-n`'s repeated `mul`. Those are
+ordinary exactly-rounded operations where honoring `r` is well-defined and useful.
+The jet matches the Hoon op-for-op: nearest in the kernels, `r` in the composites.
+
 Only the **135** kelvin tree is vendored: the stock test ships (`~dev`, fresh
 fakeships from `brass.pill`) are `hoon-version` 135, and that is where these jets
 fire. Apply to 136/137 as well if a target ship runs those.

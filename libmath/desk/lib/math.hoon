@@ -2904,8 +2904,9 @@
     ::
     ++  asin
       ~/  %asin
+      ::  native f16: fdlibm rational kernel; see +rh-ainv.  |x|>1 -> NaN.
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(asin rs [r .1e-5]) `@rs`(widen-hs x)))
+      (asn:rh-ainv x)
     ::  +acos:  @rh -> @rh
     ::
     ::  Returns the inverse cosine of a floating-point atom.
@@ -2919,8 +2920,70 @@
     ::
     ++  acos
       ~/  %acos
+      ::  native f16: fdlibm rational kernel; see +rh-ainv.  |x|>1 -> NaN.
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(acos rs [r .1e-5]) `@rs`(widen-hs x)))
+      (acs:rh-ainv x)
+    ::  +rh-ainv: shared native f16 asin/acos engine (poly R(t)=t*P(t)),
+    ::  see +asin / +acos.  Round-nearest-even internally; deg-4 minimax P,
+    ::  faithful to ~1 ULP.  PIO2L=0xfed is the low half of pi/2 (positive).
+    ++  rh-ainv
+      |%
+      ++  rr
+        |=  t=@rh  ^-  @rh
+        =/  ps=(list @rh)
+          ^-((list @rh) :~(`@rh`0x3155 `@rh`0x2cea `@rh`0x2729 `@rh`0x2ccc))
+        %+  ~(mul ^rh %n)  t
+        (roll (flop ps) |=([c=@rh a=@rh] (~(add ^rh %n) (~(mul ^rh %n) a t) c)))
+      ++  asn
+        |=  x=@rh  ^-  @rh
+        ?:  !(~(equ ^rh %n) x x)  `@rh`0x7e00
+        =/  sgn  (rsh [0 15] x)
+        =/  ax   `@rh`(dis x 0x7fff)
+        ?:  (~(gth ^rh %n) ax `@rh`0x3c00)  `@rh`0x7e00     :: |x|>1 -> NaN
+        ?:  =(ax `@rh`0x3c00)                               :: |x|==1 -> +-pi/2
+          (~(add ^rh %n) (~(mul ^rh %n) x `@rh`0x3e48) (~(mul ^rh %n) x `@rh`0xfed))
+        ?:  (~(lth ^rh %n) ax `@rh`0x3800)                  :: |x|<0.5
+          ?:  (~(lth ^rh %n) ax `@rh`0xc00)  x              :: |x|<2^-12 -> x
+          =/  t  (~(mul ^rh %n) x x)
+          (~(add ^rh %n) x (~(mul ^rh %n) x (rr t)))
+        =/  w  (~(sub ^rh %n) `@rh`0x3c00 ax)               :: 0.5<=|x|<1
+        =/  t  (~(mul ^rh %n) w `@rh`0x3800)
+        =/  r  (rr t)
+        =/  s  (~(sqt ^rh %n) t)
+        ?:  (~(gte ^rh %n) ax `@rh`0x3bcd)                  :: |x|>=0.975
+          =/  res
+            (~(sub ^rh %n) `@rh`0x3e48 (~(mul ^rh %n) `@rh`0x4000 (~(add ^rh %n) s (~(mul ^rh %n) s r))))
+          ?:(=(sgn 1) (~(sub ^rh %n) `@rh`0x0 res) res)
+        =/  df  `@rh`(dis s 0xfff0)
+        =/  c   (~(div ^rh %n) (~(sub ^rh %n) t (~(mul ^rh %n) df df)) (~(add ^rh %n) s df))
+        =/  p2  (~(sub ^rh %n) (~(mul ^rh %n) `@rh`0x4000 (~(mul ^rh %n) s r)) (~(sub ^rh %n) `@rh`0xfed (~(mul ^rh %n) `@rh`0x4000 c)))
+        =/  q2  (~(sub ^rh %n) `@rh`0x3a48 (~(mul ^rh %n) `@rh`0x4000 df))
+        =/  res  (~(sub ^rh %n) `@rh`0x3a48 (~(sub ^rh %n) p2 q2))
+        ?:(=(sgn 1) (~(sub ^rh %n) `@rh`0x0 res) res)
+      ++  acs
+        |=  x=@rh  ^-  @rh
+        ?:  !(~(equ ^rh %n) x x)  `@rh`0x7e00
+        =/  neg  (rsh [0 15] x)
+        =/  ax   `@rh`(dis x 0x7fff)
+        ?:  (~(gth ^rh %n) ax `@rh`0x3c00)  `@rh`0x7e00     :: |x|>1 -> NaN
+        ?:  =(ax `@rh`0x3c00)                               :: |x|==1
+          ?:  =(neg 0)  `@rh`0x0
+          (~(add ^rh %n) `@rh`0x4248 (~(mul ^rh %n) `@rh`0x4000 `@rh`0xfed))
+        ?:  (~(lth ^rh %n) ax `@rh`0x3800)                  :: |x|<0.5
+          =/  z  (~(mul ^rh %n) x x)
+          =/  r  (rr z)
+          (~(sub ^rh %n) `@rh`0x3e48 (~(sub ^rh %n) x (~(sub ^rh %n) `@rh`0xfed (~(mul ^rh %n) x r))))
+        ?:  =(neg 1)                                        :: -1<x<=-0.5
+          =/  z  (~(mul ^rh %n) (~(add ^rh %n) `@rh`0x3c00 x) `@rh`0x3800)
+          =/  s  (~(sqt ^rh %n) z)
+          =/  r  (rr z)
+          =/  w  (~(sub ^rh %n) (~(mul ^rh %n) r s) `@rh`0xfed)
+          (~(sub ^rh %n) `@rh`0x4248 (~(mul ^rh %n) `@rh`0x4000 (~(add ^rh %n) s w)))
+        =/  z  (~(mul ^rh %n) (~(sub ^rh %n) `@rh`0x3c00 x) `@rh`0x3800)  :: 0.5<=x<1
+        =/  s  (~(sqt ^rh %n) z)
+        =/  r  (rr z)
+        (~(mul ^rh %n) `@rh`0x4000 (~(add ^rh %n) s (~(mul ^rh %n) s r)))
+      --
     ::  +atan:  @rh -> @rh
     ::
     ::  Returns the inverse tangent of a floating-point atom.

@@ -2392,7 +2392,7 @@
     ::      > (sun 1.000)
     ::      .~~1e3
     ::  Source
-    ++  sun  sun:^rh
+    ++  sun  ~(sun ^rh r)
     ::    +san:  @sd -> @rh
     ::
     ::  Returns the floating-point atom of a signed integer atom.
@@ -2402,7 +2402,7 @@
     ::      > (san -1)
     ::      .~-1
     ::  Source
-    ++  san  san:^rh
+    ++  san  ~(san ^rh r)
     ::++  exp  exp:^rh  :: no pass-through because of exp function
     ::    +toi:  @rh -> @sd
     ::
@@ -2413,7 +2413,7 @@
     ::      > (toi .~~1.1)
     ::      [~ --1]
     ::  Source
-    ++  toi  toi:^rh
+    ++  toi  ~(toi ^rh r)
     ::    +drg:  @rh -> dn
     ::
     ::  Returns the decimal form of a floating-point atom using the Dragon4
@@ -2424,7 +2424,7 @@
     ::      > (drg .~~1.1)
     ::      [%d s=%.y e=-1 a=11]
     ::  Source
-    ++  drg  drg:^rh
+    ++  drg  ~(drg ^rh r)
     ::    +grd:  dn -> @rh
     ::
     ::  Returns the floating-point atom of a decimal form.
@@ -2434,7 +2434,7 @@
     ::      > (grd [%d s=%.y e=-1 a=11])
     ::      .~~1.1
     ::  Source
-    ++  grd  grd:^rh
+    ++  grd  ~(grd ^rh r)
     ::
     ::  Comparison
     ::
@@ -2595,7 +2595,7 @@
     ::      > (add .~~1 .~~2)
     ::      .~~3
     ::  Source
-    ++  add  add:^rh
+    ++  add  ~(add ^rh r)
     ::    +sub:  [@rh @rh] -> @rh
     ::
     ::  Returns the difference of two floating-point atoms.
@@ -2603,7 +2603,7 @@
     ::      > (sub .~~1 .~~2)
     ::      .~~-1
     ::  Source
-    ++  sub  sub:^rh
+    ++  sub  ~(sub ^rh r)
     ::    +mul:  [@rh @rh] -> @rh
     ::
     ::  Returns the product of two floating-point atoms.
@@ -2611,7 +2611,7 @@
     ::      > (mul .~~1 .~~2)
     ::      .~~2
     ::  Source
-    ++  mul  mul:^rh
+    ++  mul  ~(mul ^rh r)
     ::    +div:  [@rh @rh] -> @rh
     ::
     ::  Returns the quotient of two floating-point atoms.
@@ -2619,7 +2619,7 @@
     ::      > (div .~~1 .~~2)
     ::      .~~0.5
     ::  Source
-    ++  div  div:^rh
+    ++  div  ~(div ^rh r)
     ::    +fma:  [@rh @rh @rh] -> @rh
     ::
     ::  Returns the fused multiply-add of three floating-point atoms.
@@ -2629,7 +2629,7 @@
     ::      > (fma .~~2 .~~3 .~~4)
     ::      .~~10
     ::  Source
-    ++  fma  fma:^rh
+    ++  fma  ~(fma ^rh r)
     ::    +sig:  @rh -> ?
     ::
     ::  Returns the sign of a floating-point atom.
@@ -2887,8 +2887,15 @@
     ::  Source
     ++  pow-n
       ~/  %pow-n
+      ::  native @rh repeated multiply (not via @rs); positive integer n only.
       |=  [x=@rh n=@rh]  ^-  @rh
-      `@rh`(narrow-sh (~(pow-n rs [r .1e-5]) `@rs`(widen-hs x) `@rs`(widen-hs n)))
+      ?:  =(n `@rh`0x0)  `@rh`0x3c00
+      ?>  &((gth n `@rh`0x0) (is-int n))
+      =/  p  x
+      |-  ^-  @rh
+      ?:  (lth n `@rh`0x4000)
+        p
+      $(n (sub n `@rh`0x3c00), p (mul p x))
     ::    +log:  @rh -> @rh
     ::
     ::  Returns the natural logarithm of a floating-point atom.
@@ -3817,11 +3824,12 @@
     ++  pow-n
       |=  [x=@rq n=@rq]  ^-  @rq
       ?:  =(n `@rq`0x0)  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
-      =/  i  (need (toi n))
-      =/  p  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
+      ?>  &((gth n `@rq`0x0) (is-int n))
+      =/  p  x
       |-  ^-  @rq
-      ?:  =(i --0)  p
-      $(i (dif:si i --1), p (mul p x))
+      ?:  (lth n `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000)
+        p
+      $(n (sub n `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000), p (mul p x))
     ::    +log:  @rq -> @rq
     ::
     ::  Returns the natural logarithm of a floating-point atom.

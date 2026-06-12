@@ -2809,8 +2809,13 @@
     ::  Source
     ++  sin
       ~/  %sin
+      ::  native f16: q*pi/2 reduction + fdlibm sin/cos kernels (see +rh-trig).
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(sin rs [r .1e-5]) `@rs`(widen-hs x)))
+      ?:  !(~(equ ^rh %n) x x)  `@rh`0x7e00                       :: NaN
+      ?:  |(=(x `@rh`0x7c00) =(x `@rh`0xfc00))  `@rh`0x7e00       :: +-inf
+      ?:  |(=(x `@rh`0x0) =(x `@rh`0x8000))  x                    :: +-0 -> +-0
+      %-  trig-fin:rh-trig
+      [%.y `@rh`(dis x 0x7fff) (rsh [0 15] x)]
     ::    +cos:  @rh -> @rh
     ::
     ::  Returns the cosine of a floating-point atom.
@@ -2825,7 +2830,52 @@
     ++  cos
       ~/  %cos
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(cos rs [r .1e-5]) `@rs`(widen-hs x)))
+      ?:  !(~(equ ^rh %n) x x)  `@rh`0x7e00
+      ?:  |(=(x `@rh`0x7c00) =(x `@rh`0xfc00))  `@rh`0x7e00
+      %-  trig-fin:rh-trig
+      [%.n `@rh`(dis x 0x7fff) 0]
+    ::  +rh-trig: native f16 sin/cos engine (fdlibm kernels, 2-coeff each).
+    ++  rh-trig
+      |%
+      ++  sc  ^-((list @rh) :~(`@rh`0xb155 `@rh`0x2044))
+      ++  cc  ^-((list @rh) :~(`@rh`0x2955 `@rh`0x95b0))
+      ++  neg  |=(a=@rh ^-(@rh (~(sub ^rh %n) `@rh`0x0 a)))
+      ++  ksin
+        |=  [xx=@rh yy=@rh]  ^-  @rh
+        =/  z   (~(mul ^rh %n) xx xx)
+        =/  r   (roll (flop (tail sc)) |=([c=@rh a=@rh] (~(add ^rh %n) (~(mul ^rh %n) a z) c)))
+        =/  v   (~(mul ^rh %n) z xx)
+        =/  aa  (~(sub ^rh %n) (~(mul ^rh %n) `@rh`0x3800 yy) (~(mul ^rh %n) v r))
+        =/  bb  (~(sub ^rh %n) (~(mul ^rh %n) z aa) yy)
+        =/  dd  (~(sub ^rh %n) bb (~(mul ^rh %n) v (head sc)))
+        (~(sub ^rh %n) xx dd)
+      ++  kcos
+        |=  [xx=@rh yy=@rh]  ^-  @rh
+        =/  z   (~(mul ^rh %n) xx xx)
+        =/  rc  (roll (flop cc) |=([c=@rh a=@rh] (~(add ^rh %n) (~(mul ^rh %n) a z) c)))
+        =/  hz  (~(mul ^rh %n) `@rh`0x3800 z)
+        =/  w2  (~(sub ^rh %n) `@rh`0x3c00 hz)
+        =/  aa  (~(sub ^rh %n) (~(sub ^rh %n) `@rh`0x3c00 w2) hz)
+        =/  bb  (~(sub ^rh %n) (~(mul ^rh %n) (~(mul ^rh %n) z z) rc) (~(mul ^rh %n) xx yy))
+        (~(add ^rh %n) w2 (~(add ^rh %n) aa bb))
+      ::  +trig-fin: [is-sin? |x| sign-bit] -> sin x (is-sin?) or cos x
+      ++  trig-fin
+        |=  [s=? ax=@rh sb=@]  ^-  @rh
+        =/  q   (need (~(toi ^rh %n) (~(mul ^rh %n) ax `@rh`0x3918)))
+        =/  qf  (~(sun ^rh %n) (abs:si q))
+        =/  r1  (~(sub ^rh %n) ax (~(mul ^rh %n) qf `@rh`0x3e00))
+        =/  r2  (~(sub ^rh %n) r1 (~(mul ^rh %n) qf `@rh`0x2c80))
+        =/  w   (~(mul ^rh %n) qf `@rh`0x0fed)
+        =/  rhi  (~(sub ^rh %n) r2 w)
+        =/  rlo  (~(sub ^rh %n) (~(sub ^rh %n) r2 rhi) w)
+        =/  m   (dis (abs:si q) 3)
+        =/  ks  (ksin rhi rlo)
+        =/  kc  (kcos rhi rlo)
+        ?:  s
+          =/  v  ?:(=(m 0) ks ?:(=(m 1) kc ?:(=(m 2) (neg ks) (neg kc))))
+          ?:(=(sb 1) (neg v) v)
+        ?:(=(m 0) kc ?:(=(m 1) (neg ks) ?:(=(m 2) (neg kc) ks)))
+      --
     ::    +tan:  @rh -> @rh
     ::
     ::  Returns the tangent of a floating-point atom.

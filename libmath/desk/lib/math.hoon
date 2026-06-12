@@ -3798,11 +3798,11 @@
     ::
     ++  atan2
       |=  [y=@rq x=@rq]  ^-  @rq
-      ?:  (~(gth ^rq %n) x `@rq`0x0)  (atan (~(div ^rq %n) y x))
-      ?:  &((~(lth ^rq %n) x `@rq`0x0) (~(gte ^rq %n) y `@rq`0x0))  (~(add ^rq %n) (atan (~(div ^rq %n) y x)) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8)
-      ?:  &((~(lth ^rq %n) x `@rq`0x0) (~(lth ^rq %n) y `@rq`0x0))  (~(sub ^rq %n) (atan (~(div ^rq %n) y x)) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8)
-      ?:  &(=(`@rq`0x0 x) (~(gth ^rq %n) y `@rq`0x0))  `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8
-      ?:  &(=(`@rq`0x0 x) (~(lth ^rq %n) y `@rq`0x0))  `@rq`0xbfff.921f.b544.42d1.8469.898c.c517.01b8
+      ?:  (gth x `@rq`0x0)  (atan (div y x))
+      ?:  &((lth x `@rq`0x0) (gte y `@rq`0x0))  (add (atan (div y x)) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8)
+      ?:  &((lth x `@rq`0x0) (lth y `@rq`0x0))  (sub (atan (div y x)) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8)
+      ?:  &(=(`@rq`0x0 x) (gth y `@rq`0x0))  `@rq`0x3fff.921f.b544.42d1.8469.898c.c517.01b8
+      ?:  &(=(`@rq`0x0 x) (lth y `@rq`0x0))  `@rq`0xbfff.921f.b544.42d1.8469.898c.c517.01b8
       `@rq`0x0
 
     ::    +pow-n:  [@rq @rq] -> @rq
@@ -3817,11 +3817,11 @@
     ++  pow-n
       |=  [x=@rq n=@rq]  ^-  @rq
       ?:  =(n `@rq`0x0)  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
-      =/  i  (need (~(toi ^rq %n) n))
+      =/  i  (need (toi n))
       =/  p  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
       |-  ^-  @rq
       ?:  =(i --0)  p
-      $(i (dif:si i --1), p (~(mul ^rq %n) p x))
+      $(i (dif:si i --1), p (mul p x))
     ::    +log:  @rq -> @rq
     ::
     ::  Returns the natural logarithm of a floating-point atom.
@@ -3954,9 +3954,9 @@
     ::  Source
     ++  pow
       |=  [x=@rq n=@rq]  ^-  @rq
-      ?:  &(=(n (~(san ^rq %n) (need (~(toi ^rq %n) n)))) (~(gth ^rq %n) n `@rq`0x0))
+      ?:  &(=(n (san (need (toi n)))) (gth n `@rq`0x0))
         (pow-n x n)
-      (exp (~(mul ^rq %n) n (log x)))
+      (exp (mul n (log x)))
     ::    +sqrt:  @rq -> @rq
     ::
     ::  Returns the square root of a floating-point atom.

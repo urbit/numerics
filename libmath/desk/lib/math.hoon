@@ -2865,7 +2865,7 @@
         =/  qf  (~(sun ^rh %n) (abs:si q))
         =/  r1  (~(sub ^rh %n) ax (~(mul ^rh %n) qf `@rh`0x3e00))
         =/  r2  (~(sub ^rh %n) r1 (~(mul ^rh %n) qf `@rh`0x2c80))
-        =/  w   (~(mul ^rh %n) qf `@rh`0x0fed)
+        =/  w   (~(mul ^rh %n) qf `@rh`0xfed)
         =/  rhi  (~(sub ^rh %n) r2 w)
         =/  rlo  (~(sub ^rh %n) (~(sub ^rh %n) r2 rhi) w)
         =/  m   (dis (abs:si q) 3)
@@ -2934,8 +2934,49 @@
     ::
     ++  atan
       ~/  %atan
+      ::  native f16: fdlibm breakpoint reduction + deg-2 atan minimax.
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(atan rs [r .1e-5]) `@rs`(widen-hs x)))
+      ?:  !(~(equ ^rh %n) x x)  `@rh`0x7e00        :: NaN
+      ?:  =(x `@rh`0x7c00)      `@rh`0x3e48        :: +inf -> pi/2
+      ?:  =(x `@rh`0xfc00)      `@rh`0xbe48        :: -inf -> -pi/2
+      ?:  |(=(x `@rh`0x0) =(x `@rh`0x8000))  x     :: +-0 -> +-0
+      =/  neg  (rsh [0 15] x)
+      =/  r    (ker:rh-atan `@rh`(dis x 0x7fff))
+      ?:(=(neg 1) (~(sub ^rh %n) `@rh`0x0 r) r)
+    ::  +rh-atan: native f16 atan engine (breakpoint reduction + poly).
+    ++  rh-atan
+      |%
+      ++  at  ^-((list @rh) :~(`@rh`0x3555 `@rh`0xb266 `@rh`0x3092))   :: 1/3,-1/5,1/7
+      ++  atred
+        |=  ax=@rh  ^-  [xr=@rh hi=@rh lo=@rh dir=?]
+        =/  one  `@rh`0x3c00
+        =/  two  `@rh`0x4000
+        =/  ohf  `@rh`0x3e00
+        ?:  (~(lth ^rh %n) ax `@rh`0x3700)              :: < 7/16
+          [ax `@rh`0x0 `@rh`0x0 %.y]
+        ?:  (~(lth ^rh %n) ax `@rh`0x3980)              :: < 11/16
+          :*  (~(div ^rh %n) (~(sub ^rh %n) (~(add ^rh %n) ax ax) one) (~(add ^rh %n) two ax))
+              `@rh`0x376b  `@rh`0x19c  %.n
+          ==
+        ?:  (~(lth ^rh %n) ax `@rh`0x3cc0)              :: < 19/16
+          :*  (~(div ^rh %n) (~(sub ^rh %n) ax one) (~(add ^rh %n) ax one))
+              `@rh`0x3a48  `@rh`0xbed  %.n
+          ==
+        ?:  (~(lth ^rh %n) ax `@rh`0x40e0)              :: < 39/16
+          :*  (~(div ^rh %n) (~(sub ^rh %n) ax ohf) (~(add ^rh %n) one (~(mul ^rh %n) ohf ax)))
+              `@rh`0x3bdd  `@rh`0x87a1  %.n
+          ==
+        :*  (~(div ^rh %n) `@rh`0xbc00 ax)              :: -1/ax
+            `@rh`0x3e48  `@rh`0xfed  %.n
+        ==
+      ++  ker
+        |=  ax=@rh  ^-  @rh
+        =/  q  (atred ax)
+        =/  z  (~(mul ^rh %n) xr.q xr.q)
+        =/  s  (~(mul ^rh %n) z (roll (flop at) |=([c=@rh a=@rh] (~(add ^rh %n) (~(mul ^rh %n) a z) c))))
+        ?:  dir.q  (~(sub ^rh %n) xr.q (~(mul ^rh %n) xr.q s))
+        (~(sub ^rh %n) hi.q (~(sub ^rh %n) (~(sub ^rh %n) (~(mul ^rh %n) xr.q s) lo.q) xr.q))
+      --
     ::  +atan2:  [@rh @rh] -> @rh
     ::
     ::  Returns the inverse tangent of a floating-point coordinate.

@@ -1577,6 +1577,7 @@
     ::    .~-1.698287706085482e-13
     ::  Source
     ++  sin
+      ~/  %sin
       |=  x=@rd  ^-  @rd
       ::  Reduce x = q*(pi/2) + (rhi+rlo) (2-part pi/2), then fdlibm sin/cos
       ::  kernels picked by q&3.  Faithful to <=1 ULP for |x| <~ 2^22.
@@ -1598,6 +1599,7 @@
     ::      .~-1.0000000000013558
     ::  Source
     ++  cos
+      ~/  %cos
       |=  x=@rd  ^-  @rd
       ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
       ?:  |(=(x `@rd`0x7ff0.0000.0000.0000) =(x `@rd`0xfff0.0000.0000.0000))  `@rd`0x7ff8.0000.0000.0000
@@ -1668,6 +1670,7 @@
     ::      .~-2.6535896228476087e-6
     ::  Source
     ++  tan
+      ~/  %tan
       ::  Dedicated fdlibm __kernel_tan (faithful <=1 ULP); the sin/cos ratio is
       ::  ~2 ULP.  q*pi/2 reduction, odd q uses the -cot path.  See +rd-tan.
       |=  x=@rd  ^-  @rd
@@ -1751,6 +1754,7 @@
     ::      .~0.7753974965943197
     ::
     ++  asin
+      ~/  %asin
       ::  fdlibm rational kernel; see +rd-ainv.  Faithful to <=1 ULP; |x|>1 -> NaN.
       |=  x=@rd  ^-  @rd
       (asn:rd-ainv x)
@@ -1766,6 +1770,7 @@
     ::      .~0.7953988301652518
     ::
     ++  acos
+      ~/  %acos
       |=  x=@rd  ^-  @rd
       (acs:rd-ainv x)
     ::  +rd-ainv: shared asin/acos engine for the @rd door (rational P/Q kernel),
@@ -1851,6 +1856,7 @@
     ::      .~1.2626272558398273
     ::
     ++  atan
+      ~/  %atan
       ::  fdlibm breakpoint reduction + minimax poly; odd.  Round-nearest-even
       ::  internally (the SoftFloat jet matches).
       |=  x=@rd  ^-  @rd
@@ -1915,6 +1921,7 @@
     ::      .~2.3561944902107888
     ::
     ++  atan2
+      ~/  %atan2
       |=  [y=@rd x=@rd]  ^-  @rd
       ?:  (gth x .~0)
         (atan (div y x))
@@ -1939,6 +1946,7 @@
     ::      .8
     ::  Source
     ++  pow-n
+      ~/  %pow-n
       |=  [x=@rd n=@rd]  ^-  @rd
       ?:  =(n .~0)  .~1
       ?>  &((gth n .~0) (is-int n))
@@ -2012,6 +2020,7 @@
     ::      .~0.30102999562024696
     ::  Source
     ++  log-10
+      ~/  %log-10
       ::  e*log10(2) + log(m)/ln10, reusing +lr so the integer part is added with
       ::  no division rounding (more accurate than log(x)/ln10).
       |=  x=@rd  ^-  @rd
@@ -2031,6 +2040,7 @@
     ::      .~-3.321928094887362
     ::  Source
     ++  log-2
+      ~/  %log-2
       ::  e + log(m)/ln2 (integer part exact); see +lr.
       |=  x=@rd  ^-  @rd
       ?:  !(~(equ ^rd %n) x x)  `@rd`0x7ff8.0000.0000.0000
@@ -2082,6 +2092,7 @@
     ::      .~11.313708498984685
     ::  Source
     ++  pow
+      ~/  %pow
       |=  [x=@rd n=@rd]  ^-  @rd
       ::  fall through on positive integers (faster)
       ?:  &(=(n (san (need (toi n)))) (gth n .~0))  (pow-n x (san (need (toi n))))
@@ -2111,6 +2122,7 @@
     ::      .~316.2277660168379
     ::  Source
     ++  sqt
+      ~/  %sqt
       ::  Correctly-rounded f64 square root.  The stdlib f64 root is only
       ::  faithful (off by up to 1 ULP), so seed with it and apply one Markstein
       ::  correction (r = x - g*g via fma; g + (0.5/g)*r), which lands on the
@@ -2149,6 +2161,7 @@
     ::      .~1.2599210498948716
     ::  Source
     ++  cbt
+      ~/  %cbt
       ::  cbrt(x) = sign(x) * exp(log|x| / 3); defined for all reals (unlike pow).
       |=  x=@rd  ^-  @rd
       ?:  !(~(equ ^rd %n) x x)  x                                :: NaN -> NaN

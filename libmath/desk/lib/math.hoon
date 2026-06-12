@@ -2766,9 +2766,36 @@
       (con s (^add mant ?:(rup 1 0)))
     ++  exp
       ~/  %exp
-      ::  compute in @rs, round to f16 (see +narrow-sh).
+      ::  native f16: Cody-Waite x=k*ln2+r, exp(x)=2^k*P(r), deg-4 minimax (<=1 ULP).
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(exp rs [r .1e-5]) `@rs`(widen-hs x)))
+      =/  pow2  |=(j=@s `@rh`(lsh [0 10] (abs:si (sum:si j --15))))
+      =/  scale2
+        |=  [p=@rh k=@s]  ^-  @rh
+        ?:  (syn:si (dif:si k --16))                 :: k>=16: (p*2^15)*2^(k-15)
+          (~(mul ^rh %n) (~(mul ^rh %n) p (pow2 --15)) (pow2 (dif:si k --15)))
+        ?:  !(syn:si (sum:si k --14))                :: k<-14: (p*2^(k+11))*2^-11
+          (~(mul ^rh %n) (~(mul ^rh %n) p (pow2 (sum:si k --11))) (pow2 -11))
+        (~(mul ^rh %n) p (pow2 k))
+      ?:  !(~(equ ^rh %n) x x)    `@rh`0x7e00        :: exp(NaN) -> NaN
+      ?:  =(x `@rh`0x7c00)        `@rh`0x7c00        :: exp(+inf) -> inf
+      ?:  =(x `@rh`0xfc00)        `@rh`0x0           :: exp(-inf) -> 0
+      =/  log2e  `@rh`0x3dc5
+      =/  ln2hi  `@rh`0x3980
+      =/  ln2lo  `@rh`0x1dc8
+      =/  k=@s   (need (~(toi ^rh %n) (~(mul ^rh %n) x log2e)))
+      ?:  (syn:si (dif:si k --17))   `@rh`0x7c00     :: overflow -> inf
+      ?:  !(syn:si (sum:si k --24))  `@rh`0x0        :: underflow -> 0
+      =/  ka  (~(sun ^rh %n) (abs:si k))
+      =/  kf  ?:((syn:si k) ka (~(sub ^rh %n) `@rh`0x0 ka))
+      =/  r
+        %-  ~(sub ^rh %n)
+        :-  (~(sub ^rh %n) x (~(mul ^rh %n) kf ln2hi))
+        (~(mul ^rh %n) kf ln2lo)
+      =/  cs=(list @rh)
+        :~  `@rh`0x3c00  `@rh`0x3c00  `@rh`0x3800  `@rh`0x3160  `@rh`0x295c
+        ==
+      =/  p  (roll (flop cs) |=([c=@rh acc=@rh] (~(add ^rh %n) (~(mul ^rh %n) acc r) c)))
+      (scale2 p k)
     ::    +sin:  @rh -> @rh
     ::
     ::  Returns the sine of a floating-point atom.
@@ -2908,8 +2935,34 @@
     ::      .~~0.6904
     ++  log
       ~/  %log
+      ::  native f16: x=2^e*m reduction (m in [sqrt(1/2),sqrt(2))) + deg-1 atanh.
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(log rs [r .1e-5]) `@rs`(widen-hs x)))
+      ?:  !(~(equ ^rh %n) x x)         `@rh`0x7e00        :: log(NaN) -> NaN
+      ?:  =(x `@rh`0x7c00)             `@rh`0x7c00        :: log(+inf) -> inf
+      ?:  |(=(x `@rh`0x0) =(x `@rh`0x8000))  `@rh`0xfc00  :: log(+-0) -> -inf
+      ?:  =(1 (rsh [0 15] x))          `@rh`0x7e00        :: log(x<0) -> NaN
+      =/  sub  =(0 (dis 0x1f (rsh [0 10] x)))                  :: subnormal?
+      =/  xx   ?:(sub (~(mul ^rh %n) x `@rh`0x6400) x)         :: *2^10
+      =/  ae   ?:(sub -10 --0)
+      =/  b    `@`xx
+      =/  ef   (dif:si (new:si %.y (dis 0x1f (rsh [0 10] b))) --15)
+      =/  m    `@rh`(con (dis b 0x3ff) 0x3c00)
+      =/  big  (~(gte ^rh %n) m `@rh`0x3da8)                   :: m >= sqrt(2)
+      =?  m    big  (~(mul ^rh %n) m `@rh`0x3800)              :: m * 0.5
+      =?  ef   big  (sum:si ef --1)
+      =.  ef   (sum:si ef ae)
+      =/  f    (~(sub ^rh %n) m `@rh`0x3c00)
+      =/  s    (~(div ^rh %n) f (~(add ^rh %n) m `@rh`0x3c00))
+      =/  z    (~(mul ^rh %n) s s)
+      =/  cs=(list @rh)  :~(`@rh`0x3555 `@rh`0x3266)
+      =/  p2  (roll (flop cs) |=([c=@rh acc=@rh] (~(add ^rh %n) (~(mul ^rh %n) acc z) c)))
+      =/  r   (~(mul ^rh %n) (~(add ^rh %n) z z) p2)
+      =/  l1  (~(sub ^rh %n) f (~(mul ^rh %n) s (~(sub ^rh %n) f r)))
+      =/  efa   (~(sun ^rh %n) (abs:si ef))
+      =/  ef-f  ?:((syn:si ef) efa (~(sub ^rh %n) `@rh`0x0 efa))
+      =/  hi  (~(mul ^rh %n) ef-f `@rh`0x3980)                 :: e*ln2hi
+      =/  lo  (~(mul ^rh %n) ef-f `@rh`0x1dc8)                 :: e*ln2lo
+      (~(add ^rh %n) hi (~(add ^rh %n) l1 lo))
     ::    +log-10:  @rh -> @rh
     ::
     ::  Returns the base-10 logarithm of a floating-point atom.

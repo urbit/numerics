@@ -3133,7 +3133,7 @@
     ::      > (sun 1.000)
     ::      .~~~1e3
     ::  Source
-    ++  sun  sun:^rq
+    ++  sun  ~(sun ^rq r)
     ::    +san:  @sd -> @rq
     ::
     ::  Returns the floating-point atom of a signed integer atom.
@@ -3143,7 +3143,7 @@
     ::      > (san -1)
     ::      .~~~-1
     ::  Source
-    ++  san  san:^rq
+    ++  san  ~(san ^rq r)
     ::++  exp  exp:^rq  :: no pass-through because of exp function
     ::    +toi:  @rq -> @sd
     ::
@@ -3154,7 +3154,7 @@
     ::      > (toi .~~~1.1)
     ::      [~ --1]
     ::  Source
-    ++  toi  toi:^rq
+    ++  toi  ~(toi ^rq r)
     ::    +drg:  @rq -> dn
     ::
     ::  Returns the decimal form of a floating-point atom using the Dragon4
@@ -3165,7 +3165,7 @@
     ::      > (drg .~~~1.1)
     ::      [%d s=%.y e=-1 a=11]
     ::  Source
-    ++  drg  drg:^rq
+    ++  drg  ~(drg ^rq r)
     ::    +grd:  dn -> @rq
     ::
     ::  Returns the floating-point atom of a decimal form.
@@ -3175,7 +3175,7 @@
     ::      > (grd [%d s=%.y e=-1 a=11])
     ::      .~~~1.1
     ::  Source
-    ++  grd  grd:^rq
+    ++  grd  ~(grd ^rq r)
     ::
     ::  Comparison
     ::
@@ -3338,7 +3338,7 @@
     ::      > (add .~~~1 .~~~2)
     ::      .~~~3
     ::  Source
-    ++  add  add:^rq
+    ++  add  ~(add ^rq r)
     ::    +sub:  [@rq @rq] -> @rq
     ::
     ::  Returns the difference of two floating-point atoms.
@@ -3346,7 +3346,7 @@
     ::      > (sub .~~~1 .~~~2)
     ::      .~~~-1
     ::  Source
-    ++  sub  sub:^rq
+    ++  sub  ~(sub ^rq r)
     ::    +mul:  [@rq @rq] -> @rq
     ::
     ::  Returns the product of two floating-point atoms.
@@ -3354,7 +3354,7 @@
     ::      > (mul .~~~1 .~~~2)
     ::      .~~~2
     ::  Source
-    ++  mul  mul:^rq
+    ++  mul  ~(mul ^rq r)
     ::    +div:  [@rq @rq] -> @rq
     ::
     ::  Returns the quotient of two floating-point atoms.
@@ -3362,7 +3362,7 @@
     ::      > (div .~~~1 .~~~2)
     ::      .~~~0.5
     ::  Source
-    ++  div  div:^rq
+    ++  div  ~(div ^rq r)
     ::    +fma:  [@rq @rq @rq] -> @rq
     ::
     ::  Returns the fused multiply-add of three floating-point atoms.
@@ -3372,7 +3372,7 @@
     ::      > (fma .~~~2 .~~~3 .~~~4)
     ::      .~~~10
     ::  Source
-    ++  fma  fma:^rq
+    ++  fma  ~(fma ^rq r)
     ::    +sig:  @rq -> ?
     ::
     ::  Returns the sign of a floating-point atom.

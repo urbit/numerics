@@ -1012,6 +1012,94 @@ typedef int64_t  c3_ds;
   static float16_t _rh_pow(float16_t x, float16_t n)   { return _rh_2(x, n, _rs_pow); }
   static float16_t _rh_pow_n(float16_t x, float16_t n) { return _rh_2(x, n, _rs_pow_n); }
 
+/* ===================================================================
+** @rq (quad, 128-bit) cores -- math.hoon ++rq.  Native f128 algorithms (the
+** widest type, no delegation): same reductions as @rd, higher-degree minimax
+** in float128_t.  Marshalling reads TWO chubs into float128_t.v[0..1], so it is
+** word-size-agnostic -- the chub ABI sidesteps the c3_w*[n=2|4] divergence of
+** the old rq.c.  Composite arms honor the door's r via _math_rnd.
+** =================================================================== */
+
+  union quad {
+    float128_t q;
+    c3_d       w[2];        // w[0] = v[0] = low 64 bits, w[1] = v[1] = high 64
+  };
+  static inline float128_t _rq_bits(c3_d hi, c3_d lo) {
+    union quad u; u.w[0] = lo; u.w[1] = hi; return u.q;
+  }
+  //  by-value wrappers over the pointer-based f128M_* ops (this SoftFloat build
+  //  has no by-value f128_*).  Compiler inlines these; keeps the cores readable.
+  static inline float128_t _rqm(float128_t a, float128_t b) { float128_t r; f128M_mul(&a,&b,&r); return r; }
+  static inline float128_t _rqa(float128_t a, float128_t b) { float128_t r; f128M_add(&a,&b,&r); return r; }
+  static inline float128_t _rqs(float128_t a, float128_t b) { float128_t r; f128M_sub(&a,&b,&r); return r; }
+  static inline float128_t _rqd(float128_t a, float128_t b) { float128_t r; f128M_div(&a,&b,&r); return r; }
+  static inline float128_t _rqq(float128_t a)               { float128_t r; f128M_sqrt(&a,&r);  return r; }
+  static inline int _rqeq(float128_t a, float128_t b) { return f128M_eq(&a,&b); }
+  static inline int _rqlt(float128_t a, float128_t b) { return f128M_lt(&a,&b); }
+  static inline int _rqle(float128_t a, float128_t b) { return f128M_le(&a,&b); }
+  static inline c3_ds _rqtoi(float128_t a, int m) { return (c3_ds)f128M_to_i64(&a, (uint_fast8_t)m, 0); }
+  static inline float128_t _rqi64(c3_ds n) { float128_t r; i64_to_f128M(n, &r); return r; }
+  static const c3_d _RQ_QNAN_HI = 0x7fff800000000000ULL;
+  static const c3_d _RQ_PINF_HI = 0x7fff000000000000ULL;
+  static const c3_d _RQ_NINF_HI = 0xffff000000000000ULL;
+  static inline float128_t _rq_neg(float128_t a) {        // (sub .0 a)
+    return _rqs(_rq_bits(0,0), a);
+  }
+
+/* @rq exp -- math.hoon ++rq ++exp
+**   Cody-Waite x=k*ln2+r, exp=2^k*P(r), P a degree-24 minimax (f128).
+*/
+  //  pow2(j) = 2^j as f128 bits: exp field (bits 112-126) = j+16383
+  static inline float128_t _rq_pow2(c3_ds j) {
+    union quad u; u.w[0] = 0; u.w[1] = ((c3_d)(j + 16383)) << 48; return u.q;
+  }
+  static inline float128_t _rq_scale2(float128_t p, c3_ds k) {
+    if ( (k - 16384) >= 0 )
+      return _rqm(_rqm(p, _rq_pow2(16383)), _rq_pow2(k - 16383));
+    if ( !((k + 16382) >= 0) )
+      return _rqm(_rqm(p, _rq_pow2(k + 112)), _rq_pow2(-112));
+    return _rqm(p, _rq_pow2(k));
+  }
+  static float128_t _rq_exp(float128_t x) {
+    //  degree-24 minimax coeffs c0..c24 {lo, hi} (math.hoon ++rq ++exp)
+    static const c3_d cs[25][2] = {
+      {0x0000000000000000ULL,0x3fff000000000000ULL},{0x0000000000000000ULL,0x3fff000000000000ULL},
+      {0x0000000000000000ULL,0x3ffe000000000000ULL},{0x5555555555555555ULL,0x3ffc555555555555ULL},
+      {0x5555555555555555ULL,0x3ffa555555555555ULL},{0x1111111111111111ULL,0x3ff8111111111111ULL},
+      {0x6c16c16c16c16c17ULL,0x3ff56c16c16c16c1ULL},{0xa01a01a01a01a3e8ULL,0x3ff2a01a01a01a01ULL},
+      {0xa01a01a01a01a146ULL,0x3fefa01a01a01a01ULL},{0x38faac1c88a5a526ULL,0x3fec71de3a556c73ULL},
+      {0xc72ef016d3d6e867ULL,0x3fe927e4fb7789f5ULL},{0x38fe748363c46e8bULL,0x3fe5ae64567f544eULL},
+      {0x7b544dab18f475c5ULL,0x3fe21eed8eff8d89ULL},{0x97c9f3aebabb2423ULL,0x3fde6124613a86d0ULL},
+      {0xd20b83c7f94d17d8ULL,0x3fda93974a8c07c9ULL},{0xf5f4284f0d74f9e7ULL,0x3fd6ae7f3e733b81ULL},
+      {0xf417b4d27c5f92a9ULL,0x3fd2ae7f3e733b81ULL},{0x6a419e674779c97cULL,0x3fce952c77030a99ULL},
+      {0x0466ff8c8b42b3dfULL,0x3fca6827863b97b5ULL},{0x874b7a686d819241ULL,0x3fc62f49b469f892ULL},
+      {0xbb3b32a11bb5f139ULL,0x3fc1e542ba427463ULL},{0xc93890ff9ab55cbbULL,0x3fbd71b8db9f7f73ULL},
+      {0x6efc0717eae785a1ULL,0x3fb90ce38aab7bd7ULL},{0xcb3f4f7edfaa2666ULL,0x3fb47693274bab2aULL},
+      {0x61cb0e23655d47cbULL,0x3faff3629154e0a7ULL},
+    };
+    union quad r0; r0.q = x;
+    if ( !_rqeq(x, x) )                       return _rq_bits(_RQ_QNAN_HI, 0);   // NaN
+    if ( r0.w[1]==_RQ_PINF_HI && r0.w[0]==0 ) return x;                          // +inf
+    if ( r0.w[1]==_RQ_NINF_HI && r0.w[0]==0 ) return _rq_bits(0,0);              // -inf -> 0
+
+    float128_t log2e = _rq_bits(0x3fff71547652b82fULL, 0xe1777d0ffda0d23aULL);
+    float128_t ln2hi = _rq_bits(0x3ffe62e42fefa39eULL, 0xf35793c800000000ULL);
+    float128_t ln2lo = _rq_bits(0xbfad319ff0342542ULL, 0xfc32f366359d274aULL);
+
+    c3_ds k = _rqtoi(_rqm(x, log2e), softfloat_round_near_even);
+    if ( (k - 16385) >= 0 )    return _rq_bits(_RQ_PINF_HI, 0);                  // overflow -> inf
+    if ( !((k + 16494) >= 0) ) return _rq_bits(0, 0);                           // underflow -> 0
+
+    float128_t ka = _rqi64((c3_ds)(k < 0 ? -k : k));
+    float128_t kf = (k >= 0) ? ka : _rq_neg(ka);
+    float128_t rr = _rqs( _rqs(x, _rqm(kf, ln2hi)), _rqm(kf, ln2lo) );
+
+    float128_t p = _rq_bits(0,0);
+    for ( int i = 25; i-- != 0; )          // Horner over flop(cs): c24..c0
+      p = _rqa(_rqm(p, rr), _rq_bits(cs[i][1], cs[i][0]));
+    return _rq_scale2(p, k);
+  }
+
 #ifndef MATH_JET_HARNESS
 
 /* u3 ABI wrappers.  Each transcendental forces round-near-even; the @rd door's

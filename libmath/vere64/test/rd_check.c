@@ -61,6 +61,18 @@ static void emit_narrow(unsigned f32bits) {
 
 int main(void) {
   softfloat_roundingMode = softfloat_round_near_even;
+  // --- @rq exp probe: print hi.lo of _rq_exp(hi,lo) ---
+  { struct { c3_d hi, lo; } qx[] = {
+      {0x3fff000000000000ULL,0}, {0x4000000000000000ULL,0}, {0,0},
+      {0xbfff000000000000ULL,0}, {0x4002000000000000ULL,0},        // -1, ~ exp args
+      {0x3ffb999999999999ULL,0x999999999999999aULL} };             // 0.1
+    for (unsigned i=0;i<sizeof qx/sizeof qx[0];i++){
+      union quad in,out; in.w[1]=qx[i].hi; in.w[0]=qx[i].lo;
+      out.q=_rq_exp(in.q);
+      printf("exp-q 0x%016llx.%016llx 0x%016llx.%016llx\n",
+        (unsigned long long)in.w[1],(unsigned long long)in.w[0],
+        (unsigned long long)out.w[1],(unsigned long long)out.w[0]);
+    } }
   // --- @rh narrow spike: stress f32->f16 in all 4 modes ---
   static const unsigned nrw[] = {
     0x3f800000, 0x40490fdb, 0xc0490fdb, 0x477fe000, 0x477ff000, 0x477ff001,

@@ -2889,8 +2889,9 @@
     ::  Source
     ++  tan
       ~/  %tan
+      ::  native f16: sin/cos ratio (the final div honors the door's r).
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(tan rs [r .1e-5]) `@rs`(widen-hs x)))
+      (div (sin x) (cos x))
     ::  +asin:  @rh -> @rh
     ::
     ::  Returns the inverse sine of a floating-point atom.
@@ -3053,8 +3054,20 @@
     ::
     ++  atan2
       ~/  %atan2
+      ::  native f16: quadrant dispatch over the native +atan (composite ops
+      ::  honor the door's r).
       |=  [y=@rh x=@rh]  ^-  @rh
-      `@rh`(narrow-sh (~(atan2 rs [r .1e-5]) `@rs`(widen-hs y) `@rs`(widen-hs x)))
+      ?:  (gth x .~~0)
+        (atan (div y x))
+      ?:  &((lth x .~~0) (gte y .~~0))
+        (add (atan (div y x)) pi)
+      ?:  &((lth x .~~0) (lth y .~~0))
+        (sub (atan (div y x)) pi)
+      ?:  &(=(.~~0 x) (gth y .~~0))
+        (div pi .~~2)
+      ?:  &(=(.~~0 x) (lth y .~~0))
+        (mul .~~-1 (div pi .~~2))
+      .~~0  ::  undefined
     ::    +pow-n:  [@rh @rh] -> @rh
     ::
     ::  Returns the power of a floating-point atom to an integer exponent.
@@ -3125,8 +3138,15 @@
     ::  Source
     ++  log-10
       ~/  %log-10
+      ::  native f16: e*log10(2) + log(m)/ln10, reusing +lr (integer part added
+      ::  with no division rounding).
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(log-10 rs [r .1e-5]) `@rs`(widen-hs x)))
+      ?:  !(~(equ ^rh %n) x x)  `@rh`0x7e00
+      ?:  =(x `@rh`0x7c00)  `@rh`0x7c00
+      ?:  |(=(x `@rh`0x0) =(x `@rh`0x8000))  `@rh`0xfc00
+      ?:  =(1 (rsh [0 15] x))  `@rh`0x7e00
+      =/  el  (lr x)
+      (~(add ^rh %n) (~(mul ^rh %n) ef.el `@rh`0x34d1) (~(mul ^rh %n) lm.el `@rh`0x36f3))
     ::    +log-2:  @rh -> @rh
     ::
     ::  Returns the base-2 logarithm of a floating-point atom.
@@ -3135,8 +3155,38 @@
     ::  Source
     ++  log-2
       ~/  %log-2
+      ::  native f16: e + log(m)/ln2 (integer part exact); see +lr.
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(log-2 rs [r .1e-5]) `@rs`(widen-hs x)))
+      ?:  !(~(equ ^rh %n) x x)  `@rh`0x7e00
+      ?:  =(x `@rh`0x7c00)  `@rh`0x7c00
+      ?:  |(=(x `@rh`0x0) =(x `@rh`0x8000))  `@rh`0xfc00
+      ?:  =(1 (rsh [0 15] x))  `@rh`0x7e00
+      =/  el  (lr x)
+      (~(add ^rh %n) ef.el (~(mul ^rh %n) lm.el `@rh`0x3dc5))
+    ::  +lr: native f16 log reduction for finite positive x -> [e (as @rh),
+    ::  log(mantissa)].  Mirrors the reduction inside +log; see +log-2 / +log-10.
+    ++  lr
+      |=  x=@rh  ^-  [ef=@rh lm=@rh]
+      =/  sub  =(0 (dis 0x1f (rsh [0 10] x)))
+      =/  xx   ?:(sub (~(mul ^rh %n) x `@rh`0x6400) x)        :: *2^10
+      =/  ae   ?:(sub -10 --0)
+      =/  b    `@`xx
+      =/  e    (dif:si (new:si %.y (dis 0x1f (rsh [0 10] b))) --15)
+      =/  m    `@rh`(con (dis b 0x3ff) 0x3c00)
+      =/  big  (~(gte ^rh %n) m `@rh`0x3da8)                  :: m >= sqrt(2)
+      =?  m    big  (~(mul ^rh %n) m `@rh`0x3800)
+      =?  e    big  (sum:si e --1)
+      =.  e    (sum:si e ae)
+      =/  f    (~(sub ^rh %n) m `@rh`0x3c00)
+      =/  s    (~(div ^rh %n) f (~(add ^rh %n) m `@rh`0x3c00))
+      =/  z    (~(mul ^rh %n) s s)
+      =/  cs=(list @rh)  :~(`@rh`0x3555 `@rh`0x3266)
+      =/  p2  (roll (flop cs) |=([c=@rh a=@rh] (~(add ^rh %n) (~(mul ^rh %n) a z) c)))
+      =/  r   (~(mul ^rh %n) (~(add ^rh %n) z z) p2)
+      =/  l1  (~(sub ^rh %n) f (~(mul ^rh %n) s (~(sub ^rh %n) f r)))
+      =/  efa  (~(sun ^rh %n) (abs:si e))
+      =/  ef   ?:((syn:si e) efa (~(sub ^rh %n) `@rh`0x0 efa))
+      [ef l1]
     ::    +pow:  [@rh @rh] -> @rh
     ::
     ::  Returns the power of a floating-point atom to a floating-point exponent.
@@ -3150,8 +3200,11 @@
     ::  Source
     ++  pow
       ~/  %pow
+      ::  native f16: positive-integer exponents via +pow-n; else exp(n*log x)
+      ::  (the n*log x multiply honors the door's r).
       |=  [x=@rh n=@rh]  ^-  @rh
-      `@rh`(narrow-sh (~(pow rs [r .1e-5]) `@rs`(widen-hs x) `@rs`(widen-hs n)))
+      ?:  &(=(n (san (need (toi n)))) (gth n .~~0))  (pow-n x (san (need (toi n))))
+      (exp (mul n (log x)))
     ::    +sqrt:  @rh -> @rh
     ::
     ::  Returns the square root of a floating-point atom.
@@ -3178,8 +3231,9 @@
     ::  Source
     ++  sqt
       ~/  %sqt
+      ::  native f16: correctly-rounded stdlib (SoftFloat) f16 square root.
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(sqt rs [r .1e-5]) `@rs`(widen-hs x)))
+      (sqt:^rh x)
     ::    +cbrt:  @rh -> @rh
     ::
     ::  Returns the cube root of a floating-point atom.
@@ -3206,8 +3260,13 @@
     ::  Source
     ++  cbt
       ~/  %cbt
+      ::  native f16: cbrt(x) = sign(x) * exp(log|x| / 3); all reals.
       |=  x=@rh  ^-  @rh
-      `@rh`(narrow-sh (~(cbt rs [r .1e-5]) `@rs`(widen-hs x)))
+      ?:  !(~(equ ^rh %n) x x)  x                            :: NaN -> NaN
+      ?:  |(=(x `@rh`0x0) =(x `@rh`0x8000))  x               :: +-0 -> +-0
+      =/  ax  `@rh`(dis x 0x7fff)
+      =/  r   (exp (~(mul ^rh %n) (log ax) `@rh`0x3555))
+      ?:(=(1 (rsh [0 15] x)) (~(sub ^rh %n) `@rh`0x0 r) r)
     ::    +arg:  @rh -> @rh
     ::
     ::  Returns the argument of a floating-point atom (real argument = absolute

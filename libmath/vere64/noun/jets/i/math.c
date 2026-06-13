@@ -1409,21 +1409,16 @@ typedef int64_t  c3_ds;
     return _rqm(p, _rq_pow2(k));
   }
   static float128_t _rq_exp(float128_t x) {
-    //  degree-24 minimax coeffs c0..c24 {lo, hi} (math.hoon ++rq ++exp)
-    static const c3_d cs[25][2] = {
-      {0x0000000000000000ULL,0x3fff000000000000ULL},{0x0000000000000000ULL,0x3fff000000000000ULL},
-      {0x0000000000000000ULL,0x3ffe000000000000ULL},{0x5555555555555555ULL,0x3ffc555555555555ULL},
-      {0x5555555555555555ULL,0x3ffa555555555555ULL},{0x1111111111111111ULL,0x3ff8111111111111ULL},
-      {0x6c16c16c16c16c17ULL,0x3ff56c16c16c16c1ULL},{0xa01a01a01a01a3e8ULL,0x3ff2a01a01a01a01ULL},
-      {0xa01a01a01a01a146ULL,0x3fefa01a01a01a01ULL},{0x38faac1c88a5a526ULL,0x3fec71de3a556c73ULL},
-      {0xc72ef016d3d6e867ULL,0x3fe927e4fb7789f5ULL},{0x38fe748363c46e8bULL,0x3fe5ae64567f544eULL},
-      {0x7b544dab18f475c5ULL,0x3fe21eed8eff8d89ULL},{0x97c9f3aebabb2423ULL,0x3fde6124613a86d0ULL},
-      {0xd20b83c7f94d17d8ULL,0x3fda93974a8c07c9ULL},{0xf5f4284f0d74f9e7ULL,0x3fd6ae7f3e733b81ULL},
-      {0xf417b4d27c5f92a9ULL,0x3fd2ae7f3e733b81ULL},{0x6a419e674779c97cULL,0x3fce952c77030a99ULL},
-      {0x0466ff8c8b42b3dfULL,0x3fca6827863b97b5ULL},{0x874b7a686d819241ULL,0x3fc62f49b469f892ULL},
-      {0xbb3b32a11bb5f139ULL,0x3fc1e542ba427463ULL},{0xc93890ff9ab55cbbULL,0x3fbd71b8db9f7f73ULL},
-      {0x6efc0717eae785a1ULL,0x3fb90ce38aab7bd7ULL},{0xcb3f4f7edfaa2666ULL,0x3fb47693274bab2aULL},
-      {0x61cb0e23655d47cbULL,0x3faff3629154e0a7ULL},
+    //  fdlibm rational reconstruction: exp(r) = 1 - ((lo - r*c/(2-c)) - hi),
+    //  c = r - t*P(t), t = r*r.  EXC = even minimax P(t) {lo, hi} (deg-10).
+    //  (math.hoon ++rq ++exp; faithful ~0.84 ULP, see tools/rq_check.c)
+    static const c3_d EXC[11][2] = {
+      {0x5555555555555555ULL,0x3ffc555555555555ULL},{0x6c16c16c16c09e83ULL,0xbff66c16c16c16c1ULL},
+      {0x6abc0115453d96ddULL,0x3ff11566abc01156ULL},{0xaac663e4a6d65ccaULL,0xbfebbbd779334ef0ULL},
+      {0xda06115986f507fbULL,0x3fe666a8f2bf70ebULL},{0x43eb0e288c2e45a8ULL,0xbfe122805d644267ULL},
+      {0x12be0476b628552fULL,0x3fdbd6db2c4e0507ULL},{0xeb838f5da821635aULL,0xbfd67da4e1efb419ULL},
+      {0xdc61daecbfc0d781ULL,0x3fd1355867f7df64ULL},{0x54bb7852bc52bd9aULL,0xbfcbf56e4264f8adULL},
+      {0x822162270789ca71ULL,0x3fc68fc13579bfe0ULL},
     };
     union quad r0; r0.q = x;
     if ( !_rqeq(x, x) )                       return _rq_bits(_RQ_QNAN_HI, 0);   // NaN
@@ -1440,12 +1435,20 @@ typedef int64_t  c3_ds;
 
     float128_t ka = _rqi64((c3_ds)(k < 0 ? -k : k));
     float128_t kf = (k >= 0) ? ka : _rq_neg(ka);
-    float128_t rr = _rqs( _rqs(x, _rqm(kf, ln2hi)), _rqm(kf, ln2lo) );
+    float128_t hi = _rqs(x, _rqm(kf, ln2hi));     // high part of r
+    float128_t lo = _rqm(kf, ln2lo);              // low correction
+    float128_t r  = _rqs(hi, lo);                 // reduced argument
+    float128_t t  = _rqm(r, r);
 
-    float128_t p = _rq_bits(0,0);
-    for ( int i = 25; i-- != 0; )          // Horner over flop(cs): c24..c0
-      p = _rqa(_rqm(p, rr), _rq_bits(cs[i][1], cs[i][0]));
-    return _rq_scale2(p, k);
+    float128_t c = _rq_bits(EXC[10][1], EXC[10][0]);
+    for ( int i = 10; i-- != 0; )          // Horner P(t)
+      c = _rqa(_rqm(c, t), _rq_bits(EXC[i][1], EXC[i][0]));
+    c = _rqs(r, _rqm(t, c));               // c = r - t*P(t)
+
+    float128_t one = _rq_bits(0x3fff000000000000ULL, 0);
+    float128_t two = _rq_bits(0x4000000000000000ULL, 0);
+    float128_t y = _rqs(one, _rqs(_rqs(lo, _rqd(_rqm(r, c), _rqs(two, c))), hi));
+    return _rq_scale2(y, k);
   }
 
 #ifndef MATH_JET_HARNESS

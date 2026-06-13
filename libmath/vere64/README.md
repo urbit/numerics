@@ -28,12 +28,21 @@ because the `u3r_mean` macro's API diverged between the runtimes:
 Keep the two copies in sync **except** those two lines.
 
 ## What's covered
-All 15 transcendentals for **both `@rd` (double) and `@rs` (single)**, bit-exact
-to their Hoon door (same reduction, coefficients, Horner order — not merely
-faithful): `exp log sin cos tan atan atan2 asin acos sqt cbt pow pow-n log-2
-log-10`. The `@rs` cores are single-precision twins of the `@rd` ones (SoftFloat
-`f32`, `uint32_t` bit pattern, but the same chub I/O). The `@rh`/`@rq` doors are
-not yet jetted.
+All 15 transcendentals for **all four doors — `@rd` (double), `@rs` (single),
+`@rh` (half), `@rq` (quad)**, bit-exact to their Hoon door (same reduction,
+coefficients, Horner order — not merely faithful): `exp log sin cos tan atan
+atan2 asin acos sqt cbt pow pow-n log-2 log-10`. The `@rs`/`@rh` cores are
+single-/half-precision twins of the `@rd` ones (SoftFloat `f32`/`f16`, `uint32_t`/
+`uint16_t` bit pattern); `@rh` is fully native f16 (no widen-to-f32). The `@rq`
+cores are native `float128_t` (SoftFloat `f128M_*` via by-value wrappers), with
+the same algorithms at higher minimax degree. All use the same chub I/O — `@rq`
+reads/writes **two** chubs (low 64, high 64).
+
+`@rq` exp uses the fdlibm rational reconstruction (`1 - ((lo - r·c/(2-c)) - hi)`)
+rather than a flat Horner — the flat form is only ~1.1 ULP (the dominant `1+r`
+gets rounded through the whole chain), which finely-sampled MPFR sweeps expose;
+the same latent issue exists in the `@rd`/`@rs`/`@rh` exp arms and is a deferred
+retrofit. All other `@rq` kernels are faithful (≤1 ULP) as written.
 
 ### Rounding modes (composite arms honor the door's `r`)
 The math doors carry `r=?(%n %u %d %z)` (bunt `%z`). The transcendental KERNELS

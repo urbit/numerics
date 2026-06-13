@@ -13,6 +13,37 @@ Two copies, one per runtime word size (mirroring `/lib/lagoon`):
 Each holds `noun/jets/{i/math.c, 135/tree.c, q.h, w.h}` — the full vendored files,
 ready to diff/apply against the corresponding `pkg/noun/jets/…`.
 
+## ⚠️ JET ATTACHMENT — these jets do NOT currently fire (under core-dev review)
+The C jet **code** is correct (bit-exact in the standalone harness — see
+`test/rq_cores.c`, 13/13), but the jets **never attach** on-ship. Sentinel proof:
+hardcode each `_xx_asin` core to return 7.0, rebuild, and on a fresh ship every
+`asin:rd/rs/rh/rq:math` returns the correct *interpreted* value, never 7.0 — for
+*all four* doors, including `@rd`.
+
+Root cause is **structural**, not kelvin. A lagoon control (`mmul`, the sibling
+userspace jet in the *same* `non` chapter / same per-kelvin trees) **does** fire
+on the same hoon-version-136 ship (40×40 1.8 ms / 80×80 2.3 ms / 160×160 16 ms —
+flat then clean O(n³); interpreted would be seconds). The difference is nesting
+depth:
+
+```
+LAGOON (fires):  non → la   → mmul       chapter → DOOR → arm        (standard, 2-deep)
+MATH  (dead):    non → math → rd → exp   chapter → ENGINE → door → arm (3-deep)
+```
+
+The `math` *engine* core makes the width doors (`rd`/`rs`/`rh`/`rq`) *grandchildren*
+of the `non` chapter; the dashboard attaches the standard 2-deep shape (lagoon,
+kernel `two→by`/`two→in`) but not math's 3-deep one. So the optimistic "jets fire"
+/ "all four doors jetted" phrasing elsewhere in this README is **not yet true** —
+prior timing that looked jetted was the genuinely-jetted *base* `@rX` ops (the
+`tri` chapter), not the transcendentals.
+
+**Fix direction (pending core-dev confirmation):** collapse to chapter→door→arm —
+make `rd`/`rs`/`rh`/`rq` direct children of `~% %non` (like lagoon's `la`), drop
+`math` as a *jetted* core, register `non → rd → arm` (no `math` middle); preserve
+the `exp:rd:math` API via a thin *unjetted* `++ math` re-export. The parent-chain
+implication needs core-dev sign-off before restructuring.
+
 ## The 32-bit and 64-bit `math.c` differ by exactly 2 lines
 Marshalling is **chub-based** (`u3r_chub`/`u3i_chubs`), so it is word-size-agnostic
 — the divergence that broke the `@rq sub` jet cannot recur, and all 15 algorithm
@@ -78,9 +109,10 @@ rounded kernel outputs — `pow = exp(n·log x)` (the `n·log x` multiply), `ata
 ordinary exactly-rounded operations where honoring `r` is well-defined and useful.
 The jet matches the Hoon op-for-op: nearest in the kernels, `r` in the composites.
 
-Only the **135** kelvin tree is vendored: the stock test ships (`~dev`, fresh
-fakeships from `brass.pill`) are `hoon-version` 135, and that is where these jets
-fire. Apply to 136/137 as well if a target ship runs those.
+The **135** kelvin tree is the primary one vendored here; `136`/`137` also carry
+a partial (`@rd`-only) math block. NB the current `brass.pill` test ships are
+`hoon-version` **136**, not 135 — but per the attachment note above, the jets do
+not fire on *either* until the chapter→engine→door→arm nesting is resolved.
 
 ## How to apply to a vere tree (`pkg/noun`)
 1. Copy `noun/jets/i/math.c` → `pkg/noun/jets/i/math.c` (use the matching word-size

@@ -3281,6 +3281,7 @@
     --
   ::  quad precision
   ++  rq
+    ~/  %rq
     ^|
     |_  $:  r=$?(%n %u %d %z)   :: round nearest, up, down, to zero
             rtol=_.~~~1e-20     :: relative tolerance for precision of operations
@@ -3724,6 +3725,7 @@
     ::      .~~~inf
     ::  Source
     ++  exp
+      ~/  %exp
       ::  Cody-Waite reduction + fdlibm rational reconstruction (deg-10 even
       ::  minimax P in t=r^2): exp(r) = 1 - ((lo - r*c/(2-c)) - hi), c = r-t*P(t).
       ::  Faithful to ~0.87 ULP (the compensated reconstruction keeps the leading
@@ -3778,6 +3780,7 @@
     ::    .~~~2.4143733100361875441251426417684949e-23
     ::  Source
     ++  sin
+      ~/  %sin
       ::  q*pi/2 reduction + fdlibm kernels (f128); see +rq-trig.
       |=  x=@rq  ^-  @rq
       ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
@@ -3872,6 +3875,7 @@
     ::      .~~~-1.0000000000000000000000021077555518
     ::  Source
     ++  cos
+      ~/  %cos
       |=  x=@rq  ^-  @rq
       ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
       ?:  |(=(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000) =(x `@rq`0xffff.0000.0000.0000.0000.0000.0000.0000))  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
@@ -3889,6 +3893,7 @@
     ::      .~~~-2.1850398632615189916433278966958165
     ::  Source
     ++  tan
+      ~/  %tan
       |=  x=@rq  ^-  @rq
       (div (sin x) (cos x))
     ::  +asin:  @rq -> @rq
@@ -3903,10 +3908,12 @@
     ::      .~~~0.7753974966107530637394463388579305
     ::
     ++  asin
+      ~/  %asin
       ::  fdlibm rational-form kernel (poly R, deg-30) + sqrt head/tail; f128.
       |=  x=@rq  ^-  @rq
       (asn:rq-ainv x)
     ++  acos
+      ~/  %acos
       |=  x=@rq  ^-  @rq
       (acs:rq-ainv x)
     ++  rq-ainv
@@ -4006,6 +4013,7 @@
     ::      .~~~1.2626272556789116834540013074115034
     ::
     ++  atan
+      ~/  %atan
       ::  fdlibm breakpoint reduction + degree-30 minimax (f128); odd.
       |=  x=@rq  ^-  @rq
       ?:  !(~(equ ^rq %n) x x)  `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
@@ -4069,6 +4077,7 @@
     ::      .~~~2.3561944901923449288480202652918806
     ::
     ++  atan2
+      ~/  %atan2
       |=  [y=@rq x=@rq]  ^-  @rq
       ?:  (gth x `@rq`0x0)  (atan (div y x))
       ?:  &((lth x `@rq`0x0) (gte y `@rq`0x0))  (add (atan (div y x)) `@rq`0x4000.921f.b544.42d1.8469.898c.c517.01b8)
@@ -4087,6 +4096,7 @@
     ::      .~~~0.25
     ::  Source
     ++  pow-n
+      ~/  %pow-n
       |=  [x=@rq n=@rq]  ^-  @rq
       ?:  =(n `@rq`0x0)  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
       ?>  &((gth n `@rq`0x0) (is-int n))
@@ -4109,6 +4119,7 @@
     ::      .~~~inf
     ::  Source
     ++  log
+      ~/  %log
       ::  x = 2^e * m reduction + atanh series (fdlibm f - s*(f-R)); f128.
       ::  Round-nearest-even internally (matches tools/rq_check.c).
       |=  x=@rq  ^-  @rq
@@ -4158,6 +4169,7 @@
     ::      TODO
     ::  Source
     ++  log-10
+      ~/  %log-10
       |=  x=@rq  ^-  @rq
       ?:  !(~(equ ^rq %n) x x)    `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
       ?:  =(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
@@ -4207,6 +4219,7 @@
       =/  efa  (~(sun ^rq %n) (abs:si e))
       [?:((syn:si e) efa (~(sub ^rq %n) `@rq`0x0 efa)) l1]
     ++  log-2
+      ~/  %log-2
       |=  x=@rq  ^-  @rq
       ?:  !(~(equ ^rq %n) x x)    `@rq`0x7fff.8000.0000.0000.0000.0000.0000.0000
       ?:  =(x `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000)  `@rq`0x7fff.0000.0000.0000.0000.0000.0000.0000
@@ -4226,6 +4239,7 @@
     ::      .~~~11.313703735926135014164384135726204
     ::  Source
     ++  pow
+      ~/  %pow
       |=  [x=@rq n=@rq]  ^-  @rq
       ?:  &(=(n (san (need (toi n)))) (gth n `@rq`0x0))
         (pow-n x n)
@@ -4255,6 +4269,7 @@
     ::      .~~~316.2277660168379331998893544432718
     ::  Source
     ++  sqt
+      ~/  %sqt
       ::  correctly-rounded f128 sqrt: stdlib seed + one Markstein FMA (matches
       ::  the SoftFloat f128_sqrt jet, tools/rq_check.c).
       |=  x=@rq  ^-  @rq
@@ -4291,6 +4306,7 @@
     ::      .~~~1.2598919398731638759238176665172822
     ::  Source
     ++  cbt
+      ~/  %cbt
       |=  x=@rq  ^-  @rq
       ?:  !(~(equ ^rq %n) x x)  x
       ?:  |(=(x `@rq`0x0) =(x `@rq`0x8000.0000.0000.0000.0000.0000.0000.0000))  x

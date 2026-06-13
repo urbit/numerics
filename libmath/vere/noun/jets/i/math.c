@@ -1409,21 +1409,16 @@ typedef int64_t  c3_ds;
     return _rqm(p, _rq_pow2(k));
   }
   static float128_t _rq_exp(float128_t x) {
-    //  degree-24 minimax coeffs c0..c24 {lo, hi} (math.hoon ++rq ++exp)
-    static const c3_d cs[25][2] = {
-      {0x0000000000000000ULL,0x3fff000000000000ULL},{0x0000000000000000ULL,0x3fff000000000000ULL},
-      {0x0000000000000000ULL,0x3ffe000000000000ULL},{0x5555555555555555ULL,0x3ffc555555555555ULL},
-      {0x5555555555555555ULL,0x3ffa555555555555ULL},{0x1111111111111111ULL,0x3ff8111111111111ULL},
-      {0x6c16c16c16c16c17ULL,0x3ff56c16c16c16c1ULL},{0xa01a01a01a01a3e8ULL,0x3ff2a01a01a01a01ULL},
-      {0xa01a01a01a01a146ULL,0x3fefa01a01a01a01ULL},{0x38faac1c88a5a526ULL,0x3fec71de3a556c73ULL},
-      {0xc72ef016d3d6e867ULL,0x3fe927e4fb7789f5ULL},{0x38fe748363c46e8bULL,0x3fe5ae64567f544eULL},
-      {0x7b544dab18f475c5ULL,0x3fe21eed8eff8d89ULL},{0x97c9f3aebabb2423ULL,0x3fde6124613a86d0ULL},
-      {0xd20b83c7f94d17d8ULL,0x3fda93974a8c07c9ULL},{0xf5f4284f0d74f9e7ULL,0x3fd6ae7f3e733b81ULL},
-      {0xf417b4d27c5f92a9ULL,0x3fd2ae7f3e733b81ULL},{0x6a419e674779c97cULL,0x3fce952c77030a99ULL},
-      {0x0466ff8c8b42b3dfULL,0x3fca6827863b97b5ULL},{0x874b7a686d819241ULL,0x3fc62f49b469f892ULL},
-      {0xbb3b32a11bb5f139ULL,0x3fc1e542ba427463ULL},{0xc93890ff9ab55cbbULL,0x3fbd71b8db9f7f73ULL},
-      {0x6efc0717eae785a1ULL,0x3fb90ce38aab7bd7ULL},{0xcb3f4f7edfaa2666ULL,0x3fb47693274bab2aULL},
-      {0x61cb0e23655d47cbULL,0x3faff3629154e0a7ULL},
+    //  fdlibm rational reconstruction: exp(r) = 1 - ((lo - r*c/(2-c)) - hi),
+    //  c = r - t*P(t), t = r*r.  EXC = even minimax P(t) {lo, hi} (deg-10).
+    //  (math.hoon ++rq ++exp; faithful ~0.84 ULP, see tools/rq_check.c)
+    static const c3_d EXC[11][2] = {
+      {0x5555555555555555ULL,0x3ffc555555555555ULL},{0x6c16c16c16c09e83ULL,0xbff66c16c16c16c1ULL},
+      {0x6abc0115453d96ddULL,0x3ff11566abc01156ULL},{0xaac663e4a6d65ccaULL,0xbfebbbd779334ef0ULL},
+      {0xda06115986f507fbULL,0x3fe666a8f2bf70ebULL},{0x43eb0e288c2e45a8ULL,0xbfe122805d644267ULL},
+      {0x12be0476b628552fULL,0x3fdbd6db2c4e0507ULL},{0xeb838f5da821635aULL,0xbfd67da4e1efb419ULL},
+      {0xdc61daecbfc0d781ULL,0x3fd1355867f7df64ULL},{0x54bb7852bc52bd9aULL,0xbfcbf56e4264f8adULL},
+      {0x822162270789ca71ULL,0x3fc68fc13579bfe0ULL},
     };
     union quad r0; r0.q = x;
     if ( !_rqeq(x, x) )                       return _rq_bits(_RQ_QNAN_HI, 0);   // NaN
@@ -1440,12 +1435,410 @@ typedef int64_t  c3_ds;
 
     float128_t ka = _rqi64((c3_ds)(k < 0 ? -k : k));
     float128_t kf = (k >= 0) ? ka : _rq_neg(ka);
-    float128_t rr = _rqs( _rqs(x, _rqm(kf, ln2hi)), _rqm(kf, ln2lo) );
+    float128_t hi = _rqs(x, _rqm(kf, ln2hi));     // high part of r
+    float128_t lo = _rqm(kf, ln2lo);              // low correction
+    float128_t r  = _rqs(hi, lo);                 // reduced argument
+    float128_t t  = _rqm(r, r);
 
-    float128_t p = _rq_bits(0,0);
-    for ( int i = 25; i-- != 0; )          // Horner over flop(cs): c24..c0
-      p = _rqa(_rqm(p, rr), _rq_bits(cs[i][1], cs[i][0]));
-    return _rq_scale2(p, k);
+    float128_t c = _rq_bits(EXC[10][1], EXC[10][0]);
+    for ( int i = 10; i-- != 0; )          // Horner P(t)
+      c = _rqa(_rqm(c, t), _rq_bits(EXC[i][1], EXC[i][0]));
+    c = _rqs(r, _rqm(t, c));               // c = r - t*P(t)
+
+    float128_t one = _rq_bits(0x3fff000000000000ULL, 0);
+    float128_t two = _rq_bits(0x4000000000000000ULL, 0);
+    float128_t y = _rqs(one, _rqs(_rqs(lo, _rqd(_rqm(r, c), _rqs(two, c))), hi));
+    return _rq_scale2(y, k);
+  }
+
+/* @rq log/log-2/log-10 -- math.hoon ++rq ++log/++lr/++log-2/++log-10
+**   x = 2^e * m, m in [sqrt(1/2),sqrt(2)); log(1+f) via atanh series (deg-22).
+*/
+  static void _rq_lr(float128_t x, float128_t* ef, float128_t* lm) {
+    static const c3_d cs[23][2] = {
+      {0x5555555555555555ULL,0x3ffd555555555555ULL},{0x999999999999999aULL,0x3ffc999999999999ULL},
+      {0x2492492492492492ULL,0x3ffc249249249249ULL},{0xc71c71c71c71c71cULL,0x3ffbc71c71c71c71ULL},
+      {0x5d1745d1745d1746ULL,0x3ffb745d1745d174ULL},{0x3b13b13b13b13b14ULL,0x3ffb3b13b13b13b1ULL},
+      {0x1111111111111111ULL,0x3ffb111111111111ULL},{0xe1e1e1e1e1e1e1e2ULL,0x3ffae1e1e1e1e1e1ULL},
+      {0x86bca1af286bca1bULL,0x3ffaaf286bca1af2ULL},{0x8618618618618618ULL,0x3ffa861861861861ULL},
+      {0x42c8590b21642c86ULL,0x3ffa642c8590b216ULL},{0xae147ae147ae147bULL,0x3ffa47ae147ae147ULL},
+      {0x84bda12f684bda13ULL,0x3ffa2f684bda12f6ULL},{0x611a7b9611a7b961ULL,0x3ffa1a7b9611a7b9ULL},
+      {0x4210842108421084ULL,0x3ffa084210842108ULL},{0x7c1f07c1f07c1f08ULL,0x3ff9f07c1f07c1f0ULL},
+      {0xd41d41d41d41d41dULL,0x3ff9d41d41d41d41ULL},{0xf914c1bacf914c1cULL,0x3ff9bacf914c1bacULL},
+      {0xa41a41a41a41a41aULL,0x3ff9a41a41a41a41ULL},{0x9c18f9c18f9c18faULL,0x3ff98f9c18f9c18fULL},
+      {0x417d05f417d05f41ULL,0x3ff97d05f417d05fULL},{0x6c16c16c16c16c17ULL,0x3ff96c16c16c16c1ULL},
+      {0x72620ae4c415c988ULL,0x3ff95c9882b93105ULL},
+    };
+    union quad r0; r0.q = x;
+    int sub = ( ((r0.w[1] >> 48) & 0x7fffULL) == 0 );
+    union quad xx; xx = r0;
+    if ( sub ) xx.q = _rqm(x, _rq_bits(0x4077000000000000ULL, 0));   // x * 2^120
+    c3_ds ae = sub ? -120 : 0;
+    c3_ds e = (c3_ds)((xx.w[1] >> 48) & 0x7fffULL) - 16383;
+    union quad m; m.w[0] = xx.w[0]; m.w[1] = (xx.w[1] & 0xffffffffffffULL) | (16383ULL << 48);
+    if ( _rqle(_rq_bits(0x3fff6a09e667f3bcULL, 0xc908b2fb1366ea95ULL), m.q) ) {  // m >= sqrt(2)
+      m.q = _rqm(m.q, _rq_bits(0x3ffe000000000000ULL, 0)); e = e + 1;
+    }
+    e = e + ae;
+    float128_t one = _rq_bits(0x3fff000000000000ULL, 0);
+    float128_t f = _rqs(m.q, one);
+    float128_t s = _rqd(f, _rqa(m.q, one));
+    float128_t z = _rqm(s, s);
+    float128_t p = _rq_bits(0, 0);
+    for ( int i = 23; i-- != 0; ) p = _rqa(_rqm(p, z), _rq_bits(cs[i][1], cs[i][0]));
+    float128_t r = _rqm(_rqa(z, z), p);
+    float128_t l1 = _rqs(f, _rqm(s, _rqs(f, r)));
+    float128_t efv = _rqi64( (c3_ds)(e < 0 ? -e : e) );
+    if ( e < 0 ) efv = _rq_neg(efv);
+    *ef = efv; *lm = l1;
+  }
+  static int _rq_log_guard(float128_t x, float128_t* out) {
+    union quad r0; r0.q = x;
+    if ( !_rqeq(x, x) )                       { *out = _rq_bits(_RQ_QNAN_HI, 0); return 1; }
+    if ( r0.w[1]==_RQ_PINF_HI && r0.w[0]==0 ) { *out = x;                        return 1; }
+    if ( (r0.w[1]==0 && r0.w[0]==0)||(r0.w[1]==0x8000000000000000ULL && r0.w[0]==0) )
+                                              { *out = _rq_bits(_RQ_NINF_HI, 0); return 1; }
+    if ( (r0.w[1] >> 63) == 1 )               { *out = _rq_bits(_RQ_QNAN_HI, 0); return 1; }
+    return 0;
+  }
+  static float128_t _rq_log(float128_t x) {
+    float128_t g, ef, lm;
+    if ( _rq_log_guard(x, &g) ) return g;
+    _rq_lr(x, &ef, &lm);
+    float128_t hi = _rqm(ef, _rq_bits(0x3ffe62e42fefa39eULL, 0xf35793c800000000ULL));   // e*ln2hi
+    float128_t lo = _rqm(ef, _rq_bits(0xbfad319ff0342542ULL, 0xfc32f366359d274aULL));   // e*ln2lo
+    return _rqa(hi, _rqa(lm, lo));
+  }
+  static float128_t _rq_log2(float128_t x) {
+    float128_t g, ef, lm;
+    if ( _rq_log_guard(x, &g) ) return g;
+    _rq_lr(x, &ef, &lm);                                                                 // e + lm/ln2
+    return _rqa(ef, _rqm(lm, _rq_bits(0x3fff71547652b82fULL, 0xe1777d0ffda0d23aULL)));
+  }
+  static float128_t _rq_log10(float128_t x) {
+    float128_t g, ef, lm;
+    if ( _rq_log_guard(x, &g) ) return g;
+    _rq_lr(x, &ef, &lm);                                                                 // e*log10(2) + lm/ln10
+    return _rqa(_rqm(ef, _rq_bits(0x3ffd34413509f79fULL, 0xef311f12b35816f9ULL)),
+                _rqm(lm, _rq_bits(0x3ffdbcb7b1526e50ULL, 0xe32a6ab7555f5a68ULL)));
+  }
+
+/* @rq sin/cos/tan -- math.hoon ++rq ++sin/++cos/++rq-trig/++tan
+**   x = q*(pi/2) + (rhi+rlo) (2-part pi/2), fdlibm kernels by q&3.  tan=sin/cos.
+*/
+  static const c3_d _RQ_SC[16][2] = {     // sin kernel coeffs
+    {0x5555555555555555ULL,0xbffc555555555555ULL},{0x1111111111111111ULL,0x3ff8111111111111ULL},
+    {0xa01a01a01a01a01aULL,0xbff2a01a01a01a01ULL},{0x38faac1c88e50017ULL,0x3fec71de3a556c73ULL},
+    {0x38fe747e4b837dc7ULL,0xbfe5ae64567f544eULL},{0x97ca38331d23af68ULL,0x3fde6124613a86d0ULL},
+    {0xf11d8656b0ee8cb0ULL,0xbfd6ae7f3e733b81ULL},{0xa6b2605197771b00ULL,0x3fce952c77030ad4ULL},
+    {0x724ca1ec3b7b9675ULL,0xbfc62f49b4681415ULL},{0x18bef146fcee6e45ULL,0x3fbd71b8ef6dcf57ULL},
+    {0x9d97b8704dd7f628ULL,0xbfb4761b41316381ULL},{0x8d4e44a419776f11ULL,0x3fab3f3ccdd165faULL},
+    {0x320a9a18f15d4277ULL,0xbfa1d1ab1c2dcceaULL},{0xd7abe30e7766f129ULL,0x3f98259f98b4358aULL},
+    {0xc42e1ee46fa6bfc4ULL,0xbf8e434d2e783f5bULL},{0x1b5382cdffa97422ULL,0x3f843981254dd0d5ULL},
+  };
+  static const c3_d _RQ_CC[16][2] = {     // cos kernel coeffs
+    {0x5555555555555555ULL,0x3ffa555555555555ULL},{0x6c16c16c16c16c17ULL,0xbff56c16c16c16c1ULL},
+    {0xa01a01a01a01a01aULL,0x3fefa01a01a01a01ULL},{0xc72ef016d3ea6679ULL,0xbfe927e4fb7789f5ULL},
+    {0x7b544da987acfe85ULL,0x3fe21eed8eff8d89ULL},{0xd20badf145dfa3e5ULL,0xbfda93974a8c07c9ULL},
+    {0xf11d8656b0ee8cb0ULL,0x3fd2ae7f3e733b81ULL},{0x77bb004886a2c2abULL,0xbfca6827863b97d9ULL},
+    {0x507a9cad2bf8f0bbULL,0x3fc1e542ba402022ULL},{0x29450c90b7f338ecULL,0xbfb90ce396db7f85ULL},
+    {0x7cca4b4067ca9d8aULL,0x3faff2cf01972f57ULL},{0x9a38f2050ba6b015ULL,0xbfa688e85fc6a4e5ULL},
+    {0xd373c5c51c354a8dULL,0x3f9d0a18a2635085ULL},{0xe60caded4c2989c5ULL,0xbf933932c5047d60ULL},
+    {0xc42e1ee46fa6bfc4ULL,0x3f89434d2e783f5bULL},{0xa13f8a2b4af9d6b7ULL,0xbf7f2710231c0fd7ULL},
+  };
+  static float128_t _rq_ksin(float128_t xx, float128_t yy) {
+    float128_t half = _rq_bits(0x3ffe000000000000ULL, 0);
+    float128_t z = _rqm(xx, xx);
+    float128_t r = _rq_bits(0, 0);          // Horner over flop(tail sc): sc[15..1]
+    for ( int i = 16; i-- != 1; ) r = _rqa(_rqm(r, z), _rq_bits(_RQ_SC[i][1], _RQ_SC[i][0]));
+    float128_t v = _rqm(z, xx);
+    float128_t aa = _rqs(_rqm(half, yy), _rqm(v, r));
+    float128_t bb = _rqs(_rqm(z, aa), yy);
+    float128_t dd = _rqs(bb, _rqm(v, _rq_bits(_RQ_SC[0][1], _RQ_SC[0][0])));
+    return _rqs(xx, dd);
+  }
+  static float128_t _rq_kcos(float128_t xx, float128_t yy) {
+    float128_t half = _rq_bits(0x3ffe000000000000ULL, 0), one = _rq_bits(0x3fff000000000000ULL, 0);
+    float128_t z = _rqm(xx, xx);
+    float128_t rc = _rq_bits(0, 0);         // Horner over flop(cc): cc[15..0]
+    for ( int i = 16; i-- != 0; ) rc = _rqa(_rqm(rc, z), _rq_bits(_RQ_CC[i][1], _RQ_CC[i][0]));
+    float128_t hz = _rqm(half, z);
+    float128_t w2 = _rqs(one, hz);
+    float128_t aa = _rqs(_rqs(one, w2), hz);
+    float128_t bb = _rqs(_rqm(_rqm(z, z), rc), _rqm(xx, yy));
+    return _rqa(w2, _rqa(aa, bb));
+  }
+  static float128_t _rq_trigfin(int is_sin, float128_t ax, c3_d sb) {
+    c3_ds q = _rqtoi(_rqm(ax, _rq_bits(0x3ffe45f306dc9c88ULL, 0x2a53f84eafa3ea6aULL)),
+                     softfloat_round_near_even);                       // round(ax*2/pi)
+    c3_d aq = (c3_d)(q < 0 ? -q : q);
+    float128_t qf = _rqi64((c3_ds)aq);
+    float128_t t = _rqs(ax, _rqm(qf, _rq_bits(0x3fff921fb54442d1ULL, 0x8460000000000000ULL))); // ax - qf*pio2_hi
+    float128_t w = _rqm(qf, _rq_bits(0x3fc2313198a2e037ULL, 0x07344a409382229aULL));            // qf*pio2_lo
+    float128_t rhi = _rqs(t, w);
+    float128_t rlo = _rqs(_rqs(t, rhi), w);
+    int mm = (int)(aq & 3);
+    float128_t ks = _rq_ksin(rhi, rlo);
+    float128_t kc = _rq_kcos(rhi, rlo);
+    if ( is_sin ) {
+      float128_t v = (mm==0) ? ks : (mm==1) ? kc : (mm==2) ? _rq_neg(ks) : _rq_neg(kc);
+      return (sb == 1) ? _rq_neg(v) : v;
+    }
+    return (mm==0) ? kc : (mm==1) ? _rq_neg(ks) : (mm==2) ? _rq_neg(kc) : ks;
+  }
+  static float128_t _rq_sin(float128_t x) {
+    union quad r0, ax; r0.q = x;
+    if ( !_rqeq(x, x) )                       return _rq_bits(_RQ_QNAN_HI, 0);   // NaN
+    if ( (r0.w[1]==_RQ_PINF_HI||r0.w[1]==_RQ_NINF_HI) && r0.w[0]==0 ) return _rq_bits(_RQ_QNAN_HI, 0);  // +-inf -> NaN
+    if ( (r0.w[1]==0||r0.w[1]==0x8000000000000000ULL) && r0.w[0]==0 ) return x;  // +-0 -> +-0
+    ax.w[0] = r0.w[0]; ax.w[1] = r0.w[1] & 0x7fffffffffffffffULL;
+    return _rq_trigfin(1, ax.q, r0.w[1] >> 63);
+  }
+  static float128_t _rq_cos(float128_t x) {
+    union quad r0, ax; r0.q = x;
+    if ( !_rqeq(x, x) )                       return _rq_bits(_RQ_QNAN_HI, 0);   // NaN
+    if ( (r0.w[1]==_RQ_PINF_HI||r0.w[1]==_RQ_NINF_HI) && r0.w[0]==0 ) return _rq_bits(_RQ_QNAN_HI, 0);  // +-inf -> NaN
+    ax.w[0] = r0.w[0]; ax.w[1] = r0.w[1] & 0x7fffffffffffffffULL;
+    return _rq_trigfin(0, ax.q, 0);
+  }
+  //  tan = (div (sin x) (cos x)): sin/cos kernels %n, the bare div per door r
+  static float128_t _rq_tan(float128_t x) {
+    float128_t s = _rq_sin(x), c = _rq_cos(x);
+    softfloat_roundingMode = _math_rnd;
+    float128_t r = _rqd(s, c);
+    softfloat_roundingMode = softfloat_round_near_even;
+    return r;
+  }
+
+/* @rq atan/atan2 -- math.hoon ++rq ++atan/++rq-atan/++atan2
+**   fdlibm breakpoint reduction (7/16,11/16,19/16,39/16) + degree-30 minimax.
+*/
+  static float128_t _rq_atan(float128_t x) {
+    static const c3_d at[31][2] = {
+      {0x5555555555555555ULL,0x3ffd555555555555ULL},{0x999999999999999aULL,0xbffc999999999999ULL},
+      {0x2492492492492492ULL,0x3ffc249249249249ULL},{0xc71c71c71c71c705ULL,0xbffbc71c71c71c71ULL},
+      {0x5d1745d1745cf720ULL,0x3ffb745d1745d174ULL},{0x3b13b13b1395a0f6ULL,0xbffb3b13b13b13b1ULL},
+      {0x11111111010e24e1ULL,0x3ffb111111111111ULL},{0xe1e1e1d48fd7bd0fULL,0xbffae1e1e1e1e1e1ULL},
+      {0x86bc9d8a12661ce3ULL,0x3ffaaf286bca1af2ULL},{0x861762af171f46fbULL,0xbffa861861861861ULL},
+      {0x4297f77f1796654aULL,0x3ffa642c8590b216ULL},{0xa6aeeb974d91c763ULL,0xbffa47ae147ae147ULL},
+      {0x982c83840df48c76ULL,0x3ffa2f684bda12f5ULL},{0xf24134848b6f9bc3ULL,0xbffa1a7b9611a7a0ULL},
+      {0x46f1272e8718edfeULL,0x3ffa084210841eedULL},{0xdac476af1946ed1aULL,0xbff9f07c1f0773e1ULL},
+      {0x771b4773d1fdbc46ULL,0x3ff9d41d41cf56a0ULL},{0xd9a2c9f0ffa28317ULL,0xbff9bacf910ca5eaULL},
+      {0x5da3c3e48cd55593ULL,0x3ff9a41a3ed6e709ULL},{0x4d8ac15872fbb51cULL,0xbff98f9bfe02ad67ULL},
+      {0x069f17b95f6e54f4ULL,0x3ff97d05170d1702ULL},{0x6ea05add542af078ULL,0xbff96c10bc42d041ULL},
+      {0xeab121f20635a41aULL,0x3ff95c74e7f6f412ULL},{0x283b75528258306bULL,0xbff94dac2e21aa0eULL},
+      {0xdb9d4b05d70c99cfULL,0x3ff93e573faac561ULL},{0x4f5966908860d11aULL,0xbff92af32cae28f7ULL},
+      {0xdec0acdf4b356e20ULL,0x3ff90c8b03c55304ULL},{0xf7ad970276c5cf2bULL,0xbff8b4ed3a3349acULL},
+      {0xd5dd688f198ae3cbULL,0x3ff8261c1a9eda3aULL},{0x876f4b57d627e71eULL,0xbff71a7ac449b285ULL},
+      {0x138131c15128032aULL,0x3ff51a4ea418ebe8ULL},
+    };
+    union quad r0, ax, xr, hi, lo; r0.q = x;
+    if ( !_rqeq(x, x) )                       return _rq_bits(_RQ_QNAN_HI, 0);   // NaN
+    if ( r0.w[1]==_RQ_PINF_HI && r0.w[0]==0 ) return _rq_bits(0x3fff921fb54442d1ULL, 0x8469898cc51701b8ULL);  // +inf -> pi/2
+    if ( r0.w[1]==_RQ_NINF_HI && r0.w[0]==0 ) return _rq_bits(0xbfff921fb54442d1ULL, 0x8469898cc51701b8ULL);  // -inf -> -pi/2
+    if ( (r0.w[1]==0||r0.w[1]==0x8000000000000000ULL) && r0.w[0]==0 ) return x;  // +-0
+    c3_d neg = r0.w[1] >> 63;
+    ax.w[0] = r0.w[0]; ax.w[1] = r0.w[1] & 0x7fffffffffffffffULL;
+    float128_t one = _rq_bits(0x3fff000000000000ULL, 0), two = _rq_bits(0x4000000000000000ULL, 0);
+    float128_t ohf = _rq_bits(0x3fff800000000000ULL, 0);
+    int dir = 0;
+    if ( _rqlt(ax.q, _rq_bits(0x3ffdc00000000000ULL, 0)) ) {             // |x| < 7/16
+      xr.q = ax.q; hi.q = _rq_bits(0,0); lo.q = _rq_bits(0,0); dir = 1;
+    } else if ( _rqlt(ax.q, _rq_bits(0x3ffe600000000000ULL, 0)) ) {      // < 11/16
+      xr.q = _rqd(_rqs(_rqa(ax.q, ax.q), one), _rqa(two, ax.q));
+      hi.q = _rq_bits(0x3ffddac670561bb4ULL, 0xf68adfc88bd97875ULL);     // atan(0.5)
+      lo.q = _rq_bits(0x3f89a06dc282b0e4ULL, 0xc39be01c59e2dcddULL);
+    } else if ( _rqlt(ax.q, _rq_bits(0x3fff300000000000ULL, 0)) ) {      // < 19/16
+      xr.q = _rqd(_rqs(ax.q, one), _rqa(ax.q, one));
+      hi.q = _rq_bits(0x3ffe921fb54442d1ULL, 0x8469898cc51701b8ULL);     // pi/4
+      lo.q = _rq_bits(0x3f8bcd129024e088ULL, 0xa67cc74020bbea64ULL);
+    } else if ( _rqlt(ax.q, _rq_bits(0x4000380000000000ULL, 0)) ) {      // < 39/16
+      xr.q = _rqd(_rqs(ax.q, ohf), _rqa(one, _rqm(ohf, ax.q)));
+      hi.q = _rq_bits(0x3ffef730bd281f69ULL, 0xb200f10f5e197794ULL);     // atan(1.5)
+      lo.q = _rq_bits(0xbf8bebe566c99adaULL, 0x9f231bccae27916cULL);
+    } else {                                                            // -1/x
+      xr.q = _rqd(_rq_bits(0xbfff000000000000ULL, 0), ax.q);
+      hi.q = _rq_bits(0x3fff921fb54442d1ULL, 0x8469898cc51701b8ULL);     // pi/2
+      lo.q = _rq_bits(0x3f8ccd129024e088ULL, 0xa67cc74020bbea64ULL);
+    }
+    float128_t z = _rqm(xr.q, xr.q);
+    float128_t sp = _rq_bits(0, 0);
+    for ( int i = 31; i-- != 0; ) sp = _rqa(_rqm(sp, z), _rq_bits(at[i][1], at[i][0]));
+    float128_t s = _rqm(z, sp);
+    float128_t res = dir ? _rqs(xr.q, _rqm(xr.q, s))
+                         : _rqs(hi.q, _rqs(_rqs(_rqm(xr.q, s), lo.q), xr.q));
+    return (neg == 1) ? _rq_neg(res) : res;
+  }
+  static float128_t _rq_atan2(float128_t y, float128_t x) {
+    union quad xb; xb.q = x;
+    float128_t zero = _rq_bits(0,0);
+    float128_t pi = _rq_bits(0x4000921fb54442d1ULL, 0x8469898cc51701b8ULL);
+    float128_t two = _rq_bits(0x4000000000000000ULL, 0), mone = _rq_bits(0xbfff000000000000ULL, 0);
+    if ( _rqlt(zero, x) ) {                                              // x>0: atan(div y x)
+      softfloat_roundingMode = _math_rnd; float128_t q = _rqd(y, x);
+      softfloat_roundingMode = softfloat_round_near_even; return _rq_atan(q);
+    }
+    if ( _rqlt(x, zero) && _rqle(zero, y) ) {                            // x<0,y>=0: add(atan,pi)
+      softfloat_roundingMode = _math_rnd; float128_t q = _rqd(y, x);
+      softfloat_roundingMode = softfloat_round_near_even; float128_t a = _rq_atan(q);
+      softfloat_roundingMode = _math_rnd; float128_t r = _rqa(a, pi);
+      softfloat_roundingMode = softfloat_round_near_even; return r;
+    }
+    if ( _rqlt(x, zero) && _rqlt(y, zero) ) {                            // x<0,y<0: sub(atan,pi)
+      softfloat_roundingMode = _math_rnd; float128_t q = _rqd(y, x);
+      softfloat_roundingMode = softfloat_round_near_even; float128_t a = _rq_atan(q);
+      softfloat_roundingMode = _math_rnd; float128_t r = _rqs(a, pi);
+      softfloat_roundingMode = softfloat_round_near_even; return r;
+    }
+    if ( (xb.w[1]==0 && xb.w[0]==0) && _rqlt(zero, y) ) {                // x==+0,y>0: div(pi,2)
+      softfloat_roundingMode = _math_rnd; float128_t r = _rqd(pi, two);
+      softfloat_roundingMode = softfloat_round_near_even; return r;
+    }
+    if ( (xb.w[1]==0 && xb.w[0]==0) && _rqlt(y, zero) ) {                // x==+0,y<0: mul(-1,div(pi,2))
+      softfloat_roundingMode = _math_rnd; float128_t r = _rqm(mone, _rqd(pi, two));
+      softfloat_roundingMode = softfloat_round_near_even; return r;
+    }
+    return zero;
+  }
+
+/* @rq asin/acos -- math.hoon ++rq ++asin/++acos/++rq-ainv
+**   poly kernel R(t) (deg-30, NOT P/Q) + sqrt head/tail; sqt = f128 sqrt.
+*/
+  static const c3_d _RQ_RR[31][2] = {
+    {0x83f400d50d55a7e8ULL,0x3f8089912e54d43fULL},{0x5555555555555552ULL,0x3ffc555555555555ULL},
+    {0x3333333333335009ULL,0x3ffb333333333333ULL},{0x6db6db6db668951bULL,0x3ffa6db6db6db6dbULL},
+    {0x71c71c72bac1ec0eULL,0x3ff9f1c71c71c71cULL},{0x8ba2e81aa31a41d8ULL,0x3ff96e8ba2e8ba2eULL},
+    {0xec4f0b6fe680df37ULL,0x3ff91c4ec4ec4ec4ULL},{0x996cf372753e7c99ULL,0x3ff8c99999999999ULL},
+    {0x92177cc3275353f7ULL,0x3ff87a8787878787ULL},{0xf7f1afe5cbeac090ULL,0x3ff83fde50d79433ULL},
+    {0xf127037c33f0fb5bULL,0x3ff812ef3cf3cf83ULL},{0x5c114e9da47dedfdULL,0x3ff7df3bd37a5edeULL},
+    {0x909e07297f5e2958ULL,0x3ff7a6863d723133ULL},{0x52ce6cb856ef901fULL,0x3ff7782dd9f3ff64ULL},
+    {0x2fdb62f41c709bd1ULL,0x3ff751ba328f884cULL},{0xb0d4961421efa7ecULL,0x3ff731681fe6e02dULL},
+    {0x3408e80b5b3f8641ULL,0x3ff715efe556e52aULL},{0x1812712268a45b42ULL,0x3ff6fc96253ecb71ULL},
+    {0xebe9bc6e47ec09afULL,0x3ff6d4a82428408aULL},{0xc0a9facb94511de4ULL,0x3ff6aa377fe913f6ULL},
+    {0x84737463fe8656d8ULL,0x3ff6b48ca21a48d1ULL},{0xe39134518885e78fULL,0x3ff57e9aa4b5b4c4ULL},
+    {0xa0d03ab9c51426b2ULL,0x3ff819064c5185faULL},{0x1c085f962a89aaccULL,0xbff9300f0da2da1eULL},
+    {0x97d25a1be10b6c8aULL,0x3ffb0643398cdbcbULL},{0x528e0d54bf4f5e05ULL,0xbffc27ed3dd5cd82ULL},
+    {0xad880c8cd533b68bULL,0x3ffd1d64319be957ULL},{0x81c3902a2c54acc7ULL,0xbffd9731e485678bULL},
+    {0xa99aa13d6e9cd204ULL,0x3ffdae10872f69b7ULL},{0x25c164c7f61091faULL,0xbffd228fc6527609ULL},
+    {0x2c15b8ad9b2377ceULL,0x3ffb9aa4ca63cbd7ULL},
+  };
+  static float128_t _rq_ainv_rr(float128_t t) {
+    float128_t pp = _rq_bits(0, 0);
+    for ( int i = 31; i-- != 0; ) pp = _rqa(_rqm(pp, t), _rq_bits(_RQ_RR[i][1], _RQ_RR[i][0]));
+    return pp;
+  }
+  static float128_t _rq_asin(float128_t x) {
+    union quad r0, ax; r0.q = x;
+    float128_t half = _rq_bits(0x3ffe000000000000ULL, 0), one = _rq_bits(0x3fff000000000000ULL, 0);
+    float128_t two = _rq_bits(0x4000000000000000ULL, 0);
+    float128_t pio2h = _rq_bits(0x3fff921fb54442d1ULL, 0x8469898cc51701b8ULL);
+    float128_t pio2l = _rq_bits(0x3f8ccd129024e088ULL, 0xa67cc74020bbea64ULL);
+    float128_t pio4 = _rq_bits(0x3ffe921fb54442d1ULL, 0x8469898cc51701b8ULL);
+    if ( !_rqeq(x, x) )       return _rq_bits(_RQ_QNAN_HI, 0);           // NaN
+    c3_d sgn = r0.w[1] >> 63;
+    ax.w[0] = r0.w[0]; ax.w[1] = r0.w[1] & 0x7fffffffffffffffULL;
+    if ( _rqlt(one, ax.q) )  return _rq_bits(_RQ_QNAN_HI, 0);            // |x|>1 -> NaN
+    if ( ax.w[1]==0x3fff000000000000ULL && ax.w[0]==0 )                               // |x|==1
+      return _rqa(_rqm(x, pio2h), _rqm(x, pio2l));
+    if ( _rqlt(ax.q, half) ) {                                          // |x|<0.5
+      if ( _rqlt(ax.q, _rq_bits(0x3fc6000000000000ULL, 0)) ) return x;   // tiny
+      float128_t t = _rqm(x, x);
+      return _rqa(x, _rqm(x, _rq_ainv_rr(t)));
+    }
+    float128_t w = _rqs(one, ax.q);
+    float128_t t = _rqm(w, half);
+    float128_t r = _rq_ainv_rr(t);
+    float128_t s = _rqq(t);
+    if ( _rqle(_rq_bits(0x3ffef33333333333ULL, 0x3333333333333333ULL), ax.q) ) {  // near 1
+      float128_t res = _rqs(pio2h, _rqs(_rqm(two, _rqa(s, _rqm(s, r))), pio2l));
+      return (sgn == 1) ? _rq_neg(res) : res;
+    }
+    union quad sq; sq.q = s;
+    float128_t df = _rq_bits(sq.w[1], sq.w[0] & 0xff00000000000000ULL);
+    float128_t cc = _rqd(_rqs(t, _rqm(df, df)), _rqa(s, df));
+    float128_t p2 = _rqs(_rqm(two, _rqm(s, r)), _rqs(pio2l, _rqm(two, cc)));
+    float128_t q2 = _rqs(pio4, _rqm(two, df));
+    float128_t res = _rqs(pio4, _rqs(p2, q2));
+    return (sgn == 1) ? _rq_neg(res) : res;
+  }
+  static float128_t _rq_acos(float128_t x) {
+    union quad r0, ax; r0.q = x;
+    float128_t half = _rq_bits(0x3ffe000000000000ULL, 0), one = _rq_bits(0x3fff000000000000ULL, 0);
+    float128_t two = _rq_bits(0x4000000000000000ULL, 0);
+    float128_t pi = _rq_bits(0x4000921fb54442d1ULL, 0x8469898cc51701b8ULL);
+    float128_t pio2h = _rq_bits(0x3fff921fb54442d1ULL, 0x8469898cc51701b8ULL);
+    float128_t pio2l = _rq_bits(0x3f8ccd129024e088ULL, 0xa67cc74020bbea64ULL);
+    if ( !_rqeq(x, x) )       return _rq_bits(_RQ_QNAN_HI, 0);           // NaN
+    c3_d neg = r0.w[1] >> 63;
+    ax.w[0] = r0.w[0]; ax.w[1] = r0.w[1] & 0x7fffffffffffffffULL;
+    if ( _rqlt(one, ax.q) )  return _rq_bits(_RQ_QNAN_HI, 0);            // |x|>1 -> NaN
+    if ( ax.w[1]==0x3fff000000000000ULL && ax.w[0]==0 ) {                             // |x|==1
+      if ( neg == 0 ) return _rq_bits(0, 0);                             // 1 -> 0
+      return _rqa(pi, _rqm(two, pio2l));                                 // -1 -> pi
+    }
+    if ( _rqlt(ax.q, half) ) {                                          // |x|<0.5
+      if ( _rqlt(ax.q, _rq_bits(0x3f87000000000000ULL, 0)) ) return pio2h;  // tiny -> pi/2
+      float128_t z = _rqm(x, x);
+      float128_t r = _rq_ainv_rr(z);
+      return _rqs(pio2h, _rqs(x, _rqs(pio2l, _rqm(x, r))));
+    }
+    if ( neg == 1 ) {                                                   // x <= -0.5
+      float128_t z = _rqm(_rqa(one, x), half);
+      float128_t s = _rqq(z);
+      float128_t r = _rq_ainv_rr(z);
+      float128_t w = _rqs(_rqm(r, s), pio2l);
+      return _rqs(pi, _rqm(two, _rqa(s, w)));
+    }
+    float128_t z = _rqm(_rqs(one, x), half);                            // x >= 0.5
+    float128_t s = _rqq(z);
+    union quad sq; sq.q = s;
+    float128_t df = _rq_bits(sq.w[1], sq.w[0] & 0xff00000000000000ULL);
+    float128_t cc = _rqd(_rqs(z, _rqm(df, df)), _rqa(s, df));
+    float128_t r = _rq_ainv_rr(z);
+    float128_t w = _rqa(_rqm(r, s), cc);
+    return _rqm(two, _rqa(df, w));
+  }
+
+/* @rq sqt/cbt -- math.hoon ++rq ++sqt/++cbt */
+  static float128_t _rq_sqt(float128_t x) {
+    union quad r0; r0.q = x;
+    if ( !_rqeq(x, x) )                       return _rq_bits(_RQ_QNAN_HI, 0);   // NaN
+    if ( r0.w[1]==_RQ_PINF_HI && r0.w[0]==0 ) return x;                          // +inf
+    if ( (r0.w[1]==0||r0.w[1]==0x8000000000000000ULL) && r0.w[0]==0 ) return x;  // +-0
+    if ( (r0.w[1] >> 63) == 1 )               return _rq_bits(_RQ_QNAN_HI, 0);   // x<0 -> NaN
+    return _rqq(x);                                                              // correctly-rounded
+  }
+  static float128_t _rq_cbt(float128_t x) {
+    union quad r0, ax; r0.q = x;
+    if ( !_rqeq(x, x) )                       return x;                          // NaN -> NaN
+    if ( (r0.w[1]==0||r0.w[1]==0x8000000000000000ULL) && r0.w[0]==0 ) return x;  // +-0
+    ax.w[0] = r0.w[0]; ax.w[1] = r0.w[1] & 0x7fffffffffffffffULL;
+    float128_t r = _rq_exp(_rqm(_rq_log(ax.q), _rq_bits(0x3ffd555555555555ULL, 0x5555555555555555ULL)));  // exp(log|x|/3)
+    return ((r0.w[1] >> 63) == 1) ? _rq_neg(r) : r;
+  }
+
+/* @rq pow/pow-n -- math.hoon ++rq ++pow/++pow-n */
+  static float128_t _rq_pow_n(float128_t x, float128_t n) {
+    union quad nn; nn.q = n;
+    float128_t one = _rq_bits(0x3fff000000000000ULL, 0), two = _rq_bits(0x4000000000000000ULL, 0);
+    if ( nn.w[1]==0 && nn.w[0]==0 ) return one;    // n == +0 -> 1
+    softfloat_roundingMode = _math_rnd;            // bare mul/sub round per door r
+    float128_t p = x;
+    while ( !_rqlt(n, two) ) { p = _rqm(p, x); n = _rqs(n, one); }
+    softfloat_roundingMode = softfloat_round_near_even;
+    return p;
+  }
+  static float128_t _rq_pow(float128_t x, float128_t n) {
+    union quad nn, ni; nn.q = n;
+    float128_t zero = _rq_bits(0,0);
+    ni.q = _rqi64(_rqtoi(n, softfloat_round_near_even));               // san (need (toi n))
+    if ( (nn.w[1]==ni.w[1] && nn.w[0]==ni.w[0]) && _rqlt(zero, n) )    // positive integer
+      return _rq_pow_n(x, ni.q);
+    float128_t lg = _rq_log(x);                                       // %n kernel
+    softfloat_roundingMode = _math_rnd;                              // bare mul per door r
+    float128_t prod = _rqm(n, lg);
+    softfloat_roundingMode = softfloat_round_near_even;
+    return _rq_exp(prod);                                             // %n kernel: exp(n*log x)
   }
 
 #ifndef MATH_JET_HARNESS
@@ -1737,5 +2130,66 @@ typedef int64_t  c3_ds;
   u3_noun u3wi_rh_pow(u3_noun cor) { return _rh_jet2(cor, _rh_pow); }
   u3_noun u3qi_rh_pow_n(u3_atom x, u3_atom n) { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_pow_n(_rh_in(x), _rh_in(n))); }
   u3_noun u3wi_rh_pow_n(u3_noun cor){ return _rh_jet2(cor, _rh_pow_n); }
+
+/* @rq ABI wrappers.  @rq is a 128-bit atom: read/write TWO chubs (v[0]=low 64,
+** v[1]=high 64).  Wrappers set softfloat_roundingMode=near-even (kernels) and
+** _math_rnd from the door's r (axis 60) for the composites (tan/atan2/pow/
+** pow-n).  Word-agnostic chub I/O, same as @rd/@rs/@rh.
+*/
+  static inline float128_t _rq_in(u3_atom a) {
+    union quad s; s.w[0] = u3r_chub(0, a); s.w[1] = u3r_chub(1, a); return s.q;
+  }
+  static inline u3_noun _rq_out(float128_t v) {
+    union quad s; s.q = v; return u3i_chubs(2, &s.w[0]);
+  }
+  static u3_noun _rq_jet(u3_noun cor, float128_t (*fun)(float128_t)) {
+    u3_noun x = u3r_at(u3x_sam, cor);
+    if ( u3_none == x || c3n == u3ud(x) ) return u3m_bail(c3__exit);
+    softfloat_roundingMode = softfloat_round_near_even;   // kernels run near-even
+    _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (for tan/cbt/log-2/log-10)
+    return _rq_out(fun(_rq_in(x)));
+  }
+  static u3_noun _rq_jet2(u3_noun cor, float128_t (*fun)(float128_t, float128_t)) {
+    u3_noun x, n;
+    if ( c3n == u3r_mean(cor, u3x_sam_2, &x, u3x_sam_3, &n, 0) ||
+         c3n == u3ud(x) || c3n == u3ud(n) ) {
+      return u3m_bail(c3__exit);
+    }
+    softfloat_roundingMode = softfloat_round_near_even;   // kernels run near-even
+    _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (composites)
+    return _rq_out(fun(_rq_in(x), _rq_in(n)));
+  }
+
+  u3_noun u3qi_rq_exp(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_exp(_rq_in(a))); }
+  u3_noun u3wi_rq_exp(u3_noun cor) { return _rq_jet(cor, _rq_exp); }
+  u3_noun u3qi_rq_log(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_log(_rq_in(a))); }
+  u3_noun u3wi_rq_log(u3_noun cor) { return _rq_jet(cor, _rq_log); }
+  u3_noun u3qi_rq_sin(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_sin(_rq_in(a))); }
+  u3_noun u3wi_rq_sin(u3_noun cor) { return _rq_jet(cor, _rq_sin); }
+  u3_noun u3qi_rq_cos(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_cos(_rq_in(a))); }
+  u3_noun u3wi_rq_cos(u3_noun cor) { return _rq_jet(cor, _rq_cos); }
+  u3_noun u3qi_rq_tan(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_tan(_rq_in(a))); }
+  u3_noun u3wi_rq_tan(u3_noun cor) { return _rq_jet(cor, _rq_tan); }
+  u3_noun u3qi_rq_atan(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_atan(_rq_in(a))); }
+  u3_noun u3wi_rq_atan(u3_noun cor){ return _rq_jet(cor, _rq_atan); }
+  u3_noun u3qi_rq_asin(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_asin(_rq_in(a))); }
+  u3_noun u3wi_rq_asin(u3_noun cor){ return _rq_jet(cor, _rq_asin); }
+  u3_noun u3qi_rq_acos(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_acos(_rq_in(a))); }
+  u3_noun u3wi_rq_acos(u3_noun cor){ return _rq_jet(cor, _rq_acos); }
+  u3_noun u3qi_rq_sqt(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_sqt(_rq_in(a))); }
+  u3_noun u3wi_rq_sqt(u3_noun cor) { return _rq_jet(cor, _rq_sqt); }
+  u3_noun u3qi_rq_cbt(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_cbt(_rq_in(a))); }
+  u3_noun u3wi_rq_cbt(u3_noun cor) { return _rq_jet(cor, _rq_cbt); }
+  u3_noun u3qi_rq_log2(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_log2(_rq_in(a))); }
+  u3_noun u3wi_rq_log2(u3_noun cor){ return _rq_jet(cor, _rq_log2); }
+  u3_noun u3qi_rq_log10(u3_atom a) { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_log10(_rq_in(a))); }
+  u3_noun u3wi_rq_log10(u3_noun cor){ return _rq_jet(cor, _rq_log10); }
+
+  u3_noun u3qi_rq_atan2(u3_atom y, u3_atom x) { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_atan2(_rq_in(y), _rq_in(x))); }
+  u3_noun u3wi_rq_atan2(u3_noun cor){ return _rq_jet2(cor, _rq_atan2); }
+  u3_noun u3qi_rq_pow(u3_atom x, u3_atom n)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_pow(_rq_in(x), _rq_in(n))); }
+  u3_noun u3wi_rq_pow(u3_noun cor) { return _rq_jet2(cor, _rq_pow); }
+  u3_noun u3qi_rq_pow_n(u3_atom x, u3_atom n) { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_pow_n(_rq_in(x), _rq_in(n))); }
+  u3_noun u3wi_rq_pow_n(u3_noun cor){ return _rq_jet2(cor, _rq_pow_n); }
 
 #endif

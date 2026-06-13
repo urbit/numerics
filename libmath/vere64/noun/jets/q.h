@@ -336,6 +336,22 @@
     u3_noun u3qi_rh_log2(u3_atom);
     u3_noun u3qi_rh_log10(u3_atom);
 
+    u3_noun u3qi_rq_exp(u3_atom);
+    u3_noun u3qi_rq_log(u3_atom);
+    u3_noun u3qi_rq_sin(u3_atom);
+    u3_noun u3qi_rq_cos(u3_atom);
+    u3_noun u3qi_rq_tan(u3_atom);
+    u3_noun u3qi_rq_atan(u3_atom);
+    u3_noun u3qi_rq_atan2(u3_atom, u3_atom);
+    u3_noun u3qi_rq_asin(u3_atom);
+    u3_noun u3qi_rq_acos(u3_atom);
+    u3_noun u3qi_rq_sqt(u3_atom);
+    u3_noun u3qi_rq_cbt(u3_atom);
+    u3_noun u3qi_rq_pow(u3_atom, u3_atom);
+    u3_noun u3qi_rq_pow_n(u3_atom, u3_atom);
+    u3_noun u3qi_rq_log2(u3_atom);
+    u3_noun u3qi_rq_log10(u3_atom);
+
 #   define u3qfu_van_fan  28
 #   define u3qfu_van_rib  58
 #   define u3qfu_van_vet  59

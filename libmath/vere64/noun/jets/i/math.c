@@ -2131,4 +2131,65 @@ typedef int64_t  c3_ds;
   u3_noun u3qi_rh_pow_n(u3_atom x, u3_atom n) { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_pow_n(_rh_in(x), _rh_in(n))); }
   u3_noun u3wi_rh_pow_n(u3_noun cor){ return _rh_jet2(cor, _rh_pow_n); }
 
+/* @rq ABI wrappers.  @rq is a 128-bit atom: read/write TWO chubs (v[0]=low 64,
+** v[1]=high 64).  Wrappers set softfloat_roundingMode=near-even (kernels) and
+** _math_rnd from the door's r (axis 60) for the composites (tan/atan2/pow/
+** pow-n).  Word-agnostic chub I/O, same as @rd/@rs/@rh.
+*/
+  static inline float128_t _rq_in(u3_atom a) {
+    union quad s; s.w[0] = u3r_chub(0, a); s.w[1] = u3r_chub(1, a); return s.q;
+  }
+  static inline u3_noun _rq_out(float128_t v) {
+    union quad s; s.q = v; return u3i_chubs(2, &s.w[0]);
+  }
+  static u3_noun _rq_jet(u3_noun cor, float128_t (*fun)(float128_t)) {
+    u3_noun x = u3r_at(u3x_sam, cor);
+    if ( u3_none == x || c3n == u3ud(x) ) return u3m_bail(c3__exit);
+    softfloat_roundingMode = softfloat_round_near_even;   // kernels run near-even
+    _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (for tan/cbt/log-2/log-10)
+    return _rq_out(fun(_rq_in(x)));
+  }
+  static u3_noun _rq_jet2(u3_noun cor, float128_t (*fun)(float128_t, float128_t)) {
+    u3_noun x, n;
+    if ( c3n == u3r_mean(cor, {u3x_sam_2, &x}, {u3x_sam_3, &n}) ||
+         c3n == u3ud(x) || c3n == u3ud(n) ) {
+      return u3m_bail(c3__exit);
+    }
+    softfloat_roundingMode = softfloat_round_near_even;   // kernels run near-even
+    _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (composites)
+    return _rq_out(fun(_rq_in(x), _rq_in(n)));
+  }
+
+  u3_noun u3qi_rq_exp(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_exp(_rq_in(a))); }
+  u3_noun u3wi_rq_exp(u3_noun cor) { return _rq_jet(cor, _rq_exp); }
+  u3_noun u3qi_rq_log(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_log(_rq_in(a))); }
+  u3_noun u3wi_rq_log(u3_noun cor) { return _rq_jet(cor, _rq_log); }
+  u3_noun u3qi_rq_sin(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_sin(_rq_in(a))); }
+  u3_noun u3wi_rq_sin(u3_noun cor) { return _rq_jet(cor, _rq_sin); }
+  u3_noun u3qi_rq_cos(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_cos(_rq_in(a))); }
+  u3_noun u3wi_rq_cos(u3_noun cor) { return _rq_jet(cor, _rq_cos); }
+  u3_noun u3qi_rq_tan(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_tan(_rq_in(a))); }
+  u3_noun u3wi_rq_tan(u3_noun cor) { return _rq_jet(cor, _rq_tan); }
+  u3_noun u3qi_rq_atan(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_atan(_rq_in(a))); }
+  u3_noun u3wi_rq_atan(u3_noun cor){ return _rq_jet(cor, _rq_atan); }
+  u3_noun u3qi_rq_asin(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_asin(_rq_in(a))); }
+  u3_noun u3wi_rq_asin(u3_noun cor){ return _rq_jet(cor, _rq_asin); }
+  u3_noun u3qi_rq_acos(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_acos(_rq_in(a))); }
+  u3_noun u3wi_rq_acos(u3_noun cor){ return _rq_jet(cor, _rq_acos); }
+  u3_noun u3qi_rq_sqt(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_sqt(_rq_in(a))); }
+  u3_noun u3wi_rq_sqt(u3_noun cor) { return _rq_jet(cor, _rq_sqt); }
+  u3_noun u3qi_rq_cbt(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_cbt(_rq_in(a))); }
+  u3_noun u3wi_rq_cbt(u3_noun cor) { return _rq_jet(cor, _rq_cbt); }
+  u3_noun u3qi_rq_log2(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_log2(_rq_in(a))); }
+  u3_noun u3wi_rq_log2(u3_noun cor){ return _rq_jet(cor, _rq_log2); }
+  u3_noun u3qi_rq_log10(u3_atom a) { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_log10(_rq_in(a))); }
+  u3_noun u3wi_rq_log10(u3_noun cor){ return _rq_jet(cor, _rq_log10); }
+
+  u3_noun u3qi_rq_atan2(u3_atom y, u3_atom x) { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_atan2(_rq_in(y), _rq_in(x))); }
+  u3_noun u3wi_rq_atan2(u3_noun cor){ return _rq_jet2(cor, _rq_atan2); }
+  u3_noun u3qi_rq_pow(u3_atom x, u3_atom n)   { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_pow(_rq_in(x), _rq_in(n))); }
+  u3_noun u3wi_rq_pow(u3_noun cor) { return _rq_jet2(cor, _rq_pow); }
+  u3_noun u3qi_rq_pow_n(u3_atom x, u3_atom n) { softfloat_roundingMode=softfloat_round_near_even; return _rq_out(_rq_pow_n(_rq_in(x), _rq_in(n))); }
+  u3_noun u3wi_rq_pow_n(u3_noun cor){ return _rq_jet2(cor, _rq_pow_n); }
+
 #endif

@@ -8,11 +8,19 @@
 #include <stdio.h>
 
 static int fails = 0;
+// Model the real jet wrapper: pre-dirty the global rounding mode to %z (as a
+// prior door op would leave it on-ship), then set near-even exactly as the
+// fixed _rh_jet/u3qi wrappers do.  This catches the "wrapper set _math_rnd but
+// not softfloat_roundingMode" regression.
 static uint16_t b1(uint16_t in, float16_t (*fn)(float16_t)) {
+  softfloat_roundingMode = softfloat_round_minMag;     // simulate stale %z
+  softfloat_roundingMode = softfloat_round_near_even;  // wrapper resets it
   _math_rnd = softfloat_round_near_even;
   union half u; u.h = fn(_rh_bits(in).h); return u.c;
 }
 static uint16_t b2(uint16_t a, uint16_t b, float16_t (*fn)(float16_t, float16_t)) {
+  softfloat_roundingMode = softfloat_round_minMag;
+  softfloat_roundingMode = softfloat_round_near_even;
   _math_rnd = softfloat_round_near_even;
   union half u; u.h = fn(_rh_bits(a).h, _rh_bits(b).h); return u.c;
 }

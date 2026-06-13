@@ -1691,7 +1691,8 @@ typedef int64_t  c3_ds;
   static u3_noun _rh_jet(u3_noun cor, float16_t (*fun)(float16_t)) {
     u3_noun x = u3r_at(u3x_sam, cor);
     if ( u3_none == x || c3n == u3ud(x) ) return u3m_bail(c3__exit);
-    _math_rnd = _rnd_of(u3r_at(60, cor));
+    softfloat_roundingMode = softfloat_round_near_even;   // kernels run near-even
+    _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (for @rh tan/cbt/log-2/log-10)
     return _rh_out(fun(_rh_in(x)));
   }
   static u3_noun _rh_jet2(u3_noun cor, float16_t (*fun)(float16_t, float16_t)) {
@@ -1700,40 +1701,41 @@ typedef int64_t  c3_ds;
          c3n == u3ud(x) || c3n == u3ud(n) ) {
       return u3m_bail(c3__exit);
     }
-    _math_rnd = _rnd_of(u3r_at(60, cor));
+    softfloat_roundingMode = softfloat_round_near_even;   // kernels run near-even
+    _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (composites)
     return _rh_out(fun(_rh_in(x), _rh_in(n)));
   }
 
-  u3_noun u3qi_rh_exp(u3_atom a)   { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_exp(_rh_in(a))); }
+  u3_noun u3qi_rh_exp(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_exp(_rh_in(a))); }
   u3_noun u3wi_rh_exp(u3_noun cor) { return _rh_jet(cor, _rh_exp); }
-  u3_noun u3qi_rh_log(u3_atom a)   { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_log(_rh_in(a))); }
+  u3_noun u3qi_rh_log(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_log(_rh_in(a))); }
   u3_noun u3wi_rh_log(u3_noun cor) { return _rh_jet(cor, _rh_log); }
-  u3_noun u3qi_rh_sin(u3_atom a)   { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_sin(_rh_in(a))); }
+  u3_noun u3qi_rh_sin(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_sin(_rh_in(a))); }
   u3_noun u3wi_rh_sin(u3_noun cor) { return _rh_jet(cor, _rh_sin); }
-  u3_noun u3qi_rh_cos(u3_atom a)   { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_cos(_rh_in(a))); }
+  u3_noun u3qi_rh_cos(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_cos(_rh_in(a))); }
   u3_noun u3wi_rh_cos(u3_noun cor) { return _rh_jet(cor, _rh_cos); }
-  u3_noun u3qi_rh_tan(u3_atom a)   { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_tan(_rh_in(a))); }
+  u3_noun u3qi_rh_tan(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_tan(_rh_in(a))); }
   u3_noun u3wi_rh_tan(u3_noun cor) { return _rh_jet(cor, _rh_tan); }
-  u3_noun u3qi_rh_atan(u3_atom a)  { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_atan(_rh_in(a))); }
+  u3_noun u3qi_rh_atan(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_atan(_rh_in(a))); }
   u3_noun u3wi_rh_atan(u3_noun cor){ return _rh_jet(cor, _rh_atan); }
-  u3_noun u3qi_rh_asin(u3_atom a)  { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_asin(_rh_in(a))); }
+  u3_noun u3qi_rh_asin(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_asin(_rh_in(a))); }
   u3_noun u3wi_rh_asin(u3_noun cor){ return _rh_jet(cor, _rh_asin); }
-  u3_noun u3qi_rh_acos(u3_atom a)  { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_acos(_rh_in(a))); }
+  u3_noun u3qi_rh_acos(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_acos(_rh_in(a))); }
   u3_noun u3wi_rh_acos(u3_noun cor){ return _rh_jet(cor, _rh_acos); }
-  u3_noun u3qi_rh_sqt(u3_atom a)   { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_sqt(_rh_in(a))); }
+  u3_noun u3qi_rh_sqt(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_sqt(_rh_in(a))); }
   u3_noun u3wi_rh_sqt(u3_noun cor) { return _rh_jet(cor, _rh_sqt); }
-  u3_noun u3qi_rh_cbt(u3_atom a)   { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_cbt(_rh_in(a))); }
+  u3_noun u3qi_rh_cbt(u3_atom a)   { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_cbt(_rh_in(a))); }
   u3_noun u3wi_rh_cbt(u3_noun cor) { return _rh_jet(cor, _rh_cbt); }
-  u3_noun u3qi_rh_log2(u3_atom a)  { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_log2(_rh_in(a))); }
+  u3_noun u3qi_rh_log2(u3_atom a)  { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_log2(_rh_in(a))); }
   u3_noun u3wi_rh_log2(u3_noun cor){ return _rh_jet(cor, _rh_log2); }
-  u3_noun u3qi_rh_log10(u3_atom a) { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_log10(_rh_in(a))); }
+  u3_noun u3qi_rh_log10(u3_atom a) { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_log10(_rh_in(a))); }
   u3_noun u3wi_rh_log10(u3_noun cor){ return _rh_jet(cor, _rh_log10); }
 
-  u3_noun u3qi_rh_atan2(u3_atom y, u3_atom x) { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_atan2(_rh_in(y), _rh_in(x))); }
+  u3_noun u3qi_rh_atan2(u3_atom y, u3_atom x) { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_atan2(_rh_in(y), _rh_in(x))); }
   u3_noun u3wi_rh_atan2(u3_noun cor){ return _rh_jet2(cor, _rh_atan2); }
-  u3_noun u3qi_rh_pow(u3_atom x, u3_atom n)   { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_pow(_rh_in(x), _rh_in(n))); }
+  u3_noun u3qi_rh_pow(u3_atom x, u3_atom n)   { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_pow(_rh_in(x), _rh_in(n))); }
   u3_noun u3wi_rh_pow(u3_noun cor) { return _rh_jet2(cor, _rh_pow); }
-  u3_noun u3qi_rh_pow_n(u3_atom x, u3_atom n) { _math_rnd=softfloat_round_near_even; return _rh_out(_rh_pow_n(_rh_in(x), _rh_in(n))); }
+  u3_noun u3qi_rh_pow_n(u3_atom x, u3_atom n) { softfloat_roundingMode=softfloat_round_near_even; return _rh_out(_rh_pow_n(_rh_in(x), _rh_in(n))); }
   u3_noun u3wi_rh_pow_n(u3_noun cor){ return _rh_jet2(cor, _rh_pow_n); }
 
 #endif

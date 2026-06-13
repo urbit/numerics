@@ -73,7 +73,9 @@
   !>((pw `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000))
 ++  test-cbrt-8    %+  expect-eq  !>(`@`0x3fff.ffff.ffff.ffff.ffff.ffff.ffff.ffff)
   !>((cb `@rq`0x4002.0000.0000.0000.0000.0000.0000.0000))
-++  test-cbrt-n27  %+  expect-eq  !>(`@`0xc000.7fff.ffff.ffff.ffff.ffff.ffff.ffff)
+::  cbt(-27) = -3 exactly with the faithful fdlibm exp (was 0xc000.7fff...ffff,
+::  1 ULP short, under the old full-Horner exp)
+++  test-cbrt-n27  %+  expect-eq  !>(`@`0xc000.8000.0000.0000.0000.0000.0000.0000)
   !>((cb `@rq`0xc003.b000.0000.0000.0000.0000.0000.0000))
 ++  at  |=(x=@rq ^-(@ `@`(~(atan rq:math [%n .~~~1e-10]) x)))
 ++  test-atan-half  %+  expect-eq  !>(`@`0x3ffd.dac6.7056.1bb4.f68a.dfc8.8bd9.7875)

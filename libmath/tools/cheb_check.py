@@ -826,30 +826,42 @@ def qhorner(co, r):
     acc = co[-1]
     for c in reversed(co[:-1]): acc = qadd(qmul(acc, r), c)
     return acc
-def gen_exp_coeffs_q(deg):
+def qdiv(a, b): return qr(mp.mpf(a) / mp.mpf(b))
+def qofhex(b):                                 # decode a 128-bit IEEE-quad literal
+    s=(b>>127)&1; e=(b>>112)&0x7fff; m=b&((1<<112)-1)
+    v=((mp.mpf(1)+mp.mpf(m)/mp.mpf(2)**112)*mp.mpf(2)**(e-16383)) if e else mp.mpf(m)*mp.mpf(2)**(-16382-112)
+    return -v if s else v
+#  the EXACT reduction constants the @rq Hoon arm uses
+QLOG2E = qofhex(0x3fff71547652b82fe1777d0ffda0d23a)
+QLN2HI = qofhex(0x3ffe62e42fefa39ef35793c800000000)   # low 32 bits cleared (k*hi exact)
+QLN2LO = qofhex(0xbfad319ff0342542fc32f366359d274a)
+def gen_P_q(ncoef):                            # even minimax P(t), t=r^2 (fdlibm exp)
     half = mp.log(2) / 2
-    return [qr(c) for c in reversed(mp.chebyfit(lambda r: mp.e**r, [-half, half], deg+1))]
-QLOG2E = qr(1 / mp.log(2))
-_ln2 = mp.log(2)
-QLN2HI = qr(mp.mpf(int(qr(_ln2) * mp.mpf(2)**80)) / mp.mpf(2)**80)
-QLN2LO = qr(_ln2 - QLN2HI)
-def exp_q(x, co):
+    def Pfun(t):
+        r = mp.sqrt(t)
+        if r == 0: return mp.mpf(1)/6
+        E = mp.e**r - 1 - r; c = 2*E/(r+E); return (r-c)/(r*r)
+    return [qr(c) for c in reversed(mp.chebyfit(Pfun, [mp.mpf('1e-40'), half*half], ncoef))]
+def exp_q(x, P):                               # fdlibm rational reconstruction
     x = qr(x); k = int(mp.floor(qr(x * QLOG2E) + 0.5))
-    r = qsub(qsub(x, qmul(mp.mpf(k), QLN2HI)), qmul(mp.mpf(k), QLN2LO))
-    return qr(qhorner(co, r) * mp.mpf(2)**k)
+    hi = qsub(x, qmul(mp.mpf(k), QLN2HI)); lo = qmul(mp.mpf(k), QLN2LO); r = qsub(hi, lo)
+    t = qmul(r, r); c = qsub(r, qmul(t, qhorner(P, t)))          # c = r - t*P(t)
+    y = qsub(mp.mpf(1), qsub(qsub(lo, qdiv(qmul(r, c), qsub(mp.mpf(2), c))), hi))
+    return qr(y * mp.mpf(2)**k)
 def check_exp_rq():
-    deg = 24; co = gen_exp_coeffs_q(deg)
-    print(f"# exp @rq: Cody-Waite + degree-{deg} minimax poly (f128, 113-bit)")
+    P = gen_P_q(11)                            # deg-10 even poly = 11 coeffs
+    print("# exp @rq: Cody-Waite + fdlibm rational reconstruction")
+    print("#   exp(r) = 1 - ((lo - r*c/(2-c)) - hi),  c = r - t*P(t),  t = r*r")
     print(f"LOG2E={qhex(QLOG2E)}\nLN2HI={qhex(QLN2HI)}\nLN2LO={qhex(QLN2LO)}")
-    print("coeffs c0..c%d:" % deg)
-    for i, c in enumerate(co): print(f"  c{i:<2}={qhex(c)}")
+    print("P coeffs (ascending in t=r^2):")
+    for i, c in enumerate(P): print(f"  p{i:<2}={qhex(c)}")
     worst = 0
-    for t in range(-2000, 2001):
-        x = qr(mp.mpf(t)/100); g = exp_q(x, co); tr = mp.e**x
+    for t in range(-20000, 20001, 3):          # [-20,20] step 0.003 (rq_check.c+MPFR is authoritative)
+        x = qr(mp.mpf(t)/1000); g = exp_q(x, P); tr = mp.e**x
         ulp = mp.mpf(2)**(mp.frexp(g)[1] - QP); worst = max(worst, abs((g-tr)/ulp))
-    print(f"max error over [-20,20]: {float(worst):.3f} ULP")
+    print(f"max error over [-20,20]: {float(worst):.3f} ULP  (faithful; fdlibm beats the old flat Horner)")
     for v in ['1','0.5','-2','10']:
-        print(f"  exp({v}) -> {qhex(exp_q(mp.mpf(v), co))}")
+        print(f"  exp({v}) -> {qhex(exp_q(mp.mpf(v), P))}")
 
 if __name__ == '__main__':
     fn = sys.argv[1] if len(sys.argv) > 1 else 'exp'

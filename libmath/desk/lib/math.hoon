@@ -3724,7 +3724,10 @@
     ::      .~~~inf
     ::  Source
     ++  exp
-      ::  Cody-Waite reduction + degree-24 minimax (f128); round-nearest-even
+      ::  Cody-Waite reduction + fdlibm rational reconstruction (deg-10 even
+      ::  minimax P in t=r^2): exp(r) = 1 - ((lo - r*c/(2-c)) - hi), c = r-t*P(t).
+      ::  Faithful to ~0.87 ULP (the compensated reconstruction keeps the leading
+      ::  1+r out of the rounded sum, unlike a flat Horner).  Round-nearest-even
       ::  internally (matches the SoftFloat jet, see tools/rq_check.c).
       |=  x=@rq  ^-  @rq
       =/  pow2  |=(j=@s `@rq`(lsh [0 112] (abs:si (sum:si j --16.383))))
@@ -3746,27 +3749,23 @@
       ?:  !(syn:si (sum:si k --16.494))  `@rq`0x0
       =/  ka  (~(sun ^rq %n) (abs:si k))
       =/  kf  ?:((syn:si k) ka (~(sub ^rq %n) `@rq`0x0 ka))
-      =/  r
-        %-  ~(sub ^rq %n)
-        :-  (~(sub ^rq %n) x (~(mul ^rq %n) kf ln2hi))
-        (~(mul ^rq %n) kf ln2lo)
-      =/  cs=(list @rq)
-        :~  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000  `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000
-            `@rq`0x3ffe.0000.0000.0000.0000.0000.0000.0000  `@rq`0x3ffc.5555.5555.5555.5555.5555.5555.5555
-            `@rq`0x3ffa.5555.5555.5555.5555.5555.5555.5555  `@rq`0x3ff8.1111.1111.1111.1111.1111.1111.1111
-            `@rq`0x3ff5.6c16.c16c.16c1.6c16.c16c.16c1.6c17  `@rq`0x3ff2.a01a.01a0.1a01.a01a.01a0.1a01.a3e8
-            `@rq`0x3fef.a01a.01a0.1a01.a01a.01a0.1a01.a146  `@rq`0x3fec.71de.3a55.6c73.38fa.ac1c.88a5.a526
-            `@rq`0x3fe9.27e4.fb77.89f5.c72e.f016.d3d6.e867  `@rq`0x3fe5.ae64.567f.544e.38fe.7483.63c4.6e8b
-            `@rq`0x3fe2.1eed.8eff.8d89.7b54.4dab.18f4.75c5  `@rq`0x3fde.6124.613a.86d0.97c9.f3ae.babb.2423
-            `@rq`0x3fda.9397.4a8c.07c9.d20b.83c7.f94d.17d8  `@rq`0x3fd6.ae7f.3e73.3b81.f5f4.284f.0d74.f9e7
-            `@rq`0x3fd2.ae7f.3e73.3b81.f417.b4d2.7c5f.92a9  `@rq`0x3fce.952c.7703.0a99.6a41.9e67.4779.c97c
-            `@rq`0x3fca.6827.863b.97b5.0466.ff8c.8b42.b3df  `@rq`0x3fc6.2f49.b469.f892.874b.7a68.6d81.9241
-            `@rq`0x3fc1.e542.ba42.7463.bb3b.32a1.1bb5.f139  `@rq`0x3fbd.71b8.db9f.7f73.c938.90ff.9ab5.5cbb
-            `@rq`0x3fb9.0ce3.8aab.7bd7.6efc.0717.eae7.85a1  `@rq`0x3fb4.7693.274b.ab2a.cb3f.4f7e.dfaa.2666
-            `@rq`0x3faf.f362.9154.e0a7.61cb.0e23.655d.47cb
+      =/  hi   (~(sub ^rq %n) x (~(mul ^rq %n) kf ln2hi))     :: high part of r
+      =/  lo   (~(mul ^rq %n) kf ln2lo)                       :: low correction
+      =/  r    (~(sub ^rq %n) hi lo)                          :: reduced argument
+      =/  t    (~(mul ^rq %n) r r)
+      =/  ps=(list @rq)                                       :: even minimax P(t)
+        :~  `@rq`0x3ffc.5555.5555.5555.5555.5555.5555.5555  `@rq`0xbff6.6c16.c16c.16c1.6c16.c16c.16c0.9e83
+            `@rq`0x3ff1.1566.abc0.1156.6abc.0115.453d.96dd  `@rq`0xbfeb.bbd7.7933.4ef0.aac6.63e4.a6d6.5cca
+            `@rq`0x3fe6.66a8.f2bf.70eb.da06.1159.86f5.07fb  `@rq`0xbfe1.2280.5d64.4267.43eb.0e28.8c2e.45a8
+            `@rq`0x3fdb.d6db.2c4e.0507.12be.0476.b628.552f  `@rq`0xbfd6.7da4.e1ef.b419.eb83.8f5d.a821.635a
+            `@rq`0x3fd1.3558.67f7.df64.dc61.daec.bfc0.d781  `@rq`0xbfcb.f56e.4264.f8ad.54bb.7852.bc52.bd9a
+            `@rq`0x3fc6.8fc1.3579.bfe0.8221.6227.0789.ca71
         ==
-      =/  p  (roll (flop cs) |=([c=@rq acc=@rq] (~(add ^rq %n) (~(mul ^rq %n) acc r) c)))
-      (scale2 p k)
+      =/  pp  (roll (flop ps) |=([a=@rq acc=@rq] (~(add ^rq %n) (~(mul ^rq %n) acc t) a)))
+      =/  cr  (~(sub ^rq %n) r (~(mul ^rq %n) t pp))          :: c = r - t*P(t)
+      =/  rc  (~(div ^rq %n) (~(mul ^rq %n) r cr) (~(sub ^rq %n) `@rq`0x4000.0000.0000.0000.0000.0000.0000.0000 cr))
+      =/  y   (~(sub ^rq %n) `@rq`0x3fff.0000.0000.0000.0000.0000.0000.0000 (~(sub ^rq %n) (~(sub ^rq %n) lo rc) hi))
+      (scale2 y k)
     ::    +sin:  @rq -> @rq
     ::
     ::  Returns the sine of a floating-point atom.

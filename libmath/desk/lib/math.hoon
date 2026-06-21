@@ -6,17 +6,15 @@
 ::  This file's value is the %math engine core (via =< math below), so users
 ::  still write `/+ math` and `(exp:rd:math ...)` / `~(exp rd:math [%n rtol])`.
 ::
-::  Jet structure (mirrors /lib/lagoon's %non/%lagoon): the file |% is anchored
-::  %non (`~% %non ..part ~`), and %math is its child engine CORE.  The engine
-::  MUST be a door (`^| =+ [rnd] ~/ %math |%`), not a bare |% -- a sample-less
-::  ~/-core anchors its parent to the dashboard root, so the jets never attach.
-::  See vere pkg/noun/jets/i/math.c + the _13x_non__math_* blocks in tree.c.
 =<  math
-~%  %non  ..part  ~
+~%  %non  ..part  ~  :: nest non in hex for now
 |%
+::    $rounding-mode:  the four IEEE modes the @r precision doors accept
++$  rounding-mode  ?(%n %u %d %z)
+::    +math:  the math engine core
 ++  math
   ^|
-  =+  [rnd=*?(%n %u %d %z)]
+  =+  [rnd=*rounding-mode]
   ~/  %math
   |%
   ++  rs

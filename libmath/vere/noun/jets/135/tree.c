@@ -962,20 +962,20 @@ static u3j_harm _135_non__math_rd_log2_a[] = {{".2", u3wi_rd_log2}, {}};
 static u3j_harm _135_non__math_rd_log10_a[] = {{".2", u3wi_rd_log10}, {}};
 static u3j_core _135_non__math_rd_d[] =
   { 
-    { "exp", 7, _135_non__math_rd_exp_a, 0, no_hashes },
-    { "log", 7, _135_non__math_rd_log_a, 0, no_hashes },
-    { "sin", 7, _135_non__math_rd_sin_a, 0, no_hashes },
-    { "cos", 7, _135_non__math_rd_cos_a, 0, no_hashes },
-    { "tan", 7, _135_non__math_rd_tan_a, 0, no_hashes },
-    { "atan", 7, _135_non__math_rd_atan_a, 0, no_hashes },
-    { "atan2", 7, _135_non__math_rd_atan2_a, 0, no_hashes },
-    { "asin", 7, _135_non__math_rd_asin_a, 0, no_hashes },
-    { "acos", 7, _135_non__math_rd_acos_a, 0, no_hashes },
-    { "sqt", 7, _135_non__math_rd_sqt_a, 0, no_hashes },
-    { "cbt", 7, _135_non__math_rd_cbt_a, 0, no_hashes },
-    { "pow", 7, _135_non__math_rd_pow_a, 0, no_hashes },
-    { "pow-n", 7, _135_non__math_rd_pow_n_a, 0, no_hashes },
-    { "log-2", 7, _135_non__math_rd_log2_a, 0, no_hashes },
+    { "exp", 7,    _135_non__math_rd_exp_a, 0, no_hashes },
+    { "log", 7,    _135_non__math_rd_log_a, 0, no_hashes },
+    { "sin", 7,    _135_non__math_rd_sin_a, 0, no_hashes },
+    { "cos", 7,    _135_non__math_rd_cos_a, 0, no_hashes },
+    { "tan", 7,    _135_non__math_rd_tan_a, 0, no_hashes },
+    { "atan", 7,   _135_non__math_rd_atan_a, 0, no_hashes },
+    { "atan2", 7,  _135_non__math_rd_atan2_a, 0, no_hashes },
+    { "asin", 7,   _135_non__math_rd_asin_a, 0, no_hashes },
+    { "acos", 7,   _135_non__math_rd_acos_a, 0, no_hashes },
+    { "sqt", 7,    _135_non__math_rd_sqt_a, 0, no_hashes },
+    { "cbt", 7,    _135_non__math_rd_cbt_a, 0, no_hashes },
+    { "pow", 7,    _135_non__math_rd_pow_a, 0, no_hashes },
+    { "pow-n", 7,  _135_non__math_rd_pow_n_a, 0, no_hashes },
+    { "log-2", 7,  _135_non__math_rd_log2_a, 0, no_hashes },
     { "log-10", 7, _135_non__math_rd_log10_a, 0, no_hashes },
     {}
   };
@@ -997,20 +997,20 @@ static u3j_harm _135_non__math_rs_log2_a[] = {{".2", u3wi_rs_log2}, {}};
 static u3j_harm _135_non__math_rs_log10_a[] = {{".2", u3wi_rs_log10}, {}};
 static u3j_core _135_non__math_rs_d[] =
   { 
-    { "exp", 7, _135_non__math_rs_exp_a, 0, no_hashes },
-    { "log", 7, _135_non__math_rs_log_a, 0, no_hashes },
-    { "sin", 7, _135_non__math_rs_sin_a, 0, no_hashes },
-    { "cos", 7, _135_non__math_rs_cos_a, 0, no_hashes },
-    { "tan", 7, _135_non__math_rs_tan_a, 0, no_hashes },
-    { "atan", 7, _135_non__math_rs_atan_a, 0, no_hashes },
-    { "atan2", 7, _135_non__math_rs_atan2_a, 0, no_hashes },
-    { "asin", 7, _135_non__math_rs_asin_a, 0, no_hashes },
-    { "acos", 7, _135_non__math_rs_acos_a, 0, no_hashes },
-    { "sqt", 7, _135_non__math_rs_sqt_a, 0, no_hashes },
-    { "cbt", 7, _135_non__math_rs_cbt_a, 0, no_hashes },
-    { "pow", 7, _135_non__math_rs_pow_a, 0, no_hashes },
-    { "pow-n", 7, _135_non__math_rs_pow_n_a, 0, no_hashes },
-    { "log-2", 7, _135_non__math_rs_log2_a, 0, no_hashes },
+    { "exp",    7, _135_non__math_rs_exp_a, 0, no_hashes },
+    { "log",    7, _135_non__math_rs_log_a, 0, no_hashes },
+    { "sin",    7, _135_non__math_rs_sin_a, 0, no_hashes },
+    { "cos",    7, _135_non__math_rs_cos_a, 0, no_hashes },
+    { "tan",    7, _135_non__math_rs_tan_a, 0, no_hashes },
+    { "atan",   7, _135_non__math_rs_atan_a, 0, no_hashes },
+    { "atan2",  7, _135_non__math_rs_atan2_a, 0, no_hashes },
+    { "asin",   7, _135_non__math_rs_asin_a, 0, no_hashes },
+    { "acos",   7, _135_non__math_rs_acos_a, 0, no_hashes },
+    { "sqt",    7, _135_non__math_rs_sqt_a, 0, no_hashes },
+    { "cbt",    7, _135_non__math_rs_cbt_a, 0, no_hashes },
+    { "pow",    7, _135_non__math_rs_pow_a, 0, no_hashes },
+    { "pow-n",  7, _135_non__math_rs_pow_n_a, 0, no_hashes },
+    { "log-2",  7, _135_non__math_rs_log2_a, 0, no_hashes },
     { "log-10", 7, _135_non__math_rs_log10_a, 0, no_hashes },
     {}
   };
@@ -1032,20 +1032,20 @@ static u3j_harm _135_non__math_rh_log2_a[] = {{".2", u3wi_rh_log2}, {}};
 static u3j_harm _135_non__math_rh_log10_a[] = {{".2", u3wi_rh_log10}, {}};
 static u3j_core _135_non__math_rh_d[] =
   { 
-    { "exp", 7, _135_non__math_rh_exp_a, 0, no_hashes },
-    { "log", 7, _135_non__math_rh_log_a, 0, no_hashes },
-    { "sin", 7, _135_non__math_rh_sin_a, 0, no_hashes },
-    { "cos", 7, _135_non__math_rh_cos_a, 0, no_hashes },
-    { "tan", 7, _135_non__math_rh_tan_a, 0, no_hashes },
-    { "atan", 7, _135_non__math_rh_atan_a, 0, no_hashes },
-    { "atan2", 7, _135_non__math_rh_atan2_a, 0, no_hashes },
-    { "asin", 7, _135_non__math_rh_asin_a, 0, no_hashes },
-    { "acos", 7, _135_non__math_rh_acos_a, 0, no_hashes },
-    { "sqt", 7, _135_non__math_rh_sqt_a, 0, no_hashes },
-    { "cbt", 7, _135_non__math_rh_cbt_a, 0, no_hashes },
-    { "pow", 7, _135_non__math_rh_pow_a, 0, no_hashes },
-    { "pow-n", 7, _135_non__math_rh_pow_n_a, 0, no_hashes },
-    { "log-2", 7, _135_non__math_rh_log2_a, 0, no_hashes },
+    { "exp", 7,    _135_non__math_rh_exp_a, 0, no_hashes },
+    { "log", 7,    _135_non__math_rh_log_a, 0, no_hashes },
+    { "sin", 7,    _135_non__math_rh_sin_a, 0, no_hashes },
+    { "cos", 7,    _135_non__math_rh_cos_a, 0, no_hashes },
+    { "tan", 7,    _135_non__math_rh_tan_a, 0, no_hashes },
+    { "atan", 7,   _135_non__math_rh_atan_a, 0, no_hashes },
+    { "atan2", 7,  _135_non__math_rh_atan2_a, 0, no_hashes },
+    { "asin", 7,   _135_non__math_rh_asin_a, 0, no_hashes },
+    { "acos", 7,   _135_non__math_rh_acos_a, 0, no_hashes },
+    { "sqt", 7,    _135_non__math_rh_sqt_a, 0, no_hashes },
+    { "cbt", 7,    _135_non__math_rh_cbt_a, 0, no_hashes },
+    { "pow", 7,    _135_non__math_rh_pow_a, 0, no_hashes },
+    { "pow-n", 7,  _135_non__math_rh_pow_n_a, 0, no_hashes },
+    { "log-2", 7,  _135_non__math_rh_log2_a, 0, no_hashes },
     { "log-10", 7, _135_non__math_rh_log10_a, 0, no_hashes },
     {}
   };
@@ -1066,20 +1066,20 @@ static u3j_harm _135_non__math_rq_log2_a[] = {{".2", u3wi_rq_log2}, {}};
 static u3j_harm _135_non__math_rq_log10_a[] = {{".2", u3wi_rq_log10}, {}};
 static u3j_core _135_non__math_rq_d[] =
   {
-    { "exp", 7, _135_non__math_rq_exp_a, 0, no_hashes },
-    { "log", 7, _135_non__math_rq_log_a, 0, no_hashes },
-    { "sin", 7, _135_non__math_rq_sin_a, 0, no_hashes },
-    { "cos", 7, _135_non__math_rq_cos_a, 0, no_hashes },
-    { "tan", 7, _135_non__math_rq_tan_a, 0, no_hashes },
-    { "atan", 7, _135_non__math_rq_atan_a, 0, no_hashes },
-    { "atan2", 7, _135_non__math_rq_atan2_a, 0, no_hashes },
-    { "asin", 7, _135_non__math_rq_asin_a, 0, no_hashes },
-    { "acos", 7, _135_non__math_rq_acos_a, 0, no_hashes },
-    { "sqt", 7, _135_non__math_rq_sqt_a, 0, no_hashes },
-    { "cbt", 7, _135_non__math_rq_cbt_a, 0, no_hashes },
-    { "pow", 7, _135_non__math_rq_pow_a, 0, no_hashes },
-    { "pow-n", 7, _135_non__math_rq_pow_n_a, 0, no_hashes },
-    { "log-2", 7, _135_non__math_rq_log2_a, 0, no_hashes },
+    { "exp", 7,    _135_non__math_rq_exp_a, 0, no_hashes },
+    { "log", 7,    _135_non__math_rq_log_a, 0, no_hashes },
+    { "sin", 7,    _135_non__math_rq_sin_a, 0, no_hashes },
+    { "cos", 7,    _135_non__math_rq_cos_a, 0, no_hashes },
+    { "tan", 7,    _135_non__math_rq_tan_a, 0, no_hashes },
+    { "atan", 7,   _135_non__math_rq_atan_a, 0, no_hashes },
+    { "atan2", 7,  _135_non__math_rq_atan2_a, 0, no_hashes },
+    { "asin", 7,   _135_non__math_rq_asin_a, 0, no_hashes },
+    { "acos", 7,   _135_non__math_rq_acos_a, 0, no_hashes },
+    { "sqt", 7,    _135_non__math_rq_sqt_a, 0, no_hashes },
+    { "cbt", 7,    _135_non__math_rq_cbt_a, 0, no_hashes },
+    { "pow", 7,    _135_non__math_rq_pow_a, 0, no_hashes },
+    { "pow-n", 7,  _135_non__math_rq_pow_n_a, 0, no_hashes },
+    { "log-2", 7,  _135_non__math_rq_log2_a, 0, no_hashes },
     { "log-10", 7, _135_non__math_rq_log10_a, 0, no_hashes },
     {}
   };
@@ -1093,7 +1093,7 @@ static u3j_core _135_non__math_d[] =
 
 static u3j_core _135_non_d[] =
   { { "lagoon", 7, 0, _135_non__la_core_d, no_hashes },
-    { "math", 7, 0, _135_non__math_d, no_hashes },
+    { "math", 15, 0, _135_non__math_d, no_hashes },
     { "mice", 7, _135_non__mice_a, 0, no_hashes },
     {}
   };

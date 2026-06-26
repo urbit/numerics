@@ -1093,7 +1093,7 @@ static u3j_core _135_non__math_d[] =
 
 static u3j_core _135_non_d[] =
   { { "lagoon", 7, 0, _135_non__la_core_d, no_hashes },
-    { "math", 15, 0, _135_non__math_d, no_hashes },
+    { "math", 7, 0, _135_non__math_d, no_hashes },
     { "mice", 7, _135_non__mice_a, 0, no_hashes },
     {}
   };

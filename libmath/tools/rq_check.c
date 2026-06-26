@@ -31,6 +31,7 @@ static double ulp_err(q g,mpfr_t tr){
   double r=mpfr_get_d(d,MPFR_RNDN); if(r<0)r=-r; mpfr_clears(gv,d,u,(mpfr_ptr)0); return r;}
 static const q LOG2E={{0xe1777d0ffda0d23aull,0x3fff71547652b82full}},LN2HI={{0xf35793c800000000ull,0x3ffe62e42fefa39eull}},LN2LO={{0xfc32f366359d274aull,0xbfad319ff0342542ull}},HALF={{0x0000000000000000ull,0x3ffe000000000000ull}},ONE={{0x0000000000000000ull,0x3fff000000000000ull}},TWO={{0x0000000000000000ull,0x4000000000000000ull}},SQRT2={{0xc908b2fb1366ea95ull,0x3fff6a09e667f3bcull}};
 static const q INVPIO2={{0x2a53f84eafa3ea6aull,0x3ffe45f306dc9c88ull}},PIO2_1={{0x8460000000000000ull,0x3fff921fb54442d1ull}},PIO2_1T={{0x07344a409382229aull,0x3fc2313198a2e037ull}};
+static const q THIRD={{0x5555555555555555ull,0x3ffd555555555555ull}};  // 1/3, matches ++cbt
 // exp: fdlibm rational reconstruction; EXC = even minimax P(t), t=r^2 (deg-10)
 static const q EXC[11]={
   {{0x5555555555555555ull,0x3ffc555555555555ull}},
@@ -96,6 +97,10 @@ static q cosq(q x){
   int64_t k; q rhi,rlo; reduce(ax,&k,&rhi,&rlo); int m=((int)k)&3;
   q ks=ksinq(rhi,rlo), kc=kcosq(rhi,rlo);
   return m==0?kc : m==1?negq(ks) : m==2?negq(kc):ks;}
+static q cbtq(q x){  // ++cbt: exp(log|x|/3), sign-restored (perfect cubes -> exact)
+  q ax=x; ax.v[1]&=0x7fffffffffffffffULL;
+  q r=expq(qmul(logq(ax),THIRD));
+  return (x.v[1]>>63) ? negq(r) : r;}
 int main(void){
   softfloat_roundingMode=softfloat_round_near_even;
   mpfr_t tr; mpfr_init2(tr,300); double we=0,wl=0,ws=0,wc=0,wq=0; q inv128=q2k(-7);
@@ -115,8 +120,13 @@ int main(void){
   for(int i=1;i<=25600;i++){ q x=qmul(qi(i),inv128); q g=qsqt(x);
     mpfr_set_si(tr,i,MPFR_RNDN); mpfr_div_ui(tr,tr,128,MPFR_RNDN); mpfr_sqrt(tr,tr,MPFR_RNDN);
     double e=ulp_err(g,tr); if(e>wq)wq=e; }
-  printf("# rq: exp %.3f  log %.3f  sin %.3f  cos %.3f  sqrt %.3f ULP\n",we,wl,ws,wc,wq);
-  qprint("sin(1)  = ",sinq(qi(1)));
-  qprint("cos(1)  = ",cosq(qi(1)));
-  qprint("sqrt(2) = ",qsqt(qi(2)));
+  double wb=0;                                            // cbt = exp(log|x|/3)
+  for(int i=-25600;i<=25600;i++){ if(i==0)continue; q x=qmul(qi(i),inv128); q g=cbtq(x);
+    mpfr_set_si(tr,i,MPFR_RNDN); mpfr_div_ui(tr,tr,128,MPFR_RNDN); mpfr_cbrt(tr,tr,MPFR_RNDN);
+    double e=ulp_err(g,tr); if(e>wb)wb=e; }
+  printf("# rq: exp %.3f  log %.3f  sin %.3f  cos %.3f  sqrt %.3f  cbt %.3f ULP\n",we,wl,ws,wc,wq,wb);
+  qprint("sin(1)   = ",sinq(qi(1)));
+  qprint("cos(1)   = ",cosq(qi(1)));
+  qprint("sqrt(2)  = ",qsqt(qi(2)));
+  qprint("cbt(-27) = ",cbtq(qi(-27)));               // perfect cube -> exact -3 = 0xc000.8000...
   mpfr_clear(tr); return 0;}

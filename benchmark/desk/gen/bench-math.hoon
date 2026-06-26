@@ -16,12 +16,13 @@
 ?-  door
 ::
   %rd
+    =/  den  (sun:rd den.dm)
+    =/  lof  (div:rd (san:rd lo.dm) den)
+    =/  wid  (sub:rd (div:rd (san:rd hi.dm) den) lof)
+    =/  spn  (sun:rd span.dm)
     =/  inp
       |=  i=@ud  ^-  @rd
-      =/  lof  (div:rd (san:rd lo.dm) (sun:rd den.dm))
-      =/  hif  (div:rd (san:rd hi.dm) (sun:rd den.dm))
-      =/  k    (div:rd (sun:rd (mod i span.dm)) (sun:rd span.dm))
-      (add:rd lof (mul:rd k (sub:rd hif lof)))
+      (add:rd lof (mul:rd (div:rd (sun:rd (mod i span.dm)) spn) wid))
     =/  step
       |=  [i=@ud acc=@]  ^-  @
       =/  x  (inp i)
@@ -49,12 +50,13 @@
     (time n step)
 ::
   %rs
+    =/  den  (sun:rs den.dm)
+    =/  lof  (div:rs (san:rs lo.dm) den)
+    =/  wid  (sub:rs (div:rs (san:rs hi.dm) den) lof)
+    =/  spn  (sun:rs span.dm)
     =/  inp
       |=  i=@ud  ^-  @rs
-      =/  lof  (div:rs (san:rs lo.dm) (sun:rs den.dm))
-      =/  hif  (div:rs (san:rs hi.dm) (sun:rs den.dm))
-      =/  k    (div:rs (sun:rs (mod i span.dm)) (sun:rs span.dm))
-      (add:rs lof (mul:rs k (sub:rs hif lof)))
+      (add:rs lof (mul:rs (div:rs (sun:rs (mod i span.dm)) spn) wid))
     =/  step
       |=  [i=@ud acc=@]  ^-  @
       =/  x  (inp i)
@@ -82,12 +84,13 @@
     (time n step)
 ::
   %rh
+    =/  den  (sun:rh den.dm)
+    =/  lof  (div:rh (san:rh lo.dm) den)
+    =/  wid  (sub:rh (div:rh (san:rh hi.dm) den) lof)
+    =/  spn  (sun:rh span.dm)
     =/  inp
       |=  i=@ud  ^-  @rh
-      =/  lof  (div:rh (san:rh lo.dm) (sun:rh den.dm))
-      =/  hif  (div:rh (san:rh hi.dm) (sun:rh den.dm))
-      =/  k    (div:rh (sun:rh (mod i span.dm)) (sun:rh span.dm))
-      (add:rh lof (mul:rh k (sub:rh hif lof)))
+      (add:rh lof (mul:rh (div:rh (sun:rh (mod i span.dm)) spn) wid))
     =/  step
       |=  [i=@ud acc=@]  ^-  @
       =/  x  (inp i)
@@ -115,12 +118,13 @@
     (time n step)
 ::
   %rq
+    =/  den  (sun:rq den.dm)
+    =/  lof  (div:rq (san:rq lo.dm) den)
+    =/  wid  (sub:rq (div:rq (san:rq hi.dm) den) lof)
+    =/  spn  (sun:rq span.dm)
     =/  inp
       |=  i=@ud  ^-  @rq
-      =/  lof  (div:rq (san:rq lo.dm) (sun:rq den.dm))
-      =/  hif  (div:rq (san:rq hi.dm) (sun:rq den.dm))
-      =/  k    (div:rq (sun:rq (mod i span.dm)) (sun:rq span.dm))
-      (add:rq lof (mul:rq k (sub:rq hif lof)))
+      (add:rq lof (mul:rq (div:rq (sun:rq (mod i span.dm)) spn) wid))
     =/  step
       |=  [i=@ud acc=@]  ^-  @
       =/  x  (inp i)

@@ -1202,9 +1202,9 @@ typedef int64_t  c3_ds;
     return f16_mul(t, pp.h);
   }
   static float16_t _rh_asin(float16_t x) {
-    union half r0, ax, t, w, r, s, res, half, one, two, pio2h, pio2l, pio4, near;
+    union half r0, ax, t, w, r, s, res, half, one, two, pio2h, pio2l, pio4, nr1;
     half.c=0x3800; one.c=0x3c00; two.c=0x4000;
-    pio2h.c=0x3e48; pio2l.c=0x0fed; pio4.c=0x3a48; near.c=0x3bcd;
+    pio2h.c=0x3e48; pio2l.c=0x0fed; pio4.c=0x3a48; nr1.c=0x3bcd;
     r0.h = x;
     if ( !f16_eq(x, x) )       { r0.c = _RH_QNAN; return r0.h; }   // NaN
     uint16_t sgn = r0.c >> 15;
@@ -1221,7 +1221,7 @@ typedef int64_t  c3_ds;
     t.h = f16_mul(w.h, half.h);
     r.h = _rh_ainv_rr(t.h);
     s.h = f16_sqrt(t.h);
-    if ( f16_le(near.h, ax.h) ) {                                // |x|>=0.975
+    if ( f16_le(nr1.h, ax.h) ) {                                // |x|>=0.975
       res.h = f16_sub(pio2h.h, f16_mul(two.h, f16_add(s.h, f16_mul(s.h, r.h))));
       return (sgn == 1) ? _rh_neg(res.h) : res.h;
     }

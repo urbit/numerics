@@ -1,30 +1,31 @@
 ::  bench-core: shared timing loop for the numerics benchmark suite.
 ::
-::  `time` runs a tight n-iteration loop wrapped in ~>(%bout ...), which PRINTS
-::  the elapsed time ("took ms/..") as a slog and RETURNS the computed value.
-::  The host driver (tools/bench_run.sh) scrapes the printed line; the returned
-::  value is the folded accumulator, present only to force evaluation of every
-::  call (defeats dead-code elimination).
+::  `time` runs a tight loop over a PRECOMPUTED list of inputs, wrapped in
+::  ~>(%bout ...), which PRINTS the elapsed time ("took ms/..") as a slog and
+::  RETURNS the folded accumulator.  The host driver scrapes the printed line;
+::  the returned value forces evaluation of every call (defeats dead-code
+::  elimination).
 ::
-::  The per-iteration work is supplied as a `step` gate |=([i=@ud acc=@] @):
-::  given the loop counter i and the running accumulator, it generates a VARYING
-::  input from i, calls the primitive, folds the result into acc, and returns it.
-::  Because the input depends on i and the result feeds acc (which is returned),
-::  neither the input nor the whole loop is a constant the runtime can memo-cache.
+::  CRITICAL: inputs are precomputed by the caller OUTSIDE this gate, so the
+::  slow interpreted @ud->@rX conversions (sun:rd / san:rd, ~93 us/call) are
+::  NOT charged to per-call cost.  Inside the timed loop the only work is the
+::  arm under test plus a jetted atom-add fold -- both the input list walk
+::  (O(1) head access) and the fold are cheap, so the measured time reflects
+::  the arm, isolated.  Each input is a [x y] pair; y is unused (0) for the
+::  single-argument arms and carries the second operand for atan2/pow/pow-n.
 ::
-::  Per-call cost = (time(arm-step) - time(baseline-step)) / n, where the baseline
-::  step does the input generation and fold but skips the primitive.
+::  Per-call cost = (time(arm-list) - time(base-list)) / n, where the base list
+::  uses the same inputs but the step skips the transcendental.
 ::
 |%
-::    +time:  run n iterations of `step`, timed by %bout; return the accumulator.
+::    +time:  walk the precomputed input list, timed by %bout; return the acc.
 ::
 ++  time
-  |=  [n=@ud step=$-([@ud @] @)]
+  |=  [xs=(list [x=@ y=@]) step=$-([[x=@ y=@] acc=@] @)]
   ^-  @
   ~>  %bout
-  =/  i=@ud   0
-  =/  acc=@   `@`0
+  =/  acc=@  `@`0
   |-  ^-  @
-  ?:  =(i n)  acc
-  $(i +(i), acc (step i acc))
+  ?~  xs  acc
+  $(xs t.xs, acc (step i.xs acc))
 --

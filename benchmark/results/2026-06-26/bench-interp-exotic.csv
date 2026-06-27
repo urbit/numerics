@@ -1,0 +1,9 @@
+word_size,impl,door,arm,n,set,elapsed_us,status,note
+32,taylor,rh,base,10,0,400,ok,salvaged
+32,taylor,rh,base,10,1,23,ok,salvaged
+32,taylor,rh,base,10,2,22,ok,salvaged
+32,taylor,rh,base,10,3,22,ok,salvaged
+32,taylor,rh,base,10,4,23,ok,salvaged
+32,taylor,rh,exp,10,0,707686704,ok,salvaged
+32,taylor,rh,exp,10,1,691747101,ok,salvaged
+32,taylor,rh,exp,10,2,692082552,ok,salvaged

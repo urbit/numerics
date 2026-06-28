@@ -143,3 +143,47 @@ _UNUM_UNOP(sqt, p8_sqrt, p16_sqrt, p32_sqrt)
     if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
     return u3qi_unum_fma(bloq, a, b, c);
   }
+
+//  Elementary / transcendental functions.  Unary ones (incl. log-2/log-10,
+//  which map to SoftUnum's base-2/base-10 log fns) reuse the unary template;
+//  pow is binary; pow-n is posit ^ @u (the exponent is a raw integer, not a
+//  posit).  Constants (pi/e/...) are left to pure Hoon, like /lib/math.
+_UNUM_UNOP(exp, p8_exp, p16_exp, p32_exp)
+_UNUM_UNOP(sin, p8_sin, p16_sin, p32_sin)
+_UNUM_UNOP(cos, p8_cos, p16_cos, p32_cos)
+_UNUM_UNOP(tan, p8_tan, p16_tan, p32_tan)
+_UNUM_UNOP(log, p8_log, p16_log, p32_log)
+_UNUM_UNOP(log2, p8_log2, p16_log2, p32_log2)
+_UNUM_UNOP(log10, p8_log10, p16_log10, p32_log10)
+_UNUM_UNOP(cbrt, p8_cbrt, p16_cbrt, p32_cbrt)
+_UNUM_UNOP(atan, p8_atan, p16_atan, p32_atan)
+_UNUM_UNOP(asin, p8_asin, p16_asin, p32_asin)
+_UNUM_UNOP(acos, p8_acos, p16_acos, p32_acos)
+_UNUM_UNOP(factorial, p8_factorial, p16_factorial, p32_factorial)
+_UNUM_BINOP(pow, p8_pow, p16_pow, p32_pow)
+
+/* ++pow-n:pp -- posit ^ @u (integer power); the exponent is a raw unsigned
+** integer, not a posit, so it is read as a plain chub.
+*/
+  u3_noun
+  u3qi_unum_pow_n(c3_d bloq, u3_atom x, u3_atom p)
+  {
+    c3_d ux = u3r_chub(0, x), up = u3r_chub(0, p), r;
+    switch ( bloq ) {
+      case 3:  r = p8_pow_n((posit8_t)ux, up);  break;
+      case 4:  r = p16_pow_n((posit16_t)ux, up); break;
+      case 5:  r = p32_pow_n((posit32_t)ux, up); break;
+      default: return u3_none;
+    }
+    return u3i_chubs(1, &r);
+  }
+
+  u3_noun
+  u3wi_unum_pow_n(u3_noun cor)
+  {
+    u3_noun x, p;  c3_d bloq;
+    if ( c3n == u3r_mean(cor, u3x_sam_2, &x, u3x_sam_3, &p, 0) ||
+         c3n == u3ud(x) || c3n == u3ud(p) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_pow_n(bloq, x, p);
+  }

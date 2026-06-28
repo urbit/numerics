@@ -356,6 +356,7 @@
   ::
   ::    +exp:  @ -> @   (e^x = sum x^k/k!)
   ++  exp
+    ~/  %exp
     |=  x=@
     ^-  @
     =/  sum   one
@@ -368,6 +369,7 @@
     $(nn +(nn))
   ::    +sin:  @ -> @   (sum (-1)^k x^(2k+1)/(2k+1)!)
   ++  sin
+    ~/  %sin
     |=  x=@
     ^-  @
     =/  term  x
@@ -381,6 +383,7 @@
     $(nn +(nn))
   ::    +cos:  @ -> @   (sum (-1)^k x^2k/(2k)!)
   ++  cos
+    ~/  %cos
     |=  x=@
     ^-  @
     =/  term  one
@@ -393,9 +396,12 @@
     =.  sum   (add sum term)
     $(nn +(nn))
   ::    +tan:  @ -> @
-  ++  tan  |=(x=@ ^-(@ (div (sin x) (cos x))))
+  ++  tan
+    ~/  %tan
+    |=(x=@ ^-(@ (div (sin x) (cos x))))
   ::    +pow-n:  @ -> @u -> @   (integer power by repeated multiplication)
   ++  pow-n
+    ~/  %pow-n
     |=  [x=@ p=@u]
     ^-  @
     ?:  =(nar x)  nar            :: NaR propagates even when p=0
@@ -408,6 +414,7 @@
   ::  bit pattern, and posit zero) returns NaR rather than a divergent
   ::  series result.  Like the rest of /lib/math, accurate only near 1.
   ++  log
+    ~/  %log
     |=  x=@
     ^-  @
     ?:  (lte x zero)  nar
@@ -423,14 +430,21 @@
     =.  sum   (add sum (mul coef term))
     $(nn +(nn))
   ::    +log-2 / +log-10:  base-2 / base-10 logarithm
-  ++  log-2   |=(x=@ ^-(@ (div (log x) log2)))
-  ++  log-10  |=(x=@ ^-(@ (div (log x) log10)))
+  ++  log-2
+    ~/  %log-2
+     |=(x=@ ^-(@ (div (log x) log2)))
+  ++  log-10
+    ~/  %log-10
+    |=(x=@ ^-(@ (div (log x) log10)))
   ::    +pow:  @ -> @ -> @   (x^y = exp(y * log x))
-  ++  pow  |=([x=@ y=@] ^-(@ (exp (mul y (log x)))))
+  ++  pow
+    ~/  %pow
+    |=([x=@ y=@] ^-(@ (exp (mul y (log x)))))
   ::    +factorial:  @ -> @   (x! by repeated multiplication)
   ::  Domain x >= 0 (NaR otherwise, and NaR propagates); for integer x this is
   ::  exact up to the precision, halting once x <= 1.  Mirrors /lib/math.
   ++  factorial
+    ~/  %factorial
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -443,6 +457,7 @@
   ::  Domain x > 0 (NaR for x < 0, like the rest of the exp/log-based ops);
   ::  cbrt(0) = 0.  Mirrors /lib/math's `cbt = (pow x .0.33...)`.
   ++  cbrt
+    ~/  %cbrt
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -454,6 +469,7 @@
   ::  (1+x^2)^-0.5 and 1.  Fixed iteration count (AGM converges quadratically).
   ::  Odd in x, so negative arguments are handled by the carried sign.
   ++  atan
+    ~/  %atan
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -472,6 +488,7 @@
   ::  arcsin(x) = atan(x / sqrt(1 - x^2)) for |x| < 1; +-pi/2 at x = +-1;
   ::  NaR outside [-1, 1].  Mirrors /lib/math.
   ++  asin
+    ~/  %asin
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -484,6 +501,7 @@
   ::  arccos(x) = atan(sqrt(1 - x^2) / x) for 0 < |x| < 1 (pi/2 at 0); 0 at
   ::  x = 1, pi at x = -1; NaR outside [-1, 1].  Mirrors /lib/math.
   ++  acos
+    ~/  %acos
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar

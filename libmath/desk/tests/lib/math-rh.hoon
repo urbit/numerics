@@ -27,7 +27,7 @@
 ++  test-sin-1     (expect-eq !>(`@`0x3abb) !>((sh `@rh`0x3c00)))
 ++  test-sin-pi    (expect-eq !>(`@`0x13ed) !>((sh `@rh`0x4248)))
 ++  test-cos-1     (expect-eq !>(`@`0x3853) !>((ch `@rh`0x3c00)))
-++  test-tan-1     (expect-eq !>(`@`0x3e3b) !>((th `@rh`0x3c00)))
+++  test-tan-1     (expect-eq !>(`@`0x3e3a) !>((th `@rh`0x3c00)))
 ++  test-atan-1    (expect-eq !>(`@`0x3a48) !>((ath `@rh`0x3c00)))
 ++  test-atan-2    (expect-eq !>(`@`0x3c6e) !>((ath `@rh`0x4000)))
 ++  test-asin-half  (expect-eq !>(`@`0x3830) !>((ash `@rh`0x3800)))

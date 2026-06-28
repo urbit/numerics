@@ -5,13 +5,8 @@
 ::::                    ++la                          ::  (2v) vector/matrix ops
 ~%  %non  ..part  ~  :: nest non in hex for now
 |%
-::    +$rounding-mode:  the four IEEE modes the @r precision doors accept
-::
-::  %n (nearest, ties to even), %u (toward +inf), %d (toward -inf), %z (toward
-::  zero).  The ++fl engine and the C jets' _set_rounding also implement %a
-::  (nearest, ties away from zero), but the @rs/@rd/@rq/@rh precision doors do
-::  not expose it, so %a is excluded here; the jets handle it defensively only.
-+$  rounding-mode  ?(%n %u %d %z)
+::    $rounding-mode:  the four IEEE modes the @r precision doors accept
++$  rounding-mode  ?(%n %u %d %z)   :: round nearest, up, down, to zero
 ::    +lake:  rounding-mode -> _la
 ::
 ::  A copy of the +la core with its rounding mode set to .inrnd (so subsequent

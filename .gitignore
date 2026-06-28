@@ -84,3 +84,8 @@ pkg/interface/link-webext/web-ext-artifacts
 *.log
 
 .vercel
+
+# benchmark runtime artifacts (not committed)
+benchmark/bin/
+benchmark/piers/
+benchmark/numjet.pill

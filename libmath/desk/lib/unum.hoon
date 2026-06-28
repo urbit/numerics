@@ -170,15 +170,32 @@
   ++  gte-s  |=([a=@s b=@s] ^-(? !=(-1 (cmp:si a b))))
   ++  lte-s  |=([a=@s b=@s] ^-(? !=(--1 (cmp:si a b))))
   ::  Comparisons (= two's-complement integer ordering of the raw bits, sec 5.3).
-  ++  gth  |=([a=@ b=@] ^-(? (~(gth twoc:twoc bloq) a b)))
-  ++  lth  |=([a=@ b=@] ^-(? (~(lth twoc:twoc bloq) a b)))
-  ++  gte  |=([a=@ b=@] ^-(? (~(gte twoc:twoc bloq) a b)))
-  ++  lte  |=([a=@ b=@] ^-(? (~(lte twoc:twoc bloq) a b)))
-  ++  equ  |=([a=@ b=@] ^-(? =(a b)))
-  ++  neq  |=([a=@ b=@] ^-(? !=(a b)))
-  ++  neg  |=(a=@ ^-(@ (dis msk (^sub (bex n) a))))
-  ++  abs  |=(a=@ ^-(@ ?:(=(1 (~(msb twoc:twoc bloq) a)) (neg a) a)))
+  ++  gth
+    ~/  %gth
+    |=([a=@ b=@] ^-(? (~(gth twoc:twoc bloq) a b)))
+  ++  lth
+    ~/  %lth
+    |=([a=@ b=@] ^-(? (~(lth twoc:twoc bloq) a b)))
+  ++  gte
+    ~/  %gte
+    |=([a=@ b=@] ^-(? (~(gte twoc:twoc bloq) a b)))
+  ++  lte
+    ~/  %lte
+    |=([a=@ b=@] ^-(? (~(lte twoc:twoc bloq) a b)))
+  ++  equ
+    ~/  %equ
+    |=([a=@ b=@] ^-(? =(a b)))
+  ++  neq
+    ~/  %neq
+    |=([a=@ b=@] ^-(? !=(a b)))
+  ++  neg
+    ~/  %neg
+    |=(a=@ ^-(@ (dis msk (^sub (bex n) a))))
+  ++  abs
+    ~/  %abs
+    |=(a=@ ^-(@ ?:(=(1 (~(msb twoc:twoc bloq) a)) (neg a) a)))
   ++  sgn
+    ~/  %sgn
     |=  a=@
     ^-  @
     ?:  =(zero a)  zero
@@ -187,6 +204,7 @@
     one
   ::  Arithmetic (sec 5.4); exact g-layer combine, single round via +bit.
   ++  mul
+    ~/  %mul
     |=  [a=@ b=@]
     ^-  @
     =/  ua  (sea a)
@@ -217,8 +235,11 @@
     ?:  (^gth s2 s1)
       (bit [%p s.ub emin (^sub s2 s1)])
     zero
-  ++  sub  |=([a=@ b=@] ^-(@ (add a (neg b))))
+  ++  sub
+    ~/  %sub
+    |=([a=@ b=@] ^-(@ (add a (neg b))))
   ++  div
+    ~/  %div
     |=  [a=@ b=@]
     ^-  @
     =/  ua  (sea a)
@@ -248,6 +269,7 @@
       r
     $(r nr)
   ++  sqt
+    ~/  %sqt
     |=  p=@
     ^-  @
     =/  u  (sea p)
@@ -303,6 +325,7 @@
     =/  mag  ?:((gte-s e.ur --0) (lsh [0 sh] a.ur) (rsh [0 sh] a.ur))
     `(new:si s.ur mag)
   ++  fma
+    ~/  %fma
     |=  [a=@ b=@ c=@]
     ^-  @
     =/  ua  (sea a)

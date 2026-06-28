@@ -1,0 +1,482 @@
+cd /Users/neal/urbit/numerics/benchmark && ./bin/urbit-nojet-32 -F zod -B /tmp/v4.4.pill -c piers/exotic
+(base) ➜  benchmark cd /Users/neal/urbit/numerics/benchmark && ./bin/urbit-nojet-32 -F zod -B /tmp/v4.4.pill -c piers/exotic
+~
+urbit 4.4-257dbc2
+boot: home is /Users/neal/urbit/numerics/benchmark/piers/exotic
+loom: mapped 2048MB
+lite: arvo formula 4ce68411
+lite: core 641296f
+lite: final state 641296f
+boot: loading pill /private/tmp/v4.4.pill
+disk: loaded epoch 0i0
+loom: mapped 2048MB
+boot: protected loom
+live: logical boot
+boot: installed 2308 jets
+boot: parsing %brass pill
+--------------- bootstrap starting ----------------
+boot: 1-21
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1-b
+1-c (compiling compiler, wait a few minutes)
+took µs/3
+1-d
+took µs/24
+1-e
+ride: parsing
+ride: compiling
+ride: compiled
+took ms/55.117
+1-f
+took µs/3
+1-g
+took ms/4.690
+lull: 0vc.3u2io
+zuse: 0ve.tug7l
+vane: %ames: 0vj.05pdc
+vane: %behn: 0v1s.oesbr
+vane: %clay: 0v4.aismq
+vane: %dill: 0v1l.85ao1
+vane: %eyre: 0vg.feekf
+vane: %gall: 0vk.ie9q7
+vane: %iris: 0v1p.u1u45
+vane: %jael: 0v18.cmvih
+vane: %khan: 0vi.g4115
+vane: %lick: 0vt.n7tn5
+arvo: metamorphosis
+ames: metamorphosis on %call
+disk: loaded epoch 0i0
+loom: mapped 2048MBase after kernel update
+boot: protected loomme
+live: mapped: MB/762.478.592
+boot: installed 2308 jets
+gall: installing %dojo
+gall: installing %eth-watcher
+gall: installing %hood
+drum: link [~zod %dojo]
+kiln: boot
+gall: installing %herm
+gall: installing %lens
+gall: installing %ping
+gall: installing %spider
+gall: installing %docket
+gall: installing %hark
+gall: installing %settings
+gall: installing %storage
+gall: installing %treaty
+gall: installing %vitals
+docket: fetching %http glob for %webterm desk
+docket: fetching %http glob for %landscape desk
+docket: fetching %http glob for %webterm desk
+docket: fetching %http glob for %landscape desk
+docket: fetching %http glob for %groups desk
+gall: installing %logs
+gall: installing %groups
+gall: installing %chat
+gall: installing %notify
+gall: installing %grouper
+gall: installing %groups-ui
+gall: installing %channels
+gall: installing %channels-server
+gall: installing %profile
+gall: installing %activity
+gall: installing %contacts
+gall: installing %reel
+gall: installing %bait
+gall: installing %growl
+gall: installing %bark
+gall: installing %genuine
+gall: installing %lanyard
+gall: installing %dumb-proxy
+gall: installing %expose
+gall: installing %metagrab
+clay: base is always essential
+--------------- bootstrap complete ----------------
+dock: pace (once): configured at /Users/neal/urbit/numerics/benchmark/piers/exotic/.bin/pace
+vere: binary copy succeeded
+vere: checking version compatibility
+lick: init mkdir /Users/neal/urbit/numerics/benchmark/piers/exotic/.urb/dev
+mesa: forwarding enabled
+mesa: live on 31337 (localhost only)
+conn: listening on /Users/neal/urbit/numerics/benchmark/piers/exotic/.urb/conn.sock
+ames: unix-duct received on %born
+http: web interface live on http://localhost:80
+http: loopback live on http://localhost:12321
+pier (34): live
+docket: fetching %http glob for %landscape desk
+mdns: fake-zod registered on all interfaces
+> hoon-version
+%136
+> |mount %base
+>=
+>
+>
+> |commit %base
+>=
+: /~zod/base/2/lib/math/hoon
++ /~zod/base/2/lib/math-taylor/hoon
++ /~zod/base/2/gen/bench-grid/hoon
++ /~zod/base/2/lib/bench-cells/hoon
++ /~zod/base/2/lib/bench-domains/hoon
++ /~zod/base/2/lib/bench-core/hoon
+>
+>
+>   [%cell %rh %base 0 1.000]
+took ms/2.401
+>   [%cell %rh %base 1 1.000]
+took ms/2.080
+>   [%cell %rh %base 2 1.000]
+took ms/2.072
+>   [%cell %rh %base 3 1.000]
+took ms/2.067
+>   [%cell %rh %base 4 1.000]
+took ms/2.146
+>   [%cell %rh %exp 0 1.000]
+took ms/279.914
+>   [%cell %rh %exp 1 1.000]
+took ms/275.905
+>   [%cell %rh %exp 2 1.000]
+took ms/277.172
+>   [%cell %rh %exp 3 1.000]
+took ms/277.520
+>   [%cell %rh %exp 4 1.000]
+took ms/277.613
+>   [%cell %rh %log 0 1.000]
+took ms/132.682
+>   [%cell %rh %log 1 1.000]
+took ms/132.410
+>   [%cell %rh %log 2 1.000]
+took ms/132.615
+>   [%cell %rh %log 3 1.000]
+took ms/132.742
+>   [%cell %rh %log 4 1.000]
+took ms/132.573
+>   [%cell %rh %sin 0 1.000]
+took ms/246.900
+>   [%cell %rh %sin 1 1.000]
+took ms/247.550
+>   [%cell %rh %sin 2 1.000]
+took ms/247.246
+>   [%cell %rh %sin 3 1.000]
+took ms/247.051
+>   [%cell %rh %sin 4 1.000]
+took ms/246.844
+>   [%cell %rh %cos 0 1.000]
+took ms/243.072
+>   [%cell %rh %cos 1 1.000]
+took ms/244.770
+>   [%cell %rh %cos 2 1.000]
+took ms/243.159
+>   [%cell %rh %cos 3 1.000]
+took ms/242.219
+>   [%cell %rh %cos 4 1.000]
+took ms/242.974
+>   [%cell %rh %tan 0 1.000]
+took ms/489.075
+>   [%cell %rh %tan 1 1.000]
+took ms/486.349
+>   [%cell %rh %tan 2 1.000]
+took ms/487.788
+>   [%cell %rh %tan 3 1.000]
+took ms/488.374
+>   [%cell %rh %tan 4 1.000]
+took ms/492.168
+>   [%cell %rh %atan 0 1.000]
+took ms/30.788
+>   [%cell %rh %atan 1 1.000]
+took ms/32.076
+>   [%cell %rh %atan 2 1.000]
+took ms/30.796
+>   [%cell %rh %atan 3 1.000]
+took ms/30.639
+>   [%cell %rh %atan 4 1.000]
+took ms/30.650
+>   [%cell %rh %atan2 0 1.000]
+took ms/39.496
+>   [%cell %rh %atan2 1 1.000]
+took ms/39.232
+>   [%cell %rh %atan2 2 1.000]
+took ms/39.857
+>   [%cell %rh %atan2 3 1.000]
+took ms/39.115
+>   [%cell %rh %atan2 4 1.000]
+took ms/39.417
+>   [%cell %rh %asin 0 1.000]
+took ms/41.345
+>   [%cell %rh %asin 1 1.000]
+took ms/40.971
+>   [%cell %rh %asin 2 1.000]
+took ms/41.287
+>   [%cell %rh %asin 3 1.000]
+took ms/41.407
+>   [%cell %rh %asin 4 1.000]
+took ms/41.258
+>   [%cell %rh %acos 0 1.000]
+took ms/30.078
+>   [%cell %rh %acos 1 1.000]
+took ms/30.099
+>   [%cell %rh %acos 2 1.000]
+took ms/30.043
+>   [%cell %rh %acos 3 1.000]
+took ms/30.163
+>   [%cell %rh %acos 4 1.000]
+took ms/30.725
+>   [%cell %rh %sqt 0 1.000]
+took ms/4.644
+>   [%cell %rh %sqt 1 1.000]
+took ms/4.605
+>   [%cell %rh %sqt 2 1.000]
+took ms/4.536
+>   [%cell %rh %sqt 3 1.000]
+took ms/4.588
+>   [%cell %rh %sqt 4 1.000]
+took ms/4.617
+>   [%cell %rh %cbt 0 1.000]
+took ms/434.680
+>   [%cell %rh %cbt 1 1.000]
+took ms/435.019
+>   [%cell %rh %cbt 2 1.000]
+took ms/434.568
+>   [%cell %rh %cbt 3 1.000]
+took ms/435.704
+>   [%cell %rh %cbt 4 1.000]
+took ms/434.501
+>   [%cell %rh %pow 0 1.000]
+took ms/580.126
+>   [%cell %rh %pow 1 1.000]
+took ms/588.767
+>   [%cell %rh %pow 2 1.000]
+took ms/586.870
+>   [%cell %rh %pow 3 1.000]
+took ms/592.566
+>   [%cell %rh %pow 4 1.000]
+took ms/588.886
+>   [%cell %rh %pow-n 0 1.000]
+took ms/213.189
+>   [%cell %rh %pow-n 1 1.000]
+took ms/213.576
+>   [%cell %rh %pow-n 2 1.000]
+took ms/214.267
+>   [%cell %rh %pow-n 3 1.000]
+took ms/214.079
+>   [%cell %rh %pow-n 4 1.000]
+took ms/213.183
+>   [%cell %rh %log-2 0 1.000]
+took ms/131.531
+>   [%cell %rh %log-2 1 1.000]
+took ms/131.619
+>   [%cell %rh %log-2 2 1.000]
+took ms/131.345
+>   [%cell %rh %log-2 3 1.000]
+took ms/131.579
+>   [%cell %rh %log-2 4 1.000]
+took ms/132.376
+>   [%cell %rh %log-10 0 1.000]
+took ms/132.767
+>   [%cell %rh %log-10 1 1.000]
+took ms/131.671
+>   [%cell %rh %log-10 2 1.000]
+took ms/132.317
+>   [%cell %rh %log-10 3 1.000]
+took ms/132.458
+>   [%cell %rh %log-10 4 1.000]
+took ms/131.511
+>   %grid-done
+> +bench-grid %cheb 5 10.000 10.000 1.000 1.000 %rh
+~
+>
+>
+>   [%cell %rq %base 0 1.000]
+took ms/2.610
+>   [%cell %rq %base 1 1.000]
+took ms/2.245
+>   [%cell %rq %base 2 1.000]
+took ms/2.266
+>   [%cell %rq %base 3 1.000]
+took ms/2.285
+>   [%cell %rq %base 4 1.000]
+took ms/2.230
+>   [%cell %rq %exp 0 1.000]
+took ms/318.295
+>   [%cell %rq %exp 1 1.000]
+took ms/317.422
+>   [%cell %rq %exp 2 1.000]
+took ms/321.630
+>   [%cell %rq %exp 3 1.000]
+took ms/322.280
+>   [%cell %rq %exp 4 1.000]
+took ms/319.288
+>   [%cell %rq %log 0 1.000]
+took ms/196.447
+>   [%cell %rq %log 1 1.000]
+took ms/197.667
+>   [%cell %rq %log 2 1.000]
+took ms/196.969
+>   [%cell %rq %log 3 1.000]
+took ms/197.558
+>   [%cell %rq %log 4 1.000]
+took ms/204.805
+>   [%cell %rq %sin 0 1.000]
+took ms/332.131
+>   [%cell %rq %sin 1 1.000]
+took ms/331.126
+>   [%cell %rq %sin 2 1.000]
+took ms/333.895
+>   [%cell %rq %sin 3 1.000]
+took ms/336.353
+>   [%cell %rq %sin 4 1.000]
+took ms/334.619
+>   [%cell %rq %cos 0 1.000]
+took ms/328.786
+>   [%cell %rq %cos 1 1.000]
+took ms/329.503
+>   [%cell %rq %cos 2 1.000]
+took ms/331.645
+>   [%cell %rq %cos 3 1.000]
+took ms/328.558
+>   [%cell %rq %cos 4 1.000]
+took ms/328.427
+>   [%cell %rq %tan 0 1.000]
+took ms/658.625
+>   [%cell %rq %tan 1 1.000]
+took ms/655.579
+>   [%cell %rq %tan 2 1.000]
+took ms/652.098
+>   [%cell %rq %tan 3 1.000]
+took ms/648.932
+>   [%cell %rq %tan 4 1.000]
+took ms/649.835
+>   [%cell %rq %atan 0 1.000]
+took ms/95.287
+>   [%cell %rq %atan 1 1.000]
+took ms/96.273
+>   [%cell %rq %atan 2 1.000]
+took ms/95.298
+>   [%cell %rq %atan 3 1.000]
+took ms/95.160
+>   [%cell %rq %atan 4 1.000]
+took ms/94.978
+>   [%cell %rq %atan2 0 1.000]
+took ms/104.966
+>   [%cell %rq %atan2 1 1.000]
+took ms/106.984
+>   [%cell %rq %atan2 2 1.000]
+took ms/105.093
+>   [%cell %rq %atan2 3 1.000]
+took ms/104.520
+>   [%cell %rq %atan2 4 1.000]
+took ms/104.277
+>   [%cell %rq %asin 0 1.000]
+took ms/112.484
+>   [%cell %rq %asin 1 1.000]
+took ms/112.801
+>   [%cell %rq %asin 2 1.000]
+took ms/113.914
+>   [%cell %rq %asin 3 1.000]
+took ms/116.419
+>   [%cell %rq %asin 4 1.000]
+took ms/113.019
+>   [%cell %rq %acos 0 1.000]
+took ms/102.070
+>   [%cell %rq %acos 1 1.000]
+took ms/101.402
+>   [%cell %rq %acos 2 1.000]
+took ms/101.543
+>   [%cell %rq %acos 3 1.000]
+took ms/102.132
+>   [%cell %rq %acos 4 1.000]
+took ms/101.033
+>   [%cell %rq %sqt 0 1.000]
+took ms/12.745
+>   [%cell %rq %sqt 1 1.000]
+took ms/12.617
+>   [%cell %rq %sqt 2 1.000]
+took ms/12.792
+>   [%cell %rq %sqt 3 1.000]
+took ms/12.640
+>   [%cell %rq %sqt 4 1.000]
+took ms/12.708
+>   [%cell %rq %cbt 0 1.000]
+took ms/528.277
+>   [%cell %rq %cbt 1 1.000]
+took ms/526.314
+>   [%cell %rq %cbt 2 1.000]
+took ms/526.299
+>   [%cell %rq %cbt 3 1.000]
+took ms/525.783
+>   [%cell %rq %cbt 4 1.000]
+took ms/526.619
+>   [%cell %rq %pow 0 1.000]
+took ms/689.798
+>   [%cell %rq %pow 1 1.000]
+took ms/687.543
+>   [%cell %rq %pow 2 1.000]
+took ms/687.821
+>   [%cell %rq %pow 3 1.000]
+took ms/691.975
+>   [%cell %rq %pow 4 1.000]
+took ms/689.000
+>   [%cell %rq %pow-n 0 1.000]
+took ms/229.557
+>   [%cell %rq %pow-n 1 1.000]
+took ms/228.918
+>   [%cell %rq %pow-n 2 1.000]
+took ms/229.191
+>   [%cell %rq %pow-n 3 1.000]
+took ms/229.429
+>   [%cell %rq %pow-n 4 1.000]
+took ms/228.750
+>   [%cell %rq %log-2 0 1.000]
+took ms/195.666
+>   [%cell %rq %log-2 1 1.000]
+took ms/195.949
+>   [%cell %rq %log-2 2 1.000]
+took ms/196.389
+>   [%cell %rq %log-2 3 1.000]
+took ms/196.039
+>   [%cell %rq %log-2 4 1.000]
+took ms/196.045
+>   [%cell %rq %log-10 0 1.000]
+took ms/196.716
+>   [%cell %rq %log-10 1 1.000]
+took ms/198.377
+>   [%cell %rq %log-10 2 1.000]
+took ms/198.633
+>   [%cell %rq %log-10 3 1.000]
+took ms/198.073
+>   [%cell %rq %log-10 4 1.000]
+took ms/198.835
+>   %grid-done
+> +bench-grid %cheb 5 10.000 10.000 100 1.000 %rq
+~
+~zod:dojo>

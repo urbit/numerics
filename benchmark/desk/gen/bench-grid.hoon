@@ -11,10 +11,16 @@
 ::
 /+  bc=bench-cells
 :-  %say
-|=  [* [impl=?(%cheb %taylor) sets=@ud nrd=@ud nrs=@ud nrh=@ud nrq=@ud scope=?(%all %two) ~] ~]
+|=  [* [impl=?(%cheb %taylor) sets=@ud nrd=@ud nrs=@ud nrh=@ud nrq=@ud scope=@tas ~] ~]
 :-  %noun
-::  scope %two = @rd/@rs only (interpreted @rh/@rq are infeasible: un-jetted base ops).
-=/  doors=(list @tas)  ?:(=(scope %two) ~[%rd %rs] ~[%rd %rs %rh %rq])
+::  scope: %all=4 doors, %two=rd/rs, %rq=rq only, %rh=rh only.  @rh base ops aren't
+::  jetted (interpreted ~70s/call, infeasible); @rd/@rs/@rq base ARE jetted.
+=/  doors=(list @tas)
+  ?+  scope  ~[%rd %rs %rh %rq]
+    %two  ~[%rd %rs]
+    %rq   ~[%rq]
+    %rh   ~[%rh]
+  ==
 =/  arms=(list @tas)
   :~  %base  %exp  %log  %sin  %cos  %tan  %atan  %atan2
       %asin  %acos  %sqt  %cbt  %pow  %pow-n  %log-2  %log-10

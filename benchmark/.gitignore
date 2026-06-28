@@ -1,0 +1,12 @@
+# build artifacts & runtime state — never commit
+bin/
+piers/
+*.pill
+# crash-insurance snapshots & smoke scratch
+results/**/checkpoint*.txt
+results/smoke/
+results/**/cheb-rescue.txt
+# editor / tool detritus
+**/__pycache__/
+*.bak
+*.bak2

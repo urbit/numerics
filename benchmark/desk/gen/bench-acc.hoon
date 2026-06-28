@@ -22,7 +22,9 @@
 =/  alo   (dec (bex bw))
 =/  mono  |=(b=@ ^-(@ ?:(=(0 (dis b top)) (con b top) (mix b alo))))
 =/  ulp   |=([a=@ b=@] ^-(@ =/(x (mono a) =/(y (mono b) ?:((gth x y) (sub x y) (sub y x))))))
-=/  dm    (get:bd arm %cheb door)
+::  sweep the TAYLOR-safe domain — Taylor's iterative series is only accurate
+::  there; on the wider cheb domain it diverges and the ULP is meaningless.
+=/  dm    (get:bd arm %taylor door)
 =/  sweep
   |=  [inp=$-(@ud @) res=$-(@ [c=@ t=@])]  ^-  [@ud @ud]
   =/  i=@ud  0

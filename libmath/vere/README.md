@@ -19,9 +19,11 @@ hand-synced jet file is `unum.c`.
   `ext/softblas`); wired into `pkg/noun/build.zig{,.zon}`.
 - `pkg/noun/build.zig` — add `jets/i/unum.c` to the noun sources.
 - `pkg/noun/jets/w.h`, `q.h` — declare `u3wi_unum_*` / `u3qi_unum_*`.
-- `pkg/noun/jets/{135,136,137}/tree.c` — register `non/unum/<arm>` in **all
-  three** dashboards (a jet registered only in 135 will not fire on a
-  hoon-136/137 ship).
+- `pkg/noun/jets/135/tree.c` — register `non/unum/<arm>` in the **hoon-135**
+  dashboard.  We ship to the lowest (current) kelvin only; the 408k pill boots
+  hoon-135, so the 135 dashboard is the one consulted.  (Local testing against
+  newer kelvins may also touch `136/137/tree.c`, but those are NOT part of the
+  shipped change — only 135.)
 
 ## Hoon side (`libmath/desk/lib/unum.hoon`)
 
@@ -30,6 +32,9 @@ The library is jet-hinted to match: `~% %non ..part ~` on the file core,
 
 ## Status
 
-`++add:pp` (posit8/16/32) implemented and building; on-ship firing
-verification pending.  The remaining scalar/quire/conversion arms follow the
-same one-jet-per-op, bloq-dispatch pattern.
+`++add:pp` **fires bit-exact and verified on a live hoon-135 fakezod**:
+`(add:rpb:unum 0x40 0x40)` → `0x48`, `add:rph` → `0x4800`, `add:rps` →
+`0x4800.0000`, each dispatching the right width (bloq 3/4/5 read from the door
+sample at gate axis 30); posit64 (bloq 6) declines to the pure-Hoon arm and
+still returns the correct value.  The remaining scalar/quire/conversion arms
+follow the same one-jet-per-op, bloq-dispatch pattern.

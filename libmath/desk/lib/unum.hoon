@@ -302,17 +302,28 @@
     =?  hi  &(?=(%up mode) s.u !=(0 rem))     +(hi)
     ?:  =(0 hi)  zero
     (bit [%p s.u --0 hi])
-  ++  rnd  (round %near)
-  ++  flr  (round %down)
-  ++  cel  (round %up)
-  ++  sun  |=(v=@ ^-(@ ?:(=(0 v) zero (bit [%p %.y --0 v]))))
+  ::  rnd/flr/cel: eta-expanded to unary gates wrapping +round so they jet.
+  ++  rnd
+    ~/  %rnd
+    |=(p=@ ((round %near) p))
+  ++  flr
+    ~/  %flr
+    |=(p=@ ((round %down) p))
+  ++  cel
+    ~/  %cel
+    |=(p=@ ((round %up) p))
+  ++  sun
+    ~/  %sun
+    |=(v=@ ^-(@ ?:(=(0 v) zero (bit [%p %.y --0 v]))))
   ++  san
+    ~/  %san
     |=  v=@s
     ^-  @
     =+  [sn mg]=(old:si v)
     ?:  =(0 mg)  zero
     (bit [%p sn --0 mg])
   ++  toi
+    ~/  %toi
     |=  p=@
     ^-  (unit @s)
     =/  u  (sea p)
@@ -512,7 +523,9 @@
     ?:  (equ x (neg one))  pi
     nar
   ::    +is-close:  @ -> @ -> @ -> ?   (|a - b| <= tol)
-  ++  is-close  |=([a=@ b=@ tol=@] ^-(? (lte (abs (sub a b)) tol)))
+  ++  is-close
+    ~/  %is-close
+    |=([a=@ b=@ tol=@] ^-(? (lte (abs (sub a b)) tol)))
   ::
   ::  Quire (sec 3.4 / 5.11): a 16n-bit fixed-point exact accumulator, held
   ::  as a raw two's-complement atom.  Sums of products accumulate exactly and

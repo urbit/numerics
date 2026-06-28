@@ -187,3 +187,112 @@ _UNUM_BINOP(pow, p8_pow, p16_pow, p32_pow)
     if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
     return u3qi_unum_pow_n(bloq, x, p);
   }
+
+//  Rounding to integral value.  The Hoon rnd/flr/cel are eta-expanded into
+//  unary gates wrapping +round, so they jet via the unary template.
+_UNUM_UNOP(rnd, p8_nearest_int, p16_nearest_int, p32_nearest_int)
+_UNUM_UNOP(flr, p8_floor, p16_floor, p32_floor)
+_UNUM_UNOP(cel, p8_ceil, p16_ceil, p32_ceil)
+
+/* ++sun:pp -- @u -> posit.  The argument is a raw unsigned integer (read as a
+** full chub), NOT a posit pattern, so it is not masked to the posit width.
+*/
+  u3_noun
+  u3qi_unum_sun(c3_d bloq, u3_atom v)
+  {
+    c3_d uv = u3r_chub(0, v), r;
+    switch ( bloq ) {
+      case 3:  r = p8_from_u64(uv);  break;
+      case 4:  r = p16_from_u64(uv); break;
+      case 5:  r = p32_from_u64(uv); break;
+      default: return u3_none;
+    }
+    return u3i_chubs(1, &r);
+  }
+  u3_noun
+  u3wi_unum_sun(u3_noun cor)
+  {
+    u3_noun v = u3r_at(u3x_sam, cor);  c3_d bloq;
+    if ( u3_none == v || c3n == u3ud(v) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_sun(bloq, v);
+  }
+
+/* ++san:pp -- @s -> posit.  Decode the Hoon signed atom (even 2m -> +m,
+** odd 2m-1 -> -m) to a C int64, then encode.
+*/
+  u3_noun
+  u3qi_unum_san(c3_d bloq, u3_atom v)
+  {
+    c3_d  uv = u3r_chub(0, v);
+    c3_ds sv = (uv & 1) ? -(c3_ds)((uv + 1) >> 1) : (c3_ds)(uv >> 1);
+    c3_d  r;
+    switch ( bloq ) {
+      case 3:  r = p8_from_i64(sv);  break;
+      case 4:  r = p16_from_i64(sv); break;
+      case 5:  r = p32_from_i64(sv); break;
+      default: return u3_none;
+    }
+    return u3i_chubs(1, &r);
+  }
+  u3_noun
+  u3wi_unum_san(u3_noun cor)
+  {
+    u3_noun v = u3r_at(u3x_sam, cor);  c3_d bloq;
+    if ( u3_none == v || c3n == u3ud(v) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_san(bloq, v);
+  }
+
+/* ++toi:pp -- posit -> (unit @s).  NaR -> ~ (none); else [~ @s] with the
+** integer re-encoded into a Hoon signed atom (+m -> 2m, -m -> 2m-1).
+*/
+  u3_noun
+  u3qi_unum_toi(c3_d bloq, u3_atom p)
+  {
+    c3_d  up = u3r_chub(0, p);
+    c3_ds out;  c3_t ok;
+    switch ( bloq ) {
+      case 3:  ok = p8_to_i64((posit8_t)up, (int64_t*)&out);  break;
+      case 4:  ok = p16_to_i64((posit16_t)up, (int64_t*)&out); break;
+      case 5:  ok = p32_to_i64((posit32_t)up, (int64_t*)&out); break;
+      default: return u3_none;
+    }
+    if ( !ok ) return u3_nul;
+    c3_d sa = (out >= 0) ? ((c3_d)out << 1) : (((c3_d)(-out) << 1) - 1);
+    return u3nc(u3_nul, u3i_chubs(1, &sa));
+  }
+  u3_noun
+  u3wi_unum_toi(u3_noun cor)
+  {
+    u3_noun p = u3r_at(u3x_sam, cor);  c3_d bloq;
+    if ( u3_none == p || c3n == u3ud(p) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_toi(bloq, p);
+  }
+
+/* ++is-close:pp -- |a - b| <= tol, a loobean.  Ternary sample [a b tol].
+*/
+  u3_noun
+  u3qi_unum_is_close(c3_d bloq, u3_atom a, u3_atom b, u3_atom tol)
+  {
+    c3_d ua = u3r_chub(0, a), ub = u3r_chub(0, b), ut = u3r_chub(0, tol);  c3_t v;
+    switch ( bloq ) {
+      case 3:  v = p8_is_close((posit8_t)ua, (posit8_t)ub, (posit8_t)ut);    break;
+      case 4:  v = p16_is_close((posit16_t)ua, (posit16_t)ub, (posit16_t)ut); break;
+      case 5:  v = p32_is_close((posit32_t)ua, (posit32_t)ub, (posit32_t)ut); break;
+      default: return u3_none;
+    }
+    return v ? c3y : c3n;
+  }
+  u3_noun
+  u3wi_unum_is_close(u3_noun cor)
+  {
+    u3_noun a, b, tol;  c3_d bloq;
+    if ( c3n == u3r_mean(cor, u3x_sam_2, &a, u3x_sam_6, &b, u3x_sam_7, &tol, 0) ||
+         c3n == u3ud(a) || c3n == u3ud(b) || c3n == u3ud(tol) ) {
+      return u3m_bail(c3__exit);
+    }
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_is_close(bloq, a, b, tol);
+  }

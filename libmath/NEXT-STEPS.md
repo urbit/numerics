@@ -98,3 +98,75 @@ future jet, vendored into vere like SoftBLAS.  Only worth it once a consumer
 - `twoc.hoon` now has corrected `lth`/`lte`/`gte` and `overflow`; the only
   former consumer (`lagoon-old.hoon`) was deleted in PR #38.  A real
   `%int2`-into-lagoon effort would be twoc's first live caller.
+
+---
+
+# Appendix: Valids (Type-III interval unums) — assessment & open questions
+
+Status as of 2026-06-28.  Valids are the third Type-III unum (posits · quires ·
+**valids**), the rigorous-interval class.  `/lib/unum` does not implement them;
+this appendix records the design assessment so the eventual effort starts from a
+shared understanding rather than a blank page.  Lowest priority (no consumer, no
+oracle, loosely standardized) — slot it *after* the posit/quire jets.
+
+## What a valid is
+
+A valid is a *guaranteed enclosure* of a real quantity: two posit-like
+**endpoints, each tagged with a "ubit" (uncertainty bit)**.  ubit = 0 → the
+endpoint is exact (closed); ubit = 1 → "the open interval between this posit and
+its neighbour".  So a valid encodes `[lo, hi]` / `(lo, hi)` / half-open — a value
+*and* its uncertainty.  Every operation returns the **tightest valid containing
+all possible results** (Gustafson's "end of error": a provable bound, not a
+single rounded answer).
+
+**The projective twist.**  Valids live on the *projective* real line — the reals
+closed into a ring with a single point at the top (the NaR/∞ point, shared with
+the posit bit layout).  This lets a valid represent **exterior / wrapping
+intervals** ("x < −3 OR x > 5") and unbounded sets ("x > 5") by going the long
+way round through infinity.  Consequence: compare / union / intersection are
+arithmetic on *arcs of a circle*, not segments of a line — genuinely different
+semantics from classical `[lo,hi]` interval arithmetic.
+
+## What it would build on (and the one real new primitive)
+
+Endpoints are posits, so valid arithmetic reuses the SoftUnum / `/lib/unum`
+posit core.  The new building block is **directed rounding**: our posit `+bit`
+only rounds nearest-even, but valid endpoints must round *outward* — the lower
+bound toward −∞, the upper toward +∞ — to keep the enclosure sound.  So we need:
+
+  - a round-toward-±∞ posit encoder (round-down / round-up of an exact value),
+  - `+next` / `+prior` (lexicographic successor / predecessor of a posit bit
+    pattern — already a TODO in §1 above; `+(p)` / `(dec p)` with NaR/extreme
+    handling),
+  - the ubit then records residual openness after directed rounding.
+
+Everything else (endpoint add/sub/mul/div) is the existing posit arithmetic.
+
+## Open design questions (pin these BEFORE writing code)
+
+1. **Layout / width.**  Does `@rvb`/`@rvh`/`@rvs` mean a valid *built from two
+   `posit{8,16,32}` endpoints*, or Gustafson's "valid⟨2n⟩ = two n-bit
+   ubit-posits" packed into a byte/half/single?  The byte/half/single aura names
+   mirror posits and are currently ambiguous.  **First decision.**
+2. **Projective vs bounded.**  Full Gustafson (wrapping / exterior intervals on
+   the projective ring) — the "real" valid — vs a simpler bounded `[lo,hi]`
+   interval arithmetic that covers most numeric use with far less machinery.
+3. **Set operations & special values.**  intersection / union / complement /
+   `is-empty` / `is-everything`, plus the special encodings (empty set,
+   all-reals, NaR).
+4. **Comparisons.**  Posit ordering == two's-complement of the raw bits; that
+   identity does **not** carry to valids — comparison becomes set / containment
+   relations, needs its own design.
+
+## Verification posture (harder than posits)
+
+- **No SoftPosit oracle** — SoftPosit is posits + quires only.  Plan mirrors the
+  transcendentals: a from-scratch **exact-rational interval reference** (Python
+  intervals of `Fraction`s with directed rounding), and optionally **Stillwater
+  `Universal`** (C++), which does implement `valid<>` types, as a second oracle.
+- **Standardization caveat.**  The 2022 Posit Standard normatively pins posits
+  and quires; valids are described in Gustafson's broader work but are *not*
+  specified to the same degree.  So this is a clean-room *design* of both the
+  Hoon `/lib/unum` arms and the C — NOT a transliteration of a fixed spec, which
+  is a different (looser) posture from everything done so far, where `/lib/unum`
+  was the bit-exact target.

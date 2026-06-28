@@ -31,6 +31,7 @@
 ::  gates of the same name.  Internal integer arithmetic therefore uses the
 ::  ^-prefixed forms (^add/^sub/^mul/^div) to reach the standard library.
 ::
+~%  %non  ..part  ~  :: nest non in hex for now (jet chapter, see /lib/math)
 |%
 ::  G-layer (decoded) representation of a posit, mirroring the stdlib float +$fn
 ::  (`[%f s=? e=@s a=@u]`):  value = (sign) a * 2^e, with a an integer
@@ -61,6 +62,7 @@
 ::  Specialize with %*: posit8 is bloq=3 (n=8), posit16 bloq=4, posit32 bloq=5.
 ::
 ++  pp
+  ~/  %unum
   |_  =bloq
   ++  n  (bex bloq)
   ++  es  2
@@ -195,6 +197,7 @@
     ?>  ?=(%p -.ub)
     (bit [%p =(s.ua s.ub) (sum:si e.ua e.ub) (^mul a.ua a.ub)])
   ++  add
+    ~/  %add
     |=  [a=@ b=@]
     ^-  @
     =/  ua  (sea a)

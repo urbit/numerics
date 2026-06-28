@@ -7,6 +7,72 @@ IEEE-754 conversion, the quire + fused dot product, and naive transcendentals,
 at widths posit8/16/32/64/128.  This file tracks what is deliberately *not* yet
 done, roughly in dependency order.
 
+## Roadmap — 2026-06-28 (post-jets)
+
+The jet effort (old §5) is **done**: **SoftUnum** (`sigilante/SoftUnum`, the
+pure-integer C twin of `/lib/unum`, verified four ways) is vendored into vere
+(`ext/softunum`) and the full `/lib/unum` surface (54 arms, posit8/16/32) is
+jetted under `non/unum`, fired bit-exact on a hoon-135 fakezod, and benchmarked
+(arithmetic ~180–295×, transcendentals ~760–2000×, `fdp` ~760–2300× over
+interpreted).  PRs: numerics #65 (hints + reference + valids appendix +
+benchmarks); vere #1046 (draft, stacked on the math-jets PR #1044).
+
+Prioritized next steps:
+
+0.  **Land the PRs.**  numerics #65 → merge.  vere #1046 is gated on #1044
+    (math jets) and #1022 (lagoon SoftBLAS) merging; then re-target #1046 to
+    `develop` and mark ready.  Registration is hoon-135 only (lowest kelvin).
+
+1.  **Posit linear algebra — the Saloon/Lagoon payoff (highest value).**
+    `%unum` is already wired into Lagoon (PR #42) and Saloon eig (PR #58), so
+    Saloon-over-posits works and now inherits the *scalar* jet speedup (its
+    inner `mmul`/`dot`/`sqt`/`add` hit the jetted unum ops).  The remaining win
+    is **array-level**: a SoftUnum-backed **posit GEMM/dot using the quire**
+    (the analog of SoftBLAS), vendored like SoftBLAS, with a Lagoon `%unum`
+    `dot`/`mmul` jet dispatching to it -- one exact-accumulated C call instead
+    of a Hoon loop over per-element `fdp`.  This is the headline posit feature:
+    exact dot product -> matmul with no error accumulation.  Saloon
+    decompositions inherit it for free.
+
+2.  **Perf gaps the benchmark surfaced.**
+    - posit16/32 `sqt`/`atan` are slow even jetted (jetted `atan:rps` ~850 us):
+      the 512-bit `wide_t` **bit-by-bit `isqt`** in the AGM loop is the
+      bottleneck.  Replace with a faster wide sqrt (Newton + wide divmod, or an
+      `__int128` seed then refine).
+    - posit16 over-uses the 512-bit `wide_t` (its quire is 256-bit, arithmetic
+      fits `__int128`); a tighter p16 path would shave the common arithmetic.
+
+3.  **Coverage: posit64/128.**  SoftUnum does 8/16/32; `rpd`/`rpq` jets return
+    `u3_none` (fall back to Hoon).  The `wide_t` machinery already exists --
+    extend SoftUnum to 64/128 (1024/2048-bit quire) to jet the last two widths.
+    No external oracle (cerlane `pX2` caps at 32); verify vs the from-scratch
+    reference + the Hoon.
+
+4.  **Accuracy: range-reduced / quire-accumulated transcendentals** (old §2).
+    The naive Taylor `exp`/`log`/`sin` are accurate only near the expansion
+    point.  Range-reduce (powers of 2 are exact for posits; trig by pi/2) and
+    run the series through the quire.  Coordinated Hoon + SoftUnum change (both
+    stay bit-exact).
+
+5.  **Standard-name alias layer** (old §1): the 2022-standard public names
+    (`addition`/`subtraction`/`sin-pi`/`compound`/`hypot`/`arctan2`/...) over
+    the implemented core; mostly renames + thin compositions.
+
+6.  **Valids** (the Type-III interval class) -- see the appendix below.  Lowest
+    priority: new surface, no SoftPosit oracle, loosely standardized.
+
+7.  **Parallel Rust SoftUnum** (for NockApp; not urgent).  C and Rust can't
+    share code, so "same behavior" is enforced by a language-neutral
+    test-vector corpus generated from the oracle that both reproduce.  The C
+    repo reserves a top-level `rust/` seam.
+
+8.  **Upstream SoftUnum -> `urbit/SoftUnum`** (like `urbit/SoftBLAS`) once it
+    stabilizes, and re-pin the vere `ext/softunum` tarball there.
+
+9.  **Decimal printer / literal syntax** for the posit auras (`@rpb`..`@rpq`):
+    emit the §6.3 minimum significant digits.  Optional local runtime patch,
+    decoupled from the library.
+
 ## Verification & tooling
 
 - **Oracle**: SoftPosit (vendored C in `src/SoftPosit`, plus the `softposit`
@@ -79,12 +145,15 @@ The interval class (`@rvb/@rvh/@rvs`).  Entirely new surface: an interval is a
 pair of posit endpoints with open/closed tags; arithmetic is interval
 arithmetic.  Lowest priority; design from Gustafson's Type-III definition.
 
-## 5. Jets  (separate, C/vere effort)
+## 5. Jets  (DONE -- see the 2026-06-28 roadmap above)
 
-The library is pure Hoon by design.  SoftPosit's C (`src/SoftPosit/source/*.c`:
-`pX2_*`, `qX2_*`, conversions) is the reference implementation and the spec for a
-future jet, vendored into vere like SoftBLAS.  Only worth it once a consumer
-(e.g. lagoon `%unum` matmul) needs the speed.
+**Done.**  Rather than vendor SoftPosit (whose `pX2` caps at 32 bits and has no
+transcendentals), we built **SoftUnum** (`sigilante/SoftUnum`) -- the bit-exact
+pure-integer C twin of this library -- vendored it into vere (`ext/softunum`),
+and jetted the full surface (54 arms, posit8/16/32) under `non/unum`.  Verified
+firing bit-exact on a hoon-135 fakezod; benchmarked in `benchmark/results/`.
+PRs: numerics #65, vere #1046 (draft on #1044).  Follow-on perf/coverage work
+(posit GEMM, wide `isqt`, posit64/128) is in the roadmap above.
 
 ## Known minor items
 

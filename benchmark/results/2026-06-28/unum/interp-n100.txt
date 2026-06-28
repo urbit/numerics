@@ -1,0 +1,96 @@
+[%cell %rpb %base]
+took µs/204
+[%cell %rpb %add]
+took ms/37.571
+[%cell %rpb %sub]
+took ms/33.376
+[%cell %rpb %mul]
+took ms/27.582
+[%cell %rpb %div]
+took ms/33.893
+[%cell %rpb %fma]
+took ms/52.949
+[%cell %rpb %sqt]
+took ms/34.048
+[%cell %rpb %neg]
+took ms/2.191
+[%cell %rpb %exp]
+took s/1.848.485
+[%cell %rpb %log]
+took s/3.599.430
+[%cell %rpb %sin]
+took s/3.023.956
+[%cell %rpb %cos]
+took s/3.026.054
+[%cell %rpb %atan]
+took s/6.166.146
+[%cell %rpb %pow]
+took s/5.304.743
+[%cell %rpb %lth]
+took ms/2.309
+[%cell %rph %base]
+took µs/189
+[%cell %rph %add]
+took ms/38.078
+[%cell %rph %sub]
+took ms/33.866
+[%cell %rph %mul]
+took ms/26.992
+[%cell %rph %div]
+took ms/34.390
+[%cell %rph %fma]
+took ms/49.550
+[%cell %rph %sqt]
+took ms/33.723
+[%cell %rph %neg]
+took ms/2.117
+[%cell %rph %exp]
+took s/1.916.618
+[%cell %rph %log]
+took s/3.740.115
+[%cell %rph %sin]
+took s/3.081.869
+[%cell %rph %cos]
+took s/3.109.865
+[%cell %rph %atan]
+took s/6.351.491
+[%cell %rph %pow]
+took s/5.535.635
+[%cell %rph %lth]
+took ms/2.283
+[%cell %rps %base]
+took µs/202
+[%cell %rps %add]
+took ms/37.676
+[%cell %rps %sub]
+took ms/34.177
+[%cell %rps %mul]
+took ms/27.852
+[%cell %rps %div]
+took ms/34.635
+[%cell %rps %fma]
+took ms/49.469
+[%cell %rps %sqt]
+took ms/34.359
+[%cell %rps %neg]
+took ms/2.170
+[%cell %rps %exp]
+took s/1.942.873
+[%cell %rps %log]
+took s/3.906.881
+[%cell %rps %sin]
+took s/3.229.494
+[%cell %rps %cos]
+took s/3.248.253
+[%cell %rps %atan]
+took s/6.371.033
+[%cell %rps %pow]
+took s/5.696.497
+[%cell %rps %lth]
+took ms/2.282
+[%fdp %rpb]
+took ms/20.458
+[%fdp %rph]
+took ms/20.457
+[%fdp %rps]
+took ms/20.549

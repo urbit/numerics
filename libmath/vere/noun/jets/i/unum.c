@@ -390,3 +390,190 @@ _UNUM_FROM(from_rd, p8_from_rd, p16_from_rd, p32_from_rd)
     if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
     return u3qi_unum_from_rq(bloq, r);
   }
+
+//  Quire: a 16n-bit exact accumulator, marshalled to/from SoftUnum's uint64
+//  word array (QW = n/4 words: 2/4/8 for posit8/16/32).  The accumulate ops
+//  mutate the buffer in place; we read QW chubs in and write QW chubs out.
+#define _UNUM_QW(bloq) (1 << ((bloq) - 2))
+
+  static void
+  _unum_qload(u3_atom q, c3_d *buf, int qw)
+  {
+    for ( int i = 0; i < qw; i++ ) buf[i] = u3r_chub(i, q);
+  }
+
+  u3_noun
+  u3qi_unum_p_to_q(c3_d bloq, u3_atom p)
+  {
+    c3_d buf[8] = {0}, up = u3r_chub(0, p);  int qw = _UNUM_QW(bloq);
+    switch ( bloq ) {
+      case 3:  p8_p_to_q((posit8_t)up, buf);  break;
+      case 4:  p16_p_to_q((posit16_t)up, buf); break;
+      case 5:  p32_p_to_q((posit32_t)up, buf); break;
+      default: return u3_none;
+    }
+    return u3i_chubs(qw, buf);
+  }
+  u3_noun
+  u3wi_unum_p_to_q(u3_noun cor)
+  {
+    u3_noun p = u3r_at(u3x_sam, cor);  c3_d bloq;
+    if ( u3_none == p || c3n == u3ud(p) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_p_to_q(bloq, p);
+  }
+
+  u3_noun
+  u3qi_unum_q_to_p(c3_d bloq, u3_atom q)
+  {
+    c3_d buf[8] = {0}, r;
+    if ( bloq < 3 || bloq > 5 ) return u3_none;
+    _unum_qload(q, buf, _UNUM_QW(bloq));
+    switch ( bloq ) {
+      case 3:  r = p8_q_to_p(buf);  break;
+      case 4:  r = p16_q_to_p(buf); break;
+      default: r = p32_q_to_p(buf); break;
+    }
+    return u3i_chubs(1, &r);
+  }
+  u3_noun
+  u3wi_unum_q_to_p(u3_noun cor)
+  {
+    u3_noun q = u3r_at(u3x_sam, cor);  c3_d bloq;
+    if ( u3_none == q || c3n == u3ud(q) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_q_to_p(bloq, q);
+  }
+
+  u3_noun
+  u3qi_unum_q_negate(c3_d bloq, u3_atom q)
+  {
+    c3_d buf[8] = {0};  int qw = _UNUM_QW(bloq);
+    if ( bloq < 3 || bloq > 5 ) return u3_none;
+    _unum_qload(q, buf, qw);
+    switch ( bloq ) {
+      case 3:  p8_q_negate(buf);  break;
+      case 4:  p16_q_negate(buf); break;
+      default: p32_q_negate(buf); break;
+    }
+    return u3i_chubs(qw, buf);
+  }
+  u3_noun
+  u3wi_unum_q_negate(u3_noun cor)
+  {
+    u3_noun q = u3r_at(u3x_sam, cor);  c3_d bloq;
+    if ( u3_none == q || c3n == u3ud(q) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_q_negate(bloq, q);
+  }
+
+//  q-mul-add / q-mul-sub: (quire, posit, posit) -> quire.
+#define _UNUM_QMA(nam, f8, f16, f32)                                         \
+  u3_noun u3qi_unum_##nam(c3_d bloq, u3_atom q, u3_atom a, u3_atom b) {       \
+    c3_d buf[8] = {0}, ua = u3r_chub(0, a), ub = u3r_chub(0, b);             \
+    int qw = _UNUM_QW(bloq);                                                 \
+    _unum_qload(q, buf, qw);                                                 \
+    switch ( bloq ) {                                                       \
+      case 3:  f8(buf, (posit8_t)ua, (posit8_t)ub);    break;                \
+      case 4:  f16(buf, (posit16_t)ua, (posit16_t)ub); break;               \
+      case 5:  f32(buf, (posit32_t)ua, (posit32_t)ub); break;               \
+      default: return u3_none;                                               \
+    }                                                                       \
+    return u3i_chubs(qw, buf);                                               \
+  }                                                                          \
+  u3_noun u3wi_unum_##nam(u3_noun cor) {                                     \
+    u3_noun q, a, b;  c3_d bloq;                                             \
+    if ( c3n == u3r_mean(cor, u3x_sam_2, &q, u3x_sam_6, &a, u3x_sam_7, &b, 0) || \
+         c3n == u3ud(q) || c3n == u3ud(a) || c3n == u3ud(b) )               \
+      return u3m_bail(c3__exit);                                             \
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;                     \
+    return u3qi_unum_##nam(bloq, q, a, b);                                   \
+  }
+
+_UNUM_QMA(q_mul_add, p8_q_mul_add, p16_q_mul_add, p32_q_mul_add)
+_UNUM_QMA(q_mul_sub, p8_q_mul_sub, p16_q_mul_sub, p32_q_mul_sub)
+
+//  q-add-p / q-sub-p: (quire, posit) -> quire.
+#define _UNUM_QAP(nam, f8, f16, f32)                                         \
+  u3_noun u3qi_unum_##nam(c3_d bloq, u3_atom q, u3_atom p) {                 \
+    c3_d buf[8] = {0}, up = u3r_chub(0, p);  int qw = _UNUM_QW(bloq);        \
+    _unum_qload(q, buf, qw);                                                 \
+    switch ( bloq ) {                                                       \
+      case 3:  f8(buf, (posit8_t)up);  break;                                \
+      case 4:  f16(buf, (posit16_t)up); break;                               \
+      case 5:  f32(buf, (posit32_t)up); break;                               \
+      default: return u3_none;                                               \
+    }                                                                       \
+    return u3i_chubs(qw, buf);                                               \
+  }                                                                          \
+  u3_noun u3wi_unum_##nam(u3_noun cor) {                                     \
+    u3_noun q, p;  c3_d bloq;                                                \
+    if ( c3n == u3r_mean(cor, u3x_sam_2, &q, u3x_sam_3, &p, 0) ||            \
+         c3n == u3ud(q) || c3n == u3ud(p) ) return u3m_bail(c3__exit);       \
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;                     \
+    return u3qi_unum_##nam(bloq, q, p);                                      \
+  }
+
+_UNUM_QAP(q_add_p, p8_q_add_p, p16_q_add_p, p32_q_add_p)
+_UNUM_QAP(q_sub_p, p8_q_sub_p, p16_q_sub_p, p32_q_sub_p)
+
+//  q-add-q / q-sub-q: (quire, quire) -> quire.
+#define _UNUM_QAQ(nam, f8, f16, f32)                                         \
+  u3_noun u3qi_unum_##nam(c3_d bloq, u3_atom x, u3_atom y) {                 \
+    c3_d xb[8] = {0}, yb[8] = {0};  int qw = _UNUM_QW(bloq);                 \
+    if ( bloq < 3 || bloq > 5 ) return u3_none;                             \
+    _unum_qload(x, xb, qw);  _unum_qload(y, yb, qw);                         \
+    switch ( bloq ) {                                                       \
+      case 3:  f8(xb, yb);  break;                                           \
+      case 4:  f16(xb, yb); break;                                           \
+      default: f32(xb, yb); break;                                           \
+    }                                                                       \
+    return u3i_chubs(qw, xb);                                                \
+  }                                                                          \
+  u3_noun u3wi_unum_##nam(u3_noun cor) {                                     \
+    u3_noun x, y;  c3_d bloq;                                                \
+    if ( c3n == u3r_mean(cor, u3x_sam_2, &x, u3x_sam_3, &y, 0) ||            \
+         c3n == u3ud(x) || c3n == u3ud(y) ) return u3m_bail(c3__exit);       \
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;                     \
+    return u3qi_unum_##nam(bloq, x, y);                                      \
+  }
+
+_UNUM_QAQ(q_add_q, p8_q_add_q, p16_q_add_q, p32_q_add_q)
+_UNUM_QAQ(q_sub_q, p8_q_sub_q, p16_q_sub_q, p32_q_sub_q)
+
+/* ++fdp:pp -- fused dot product of two posit lists (single rounding).  We
+** accumulate directly through a quire buffer (q-mul-add per element, q-to-p
+** once), zipping to the shorter list -- matching the Hoon.
+*/
+  u3_noun
+  u3qi_unum_fdp(c3_d bloq, u3_noun av, u3_noun bv)
+  {
+    c3_d buf[8] = {0}, r;
+    if ( bloq < 3 || bloq > 5 ) return u3_none;
+    u3_noun ta = av, tb = bv;
+    while ( (c3y == u3du(ta)) && (c3y == u3du(tb)) ) {
+      c3_d a = u3r_chub(0, u3h(ta)), b = u3r_chub(0, u3h(tb));
+      switch ( bloq ) {
+        case 3:  p8_q_mul_add(buf, (posit8_t)a, (posit8_t)b);    break;
+        case 4:  p16_q_mul_add(buf, (posit16_t)a, (posit16_t)b); break;
+        default: p32_q_mul_add(buf, (posit32_t)a, (posit32_t)b); break;
+      }
+      ta = u3t(ta);  tb = u3t(tb);
+    }
+    switch ( bloq ) {
+      case 3:  r = p8_q_to_p(buf);  break;
+      case 4:  r = p16_q_to_p(buf); break;
+      default: r = p32_q_to_p(buf); break;
+    }
+    return u3i_chubs(1, &r);
+  }
+  u3_noun
+  u3wi_unum_fdp(u3_noun cor)
+  {
+    u3_noun av, bv;  c3_d bloq;
+    if ( c3n == u3r_mean(cor, u3x_sam_2, &av, u3x_sam_3, &bv, 0) ) {
+      return u3m_bail(c3__exit);
+    }
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_fdp(bloq, av, bv);
+  }

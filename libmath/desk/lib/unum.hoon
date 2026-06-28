@@ -539,6 +539,7 @@
   ++  q-nar   (bex (dec qbits))
   ++  q-zero  `@`0
   ++  p-to-q
+    ~/  %p-to-q
     |=  p=@
     ^-  @
     =/  u  (sea p)
@@ -548,6 +549,7 @@
     =/  m  (lsh [0 (abs:si (sum:si e.u (sun:si qscale)))] a.u)
     ?:(s.u m (^sub qmod m))
   ++  q-to-p
+    ~/  %q-to-p
     |=  q=@
     ^-  @
     =.  q  (dis (dec qmod) q)
@@ -557,6 +559,7 @@
     ?:  =(0 acc)  zero
     (bit [%p !neg (dif:si --0 (sun:si qscale)) acc])
   ++  q-mul-add
+    ~/  %q-mul-add
     |=  [q=@ a=@ b=@]
     ^-  @
     ?:  =(q-nar q)  q-nar
@@ -569,18 +572,30 @@
     =/  m   (lsh [0 (abs:si :(sum:si e.ua e.ub (sun:si qscale)))] (^mul a.ua a.ub))
     =/  qc  ?:(=(s.ua s.ub) m (^sub qmod m))
     (mod (^add q qc) qmod)
-  ++  q-mul-sub  |=([q=@ a=@ b=@] ^-(@ (q-mul-add q a (neg b))))
-  ++  q-add-p  |=([q=@ p=@] ^-(@ (q-mul-add q p one)))
-  ++  q-sub-p  |=([q=@ p=@] ^-(@ (q-mul-add q (neg p) one)))
-  ++  q-negate  |=(q=@ ^-(@ ?:(=(q-nar q) q-nar (mod (^sub qmod q) qmod))))
+  ++  q-mul-sub
+    ~/  %q-mul-sub
+    |=([q=@ a=@ b=@] ^-(@ (q-mul-add q a (neg b))))
+  ++  q-add-p
+    ~/  %q-add-p
+    |=([q=@ p=@] ^-(@ (q-mul-add q p one)))
+  ++  q-sub-p
+    ~/  %q-sub-p
+    |=([q=@ p=@] ^-(@ (q-mul-add q (neg p) one)))
+  ++  q-negate
+    ~/  %q-negate
+    |=(q=@ ^-(@ ?:(=(q-nar q) q-nar (mod (^sub qmod q) qmod))))
   ++  q-add-q
+    ~/  %q-add-q
     |=  [x=@ y=@]
     ^-  @
     ?:  |(=(q-nar x) =(q-nar y))  q-nar
     (mod (^add x y) qmod)
-  ++  q-sub-q  |=([x=@ y=@] ^-(@ (q-add-q x (q-negate y))))
+  ++  q-sub-q
+    ~/  %q-sub-q
+    |=([x=@ y=@] ^-(@ (q-add-q x (q-negate y))))
   ::    +fdp:  (list @) -> (list @) -> @  (fused dot product, single rounding)
   ++  fdp
+    ~/  %fdp
     |=  [av=(list @) bv=(list @)]
     ^-  @
     =|  q=@

@@ -609,15 +609,31 @@
     ?:  =(0 a.f)  [%z ~]
     [%p s.f e.f a.f]
   ::    +to-rh/rs/rd/rq:  this-width posit -> half/single/double/quad float
-  ++  to-rh  |=(p=@ ^-(@rh (bit:rh (up-to-fn (sea p)))))
-  ++  to-rs  |=(p=@ ^-(@rs (bit:rs (up-to-fn (sea p)))))
-  ++  to-rd  |=(p=@ ^-(@rd (bit:rd (up-to-fn (sea p)))))
-  ++  to-rq  |=(p=@ ^-(@rq (bit:rq (up-to-fn (sea p)))))
+  ++  to-rh
+    ~/  %to-rh
+    |=(p=@ ^-(@rh (bit:rh (up-to-fn (sea p)))))
+  ++  to-rs
+    ~/  %to-rs
+    |=(p=@ ^-(@rs (bit:rs (up-to-fn (sea p)))))
+  ++  to-rd
+    ~/  %to-rd
+    |=(p=@ ^-(@rd (bit:rd (up-to-fn (sea p)))))
+  ++  to-rq
+    ~/  %to-rq
+    |=(p=@ ^-(@rq (bit:rq (up-to-fn (sea p)))))
   ::    +from-rh/rs/rd/rq:  half/single/double/quad float -> this-width posit
-  ++  from-rh  |=(r=@rh ^-(@ (bit (fn-to-up (sea:rh r)))))
-  ++  from-rs  |=(r=@rs ^-(@ (bit (fn-to-up (sea:rs r)))))
-  ++  from-rd  |=(r=@rd ^-(@ (bit (fn-to-up (sea:rd r)))))
-  ++  from-rq  |=(r=@rq ^-(@ (bit (fn-to-up (sea:rq r)))))
+  ++  from-rh
+    ~/  %from-rh
+    |=(r=@rh ^-(@ (bit (fn-to-up (sea:rh r)))))
+  ++  from-rs
+    ~/  %from-rs
+    |=(r=@rs ^-(@ (bit (fn-to-up (sea:rs r)))))
+  ++  from-rd
+    ~/  %from-rd
+    |=(r=@rd ^-(@ (bit (fn-to-up (sea:rd r)))))
+  ++  from-rq
+    ~/  %from-rq
+    |=(r=@rq ^-(@ (bit (fn-to-up (sea:rq r)))))
   --
 ::  posit8   ("byte"),   posit<8,2>
 ++  rpb  %*(. pp bloq 3)

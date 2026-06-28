@@ -296,3 +296,97 @@ _UNUM_UNOP(cel, p8_ceil, p16_ceil, p32_ceil)
     if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
     return u3qi_unum_is_close(bloq, a, b, tol);
   }
+
+//  IEEE-754 conversion (value-based).  The posit width is bloq; the float width
+//  is fixed by the arm.  to-rh/rs/rd and from-rh/rs/rd are 1-chub each side;
+//  to-rq / from-rq use the 128-bit (2-chub) binary128 pattern.
+#define _UNUM_TO(nam, f8, f16, f32)                                          \
+  u3_noun u3qi_unum_##nam(c3_d bloq, u3_atom p) {                            \
+    c3_d up = u3r_chub(0, p), r;                                             \
+    switch ( bloq ) {                                                       \
+      case 3:  r = f8((posit8_t)up);  break;                                 \
+      case 4:  r = f16((posit16_t)up); break;                                \
+      case 5:  r = f32((posit32_t)up); break;                                \
+      default: return u3_none;                                               \
+    }                                                                       \
+    return u3i_chubs(1, &r);                                                 \
+  }                                                                          \
+  u3_noun u3wi_unum_##nam(u3_noun cor) {                                     \
+    u3_noun p = u3r_at(u3x_sam, cor);  c3_d bloq;                            \
+    if ( u3_none == p || c3n == u3ud(p) ) return u3m_bail(c3__exit);         \
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;                     \
+    return u3qi_unum_##nam(bloq, p);                                         \
+  }
+
+#define _UNUM_FROM(nam, f8, f16, f32)                                        \
+  u3_noun u3qi_unum_##nam(c3_d bloq, u3_atom r) {                            \
+    c3_d ur = u3r_chub(0, r), v;                                             \
+    switch ( bloq ) {                                                       \
+      case 3:  v = f8(ur);  break;                                           \
+      case 4:  v = f16(ur); break;                                           \
+      case 5:  v = f32(ur); break;                                           \
+      default: return u3_none;                                               \
+    }                                                                       \
+    return u3i_chubs(1, &v);                                                 \
+  }                                                                          \
+  u3_noun u3wi_unum_##nam(u3_noun cor) {                                     \
+    u3_noun r = u3r_at(u3x_sam, cor);  c3_d bloq;                            \
+    if ( u3_none == r || c3n == u3ud(r) ) return u3m_bail(c3__exit);         \
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;                     \
+    return u3qi_unum_##nam(bloq, r);                                         \
+  }
+
+_UNUM_TO(to_rh, p8_to_rh, p16_to_rh, p32_to_rh)
+_UNUM_TO(to_rs, p8_to_rs, p16_to_rs, p32_to_rs)
+_UNUM_TO(to_rd, p8_to_rd, p16_to_rd, p32_to_rd)
+_UNUM_FROM(from_rh, p8_from_rh, p16_from_rh, p32_from_rh)
+_UNUM_FROM(from_rs, p8_from_rs, p16_from_rs, p32_from_rs)
+_UNUM_FROM(from_rd, p8_from_rd, p16_from_rd, p32_from_rd)
+
+/* ++to-rq:pp -- posit -> binary128 (2-chub result).
+*/
+  u3_noun
+  u3qi_unum_to_rq(c3_d bloq, u3_atom p)
+  {
+    c3_d up = u3r_chub(0, p), out[2];
+    switch ( bloq ) {
+      case 3:  p8_to_rq((posit8_t)up, out);  break;
+      case 4:  p16_to_rq((posit16_t)up, out); break;
+      case 5:  p32_to_rq((posit32_t)up, out); break;
+      default: return u3_none;
+    }
+    return u3i_chubs(2, out);
+  }
+  u3_noun
+  u3wi_unum_to_rq(u3_noun cor)
+  {
+    u3_noun p = u3r_at(u3x_sam, cor);  c3_d bloq;
+    if ( u3_none == p || c3n == u3ud(p) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_to_rq(bloq, p);
+  }
+
+/* ++from-rq:pp -- binary128 (2-chub input) -> posit.
+*/
+  u3_noun
+  u3qi_unum_from_rq(c3_d bloq, u3_atom r)
+  {
+    c3_d in[2], v;
+    in[0] = u3r_chub(0, r);
+    in[1] = u3r_chub(1, r);
+    switch ( bloq ) {
+      case 3:  v = p8_from_rq(in);  break;
+      case 4:  v = p16_from_rq(in); break;
+      case 5:  v = p32_from_rq(in); break;
+      default: return u3_none;
+    }
+    return u3i_chubs(1, &v);
+  }
+  u3_noun
+  u3wi_unum_from_rq(u3_noun cor)
+  {
+    u3_noun r = u3r_at(u3x_sam, cor);  c3_d bloq;
+    if ( u3_none == r || c3n == u3ud(r) ) return u3m_bail(c3__exit);
+    if ( c3n == _unum_bloq(cor, &bloq) ) return u3_none;
+    return u3qi_unum_from_rq(bloq, r);
+  }

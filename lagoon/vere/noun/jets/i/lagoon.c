@@ -2434,6 +2434,24 @@
     }
   }
 
+/* Box a scalar reduction result as a ray, matching the Hoon +scalar-to-ray:
+** the shape is all-1s of the INPUT's rank (reap (lent shape) 1) -- e.g. ~[1]
+** for a rank-1 vector, ~[1 1] for a rank-2 matrix.  The data already carries
+** its leading-0x1 sentinel (== +spac on a 1-element ray).  Fixes the prior
+** hardcoded shapes (~[1 1] for min/max, ~[len 1] for dot, ~[1] for cumsum),
+** which were each correct only for one rank.
+*/
+  static u3_noun
+  _la_scalar_box(u3_noun x_shape, u3_noun x_bloq, u3_noun x_kind,
+                 u3_noun x_tail, u3_noun r_data)
+  {
+    c3_d rank = 0;  u3_noun s = x_shape;
+    while ( c3y == u3du(s) ) { rank++;  s = u3t(s); }
+    u3_noun sh = u3_nul;
+    for ( c3_d i = 0; i < rank; i++ ) sh = u3nc(0x1, sh);
+    return u3nc(u3nq(sh, u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
+  }
+
   u3_noun
   u3wi_la_cumsum(u3_noun cor)
   {
@@ -2467,7 +2485,7 @@
             _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_cumsum_i754(x_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
-            return u3nc(u3nq(u3nc(0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
+            return _la_scalar_box(x_shape, x_bloq, x_kind, x_tail, r_data);
 
           default:
             return u3_none;
@@ -2620,7 +2638,7 @@
           case c3__i754: {
             u3_noun r_data = u3qi_la_min_i754(x_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
-            return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);}
+            return _la_scalar_box(x_shape, x_bloq, x_kind, x_tail, r_data);}
 
           default:
             return u3_none;
@@ -2659,7 +2677,7 @@
           case c3__i754: {
             u3_noun r_data = u3qi_la_max_i754(x_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
-            return u3nc(u3nq(u3nt(0x1, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);}
+            return _la_scalar_box(x_shape, x_bloq, x_kind, x_tail, r_data);}
 
           default:
             return u3_none;
@@ -3091,10 +3109,7 @@
             _set_rounding_la(rnd);
             u3_noun r_data = u3qi_la_dot_i754(x_data, y_data, x_shape, x_bloq);
             if (r_data == u3_none) { return u3_none; }
-            c3_d *dim_x = _get_dims(x_shape);
-            c3_d len_x0 = dim_x[0];
-            u3a_free(dim_x);
-            return u3nc(u3nq(u3nt(len_x0, 0x1, u3_nul), u3k(x_bloq), u3k(x_kind), u3k(x_tail)), r_data);
+            return _la_scalar_box(x_shape, x_bloq, x_kind, x_tail, r_data);
 
           default:
             return u3_none;

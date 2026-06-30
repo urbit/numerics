@@ -1,6 +1,6 @@
 # Design: Saloon eigendecomposition (`eig`)
 
-Status: **design proposal**, 2026-06-06. The marquee consumer of Lagoon `%cplx`
+Status: **A1 (symmetric Jacobi) and A2 (Hermitian Jacobi) shipped (PR #47); Phase B (Hessenberg + QR for general real matrices) pending.** 2026-06-06. The marquee consumer of Lagoon `%cplx`
 (PR #46): eigenvalues/eigenvectors. Pure Hoon on the Lagoon `%i754`/`%cplx`
 arrays; jets (SoftBLAS) only accelerate later, so this is fully parallel to the
 SoftBLAS session.
@@ -42,8 +42,10 @@ This doc specifies Phase A in full and sketches Phase B.
 ++  eig      |=(a=ray ...)   ::  -> [vals=ray vecs=ray]
 ```
 
-Phase A returns `%i754` reals (eigenvalues) and an `%i754` orthogonal matrix
-(eigenvectors as columns), for a symmetric input. Phase B returns `%cplx`.
+Phase A returns `%i754` reals (eigenvalues) and eigenvectors as columns:
+`%i754` orthogonal matrix for symmetric (`%i754`) input; `%cplx` unitary
+matrix for Hermitian (`%cplx`) input (A2 is shipped). Phase B returns `%cplx`
+for general real.
 A `?>` asserts squareness; Phase A also documents that it *assumes* symmetry
 (it operates on the lower/upper triangle; a non-symmetric input is silently
 symmetrized or rejected — see §4).
@@ -72,7 +74,7 @@ Classic cyclic Jacobi. Maintain `A` (working copy, converges to diagonal) and
 `V` (accumulated rotations, converges to the eigenvector matrix, init `eye`).
 
 Repeat sweeps until the off-diagonal Frobenius norm < `rtol·‖A‖` (or a sweep
-cap `~40` is hit — **log if the cap is hit**, never silently return a
+cap 60 is hit — **emits a `~&` terminal trace (not a persistent log)**, never silently return a
 non-converged result):
 
 For each off-diagonal `(p,q)`, `p<q`, with `a_pq ≠ 0`, build a Givens rotation
@@ -91,17 +93,16 @@ directly with `get-item`/`set-item` on the four affected entries per `(p,q)`
 (O(n) per rotation) rather than full `mmul` (O(n³)) — the scalar component
 arithmetic uses the `rs`/`rd` door at the array's `bloq`.
 
-Eigenvalues = `diag(A)` at convergence; eigenvectors = columns of `V`. (Order
-is not guaranteed; offer an optional sort by eigenvalue.)
+Eigenvalues = `diag(A)` at convergence; eigenvectors = columns of `V`. (Eigenvalue order is unspecified (Jacobi pivot order); callers must sort
+externally if needed.)
 
 **Hermitian (`%cplx`) variant:** same skeleton with complex Givens rotations
 and `dagger` instead of transpose; defer until after the real case works.
 
-**Symmetry handling:** Phase A is only valid for symmetric input. Decision
-(for review): (a) `?>` assert `is-close` symmetry and crash otherwise, or
-(b) symmetrize `(A+Aᵀ)/2` silently, or (c) document "caller's responsibility."
-Recommend **(a)** — assert, so a nonsymmetric matrix doesn't quietly get the
-wrong algorithm (it should go to Phase B).
+**Symmetry handling:** Phase A is only valid for symmetric input.  The
+implementation asserts near-symmetry via `?>` and crashes on a non-symmetric
+matrix, so a caller cannot silently get the wrong algorithm (option a — chose
+over silent symmetrization or caller-responsibility).
 
 ---
 
@@ -127,9 +128,9 @@ Phase A lands.
 
 - Saloon's transcendentals are naive, but `sqrt` (the only special function
   Jacobi needs) is fine; component arithmetic is exact IEEE via the float door.
-- Convergence: iterate to `rtol` (Saloon already carries it); **always `log`
-  if the sweep/iteration cap is hit** rather than returning a silent
-  non-converged answer.
+- Convergence: iterate to `rtol` (Saloon already carries it); **emit a `~&`
+  terminal trace (not a persistent log) if the sweep/iteration cap is hit**
+  rather than returning a silent non-converged answer.
 - Determinism: Jacobi is deterministic; results are reproducible.
 
 ---
@@ -165,8 +166,8 @@ Curated small cases (2×2, 3×3 symmetric with known spectra, e.g.
   Two robustness notes from this work: (1) the internal Newton `sqrt` is now
   iteration-capped (`fsqt`) — a sub-ULP `rtol` previously made it oscillate
   forever and once OOM-crashed the ship; (2) `rtol`'s width must match the
-  component width (`@rs` for `@cs`, `@rd` for `@cd`); and (3) the exact
-  Hermitian assert is bit-exact, so `±0.0` in conjugate pairs is rejected —
-  callers should canonicalize or symmetrize.
+  component width (`@rs` for `@cs`, `@rd` for `@cd`); and (3) The Hermitian
+  check uses `+cnear` (magnitude-based), so ±0.0 sign differences in conjugate
+  pairs and rounding-induced mismatches within `+stol` are accepted.
 - **B:** general real → complex via Hessenberg + double-shift QR (own design +
   PR), once `%cplx` (PR #46) has landed and ideally its jets exist.

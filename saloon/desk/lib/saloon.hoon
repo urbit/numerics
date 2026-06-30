@@ -14,11 +14,20 @@
 ::::                    ++sa                          ::  (2v) vector/matrix ops
 ~%  %saloon  ..part  ~
 |%
-::  +sake: set +sa params
+::    +sake:  [inrnd=rounding-mode inrtol=@] -> _sa
 ::
-::    rnd: rounding mode
-::    rtol: relative tolerance, use the correct bit width @r
-::
+::  Returns a copy of the +sa core with rounding mode and relative tolerance
+::  set.  Use before calling +eig or other tolerance-sensitive operations.
+::    Notes
+::      - `inrtol` must be a float whose byte width matches the array's
+::        component bloq (e.g. use `\`@rs\`0x3a83.126f` ≈ 1e-3 for bloq-5 arrays).
+::      - The default `rtol=0x1` in bare `+sa` is a 32-bit denormal (~1e-45),
+::        not 1.0.  `+eig` silently replaces `0x1` with a width-appropriate
+::        machine-epsilon default, but any other tolerance-sensitive arm will
+::        use `0x1` literally.
+::      - Always call `+sake` before `+eig` on arrays where you care about the
+::        convergence tolerance.
+::  Source
 ++  sake
   |=  [inrnd=rounding-mode inrtol=@r]
   %*(. sa rnd inrnd, rtol inrtol)
@@ -69,9 +78,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, equal to
   ::    Examples
-  ::      > (equ:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      > (equ:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
   ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.3f80.0000.0000.0000.3f80.0000.0000.0000.0000.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (equ:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (equ:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.1] t=[i=~[.0] t=~[~[.1] ~[.0] ~[.0]]]]
   ::  Source
   ++  equ  equ:(lake rnd)
@@ -110,9 +119,9 @@
   ::
   ::  Returns the BOOLEAN comparison of two floating-point rays, not equal to
   ::    Examples
-  ::      > (neq:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
+  ::      > (neq:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
   ::      [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.0000.0000.3f80.0000.0000.0000.3f80.0000.3f80.0000]
-  ::      > ;;((list (list @rs)) data:(de-ray:la:la (neq:la:la (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
+  ::      > ;;((list (list @rs)) data:(de-ray:la:la (neq:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))))
   ::      [i=~[.0] t=[i=~[.1] t=~[~[.0] ~[.1] ~[.1]]]]
   ::  Source
   ++  neq  neq:(lake rnd)
@@ -145,8 +154,8 @@
   ::    Examples
   ::      > (any-close:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
   ::      %.y
-  ::      > (any-close:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.1 .0 .1 .2 .0]))
-  ::      %.y
+  ::      > (any-close:sa:sa (en-ray:la:la [~[5 1] 5 %i754 ~] ~[.100 .100 .100 .100 .100]) (ones:la:la [~[5 1] 5 %i754 ~]))
+  ::      %.n
   ::  Source
   ++  any-close  any:(lake rnd)
   ::
@@ -155,26 +164,36 @@
   ::    +add:  [$ray $ray] -> $ray
   ::
   ::  Returns the sum of two floating-point rays
+  ::  Delegates to Lagoon's `++lake` with the configured rounding mode; shape
+  ::  and kind constraints follow Lagoon's contract.
   ::  Source
   ++  add  add:(lake rnd)
   ::    +sub:  [$ray $ray] -> $ray
   ::
   ::  Returns the difference of two floating-point rays
+  ::  Delegates to Lagoon's `++lake` with the configured rounding mode; shape
+  ::  and kind constraints follow Lagoon's contract.
   ::  Source
   ++  sub  sub:(lake rnd)
   ::    +mul:  [$ray $ray] -> $ray
   ::
   ::  Returns the product of two floating-point rays
+  ::  Delegates to Lagoon's `++lake` with the configured rounding mode; shape
+  ::  and kind constraints follow Lagoon's contract.
   ::  Source
   ++  mul  mul:(lake rnd)
   ::    +div:  [$ray $ray] -> $ray
   ::
   ::  Returns the quotient of two floating-point rays
+  ::  Delegates to Lagoon's `++lake` with the configured rounding mode; shape
+  ::  and kind constraints follow Lagoon's contract.
   ::  Source
   ++  div  div:(lake rnd)
   ::    +fma:  [$ray $ray $ray] -> $ray
   ::
-  ::  Returns the fused multiply-add of three floating-point rays
+  ::  Returns the multiply-add of three floating-point rays (two separate
+  ::  rounding operations: one for the multiply, one for the add — not a
+  ::  single-rounded IEEE fma).
   ::  Examples
   ::    > (fma:sa:sa:sa (ones:la:la [~[5 1] 5 %i754 ~]) (ones:la:la [~[5 1] 5 %i754 ~]) (ones:la:la [~[5 1] 5 %i754 ~]))
   ::    [meta=[shape=~[5 1] bloq=5 kind=%i754 fxp=~] data=0x1.4000.0000.4000.0000.4000.0000.4000.0000.4000.0000]
@@ -199,11 +218,17 @@
   ::    +abs: $ray -> $ray
   ::
   ::  Returns the absolute value of each entry in a floating-point ray
+  ::  Delegates to Lagoon's `++lake` with the configured rounding mode; shape
+  ::  and kind constraints follow Lagoon's contract.
   ::  Source
   ++  abs  abs:(lake rnd)
   ::    +exp: $ray -> $ray
   ::
   ::  Returns the exponential of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754`, `%unum`, and `%cplx` rays.  For `%i754`
+  ::  and `%cplx`, behavior at domain boundaries follows the underlying scalar
+  ::  library.  Inherited accuracy caveats from `/lib/math` apply (naive Taylor
+  ::  series).
   ::  Source
   ++  exp
     |=  a=ray:ls
@@ -212,6 +237,10 @@
   ::    +sin: $ray -> $ray
   ::
   ::  Returns the sine of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754`, `%unum`, and `%cplx` rays.  For `%i754`
+  ::  and `%cplx`, behavior at domain boundaries follows the underlying scalar
+  ::  library.  Inherited accuracy caveats from `/lib/math` apply (naive Taylor
+  ::  series).
   ::  Source
   ++  sin
     |=  a=ray:ls
@@ -220,6 +249,10 @@
   ::    +cos: $ray -> $ray
   ::
   ::  Returns the cosine of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754`, `%unum`, and `%cplx` rays.  For `%i754`
+  ::  and `%cplx`, behavior at domain boundaries follows the underlying scalar
+  ::  library.  Inherited accuracy caveats from `/lib/math` apply (naive Taylor
+  ::  series).
   ::  Source
   ++  cos
     |=  a=ray:ls
@@ -228,6 +261,10 @@
   ::    +tan: $ray -> $ray
   ::
   ::  Returns the tangent of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754`, `%unum`, and `%cplx` rays.  For `%i754`
+  ::  and `%cplx`, behavior at domain boundaries follows the underlying scalar
+  ::  library.  Inherited accuracy caveats from `/lib/math` apply (naive Taylor
+  ::  series).
   ::  Source
   ++  tan
     |=  a=ray:ls
@@ -244,6 +281,10 @@
   ::    +log: $ray -> $ray
   ::
   ::  Returns the natural logarithm of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754`, `%unum`, and `%cplx` rays.  For `%i754`
+  ::  and `%cplx`, behavior at domain boundaries (0, negative inputs, etc.)
+  ::  follows the underlying scalar library.  Inherited accuracy caveats from
+  ::  `/lib/math` apply (naive Taylor series).
   ::  Source
   ++  log
     |=  a=ray:ls
@@ -252,6 +293,10 @@
   ::    +log-10: $ray -> $ray
   ::
   ::  Returns the base-10 logarithm of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754` and `%unum` rays (`%cplx` is undefined
+  ::  for this function).  Behavior at domain boundaries (0, negative inputs)
+  ::  follows the underlying scalar library.  Inherited accuracy caveats from
+  ::  `/lib/math` apply (naive Taylor series).
   ::  Source
   ++  log-10
     |=  a=ray:ls
@@ -260,6 +305,10 @@
   ::    +log-2: $ray -> $ray
   ::
   ::  Returns the base-2 logarithm of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754` and `%unum` rays (`%cplx` is undefined
+  ::  for this function).  Behavior at domain boundaries (0, negative inputs)
+  ::  follows the underlying scalar library.  Inherited accuracy caveats from
+  ::  `/lib/math` apply (naive Taylor series).
   ::  Source
   ++  log-2
     |=  a=ray:ls
@@ -276,6 +325,10 @@
   ::    +sqrt: $ray -> $ray
   ::
   ::  Returns the square root of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754`, `%unum`, and `%cplx` rays.  For `%i754`
+  ::  and `%cplx`, behavior at domain boundaries (negative inputs, etc.) follows
+  ::  the underlying scalar library.  Inherited accuracy caveats from `/lib/math`
+  ::  apply (naive Taylor series).
   ::  Source
   ++  sqrt
     |=  a=ray:ls
@@ -284,12 +337,17 @@
   ::    +sqt: $ray -> $ray
   ::
   ::  Returns the square root of each entry in a floating-point ray
-  ::  Alias for +sqrt.
+  ::  Alias for +sqrt.  Operates element-wise on `%i754`, `%unum`, and `%cplx`
+  ::  rays.  Inherited accuracy caveats from `/lib/math` apply (naive Taylor
+  ::  series).
   ::  Source
   ++  sqt  sqrt
   ::    +cbrt: $ray -> $ray
   ::
   ::  Returns the cube root of each entry in a floating-point ray
+  ::  Operates element-wise on `%i754` and `%unum` rays (`%cplx` is undefined
+  ::  for this function).  Inherited accuracy caveats from `/lib/math` apply
+  ::  (naive Taylor series).
   ::  Source
   ++  cbrt
     |=  a=ray:ls
@@ -298,7 +356,9 @@
   ::    +cbt: $ray -> $ray
   ::
   ::  Returns the cube root of each entry in a floating-point ray
-  ::  Alias for +cbrt.
+  ::  Alias for +cbrt.  Operates element-wise on `%i754` and `%unum` rays
+  ::  (`%cplx` is undefined for this function).  Inherited accuracy caveats
+  ::  from `/lib/math` apply (naive Taylor series).
   ::  Source
   ++  cbt  cbrt
   ::
@@ -475,9 +535,10 @@
   ::
   +|  %linalg
   ::
-  ::  Eigendecomposition of symmetric real matrices via the cyclic Jacobi
-  ::  algorithm.  Phase A: %i754 single (bloq 5) and double (bloq 6) only.
-  ::  Real eigenvalues, orthonormal eigenvectors, no complex arithmetic.
+  ::  Eigendecomposition of symmetric real and complex Hermitian matrices via
+  ::  the cyclic Jacobi algorithm.  Supports %i754 bloq 4–7
+  ::  (`@rh`/`@rs`/`@rd`/`@rq`) and %cplx bloq 5–8 (`@ch`/`@cs`/`@cd`/`@cq`).
+  ::  Real eigenvalues, orthonormal/unitary eigenvectors.
   ::
   ::    Scalar float helpers, dispatched on the component bloq (4=@rh, 5=@rs,
   ::    6=@rd, 7=@rq).  Each takes the bloq as its first argument and operates on
@@ -812,11 +873,19 @@
   ::  Returns the eigenvalues (1-D ray) and eigenvectors (columns of a square
   ::  ray) of a symmetric (%i754) or Hermitian (%cplx) matrix, via cyclic
   ::  Jacobi.  Dispatches on kind; the %cplx path returns real (%i754)
-  ::  eigenvalues and %cplx (unitary) eigenvectors.
+  ::  eigenvalues and %cplx (unitary) eigenvectors.  Accepts %i754 bloq 4–7
+  ::  (`@rh`/`@rs`/`@rd`/`@rq`) and %cplx bloq 5–8 (`@ch`/`@cs`/`@cd`/`@cq`).
   ::
   ::  Asserts squareness and symmetry/Hermitian-ness WITHIN a relative tolerance
   ::  (+near/+cnear) -- a matrix symmetric only up to rounding (e.g. a Gram
   ::  matrix from +mmul) is accepted; a genuinely asymmetric one crashes.
+  ::
+  ::  Sweeps are capped at 60; a cap hit emits a `~&` terminal trace and
+  ::  returns the current (partially-converged) diagonal — callers cannot
+  ::  detect non-convergence programmatically.
+  ::
+  ::  Eigenvalue order is unspecified (Jacobi pivot order); sort externally if
+  ::  needed.
   ::
   ::  CALLERS: prefer +sake to set rtol, matched in WIDTH to the component (@rs
   ::  for @cs etc.).  A tolerance WIDER than the component is now rejected (its

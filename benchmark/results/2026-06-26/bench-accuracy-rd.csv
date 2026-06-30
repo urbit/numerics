@@ -1,0 +1,13 @@
+arm,taylor_max_ulp,taylor_rel_err,verdict
+exp,4160615,9.24e-10,"Taylor ~9e-10 (Cheb ≤1 ULP)"
+log,716271,1.59e-10,"Taylor ~2e-10 (Cheb ≤1 ULP)"
+sin,9203771874668083095,2.04e+03,"Taylor CATASTROPHIC (cancellation)"
+cos,9213804455360862346,2.05e+03,"Taylor CATASTROPHIC (cancellation)"
+tan,9202764545084042273,2.04e+03,"Taylor CATASTROPHIC (cancellation)"
+atan,2500078,5.55e-10,"Taylor ~6e-10 (Cheb ≤1 ULP)"
+asin,5908704,1.31e-09,"Taylor ~1e-09 (Cheb ≤1 ULP)"
+acos,5908704,1.31e-09,"Taylor ~1e-09 (Cheb ≤1 ULP)"
+sqt,1,2.22e-16,"both ≤1 ULP (tie)"
+cbt,11866046,2.63e-09,"Taylor ~3e-09 (Cheb ≤1 ULP)"
+log-2,869511,1.93e-10,"Taylor ~2e-10 (Cheb ≤1 ULP)"
+log-10,1046997,2.32e-10,"Taylor ~2e-10 (Cheb ≤1 ULP)"

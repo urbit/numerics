@@ -38,3 +38,10 @@ The library is jet-hinted to match: `~% %non ..part ~` on the file core,
 sample at gate axis 30); posit64 (bloq 6) declines to the pure-Hoon arm and
 still returns the correct value.  The remaining scalar/quire/conversion arms
 follow the same one-jet-per-op, bloq-dispatch pattern.
+
+# libmath C jets — 32-bit vere mirror
+
+Vendored from the 32-bit `urbit/vere` runtime (`pkg/noun/jets`). This is the
+32-bit twin of `libmath/vere64/`; the two `math.c` copies differ by exactly two
+lines (the `u3r_mean` two-arg form). See **`../vere64/README.md`** for the full
+documentation, apply steps, the Hoon jet-structure gotcha, and verification.

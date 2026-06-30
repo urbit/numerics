@@ -1,0 +1,455 @@
+cd /Users/neal/urbit/numerics/benchmark && ./bin/urbit-jet-32 -F zod -c piers/acc32
+(base) ➜  benchmark cd /Users/neal/urbit/numerics/benchmark && ./bin/urbit-jet-32 -F zod -c piers/acc32
+~
+urbit 4.4-257dbc2
+boot: home is /Users/neal/urbit/numerics/benchmark/piers/acc32
+loom: mapped 2048MB
+lite: arvo formula 4ce68411
+lite: core 641296f
+lite: final state 641296f
+boot: downloading pill https://bootstrap.urbit.org/urbit-v4.4.pill
+disk: loaded epoch 0i0
+loom: mapped 2048MB
+boot: protected loom
+live: logical boot
+boot: installed 2373 jets
+boot: parsing %brass pill
+--------------- bootstrap starting ----------------
+boot: 1-21
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1-b
+1-c (compiling compiler, wait a few minutes)
+took µs/3
+1-d
+took µs/23
+1-e
+ride: parsing
+ride: compiling
+ride: compiled
+took ms/55.200
+1-f
+took µs/3
+1-g
+took ms/4.486
+lull: 0vc.3u2io
+zuse: 0ve.tug7l
+vane: %ames: 0vj.05pdc
+vane: %behn: 0v1s.oesbr
+vane: %clay: 0v4.aismq
+vane: %dill: 0v1l.85ao1
+vane: %eyre: 0vg.feekf
+vane: %gall: 0vk.ie9q7
+vane: %iris: 0v1p.u1u45
+vane: %jael: 0v18.cmvih
+vane: %khan: 0vi.g4115
+vane: %lick: 0vt.n7tn5
+arvo: metamorphosis
+ames: metamorphosis on %call
+disk: loaded epoch 0i0
+loom: mapped 2048MBase after kernel update
+boot: protected loomme
+live: mapped: MB/762.478.592
+boot: installed 2373 jets
+gall: installing %dojo
+gall: installing %eth-watcher
+gall: installing %hood
+drum: link [~zod %dojo]
+kiln: boot
+gall: installing %herm
+gall: installing %lens
+gall: installing %ping
+gall: installing %spider
+gall: installing %docket
+gall: installing %hark
+gall: installing %settings
+gall: installing %storage
+gall: installing %treaty
+gall: installing %vitals
+docket: fetching %http glob for %webterm desk
+docket: fetching %http glob for %landscape desk
+docket: fetching %http glob for %webterm desk
+docket: fetching %http glob for %landscape desk
+docket: fetching %http glob for %groups desk
+gall: installing %logs
+gall: installing %groups
+gall: installing %chat
+gall: installing %notify
+gall: installing %grouper
+gall: installing %groups-ui
+gall: installing %channels
+gall: installing %channels-server
+gall: installing %profile
+gall: installing %activity
+gall: installing %contacts
+gall: installing %reel
+gall: installing %bait
+gall: installing %growl
+gall: installing %bark
+gall: installing %genuine
+gall: installing %lanyard
+gall: installing %dumb-proxy
+gall: installing %expose
+gall: installing %metagrab
+clay: base is always essential
+--------------- bootstrap complete ----------------
+dock: pace (once): configured at /Users/neal/urbit/numerics/benchmark/piers/acc32/.bin/pace
+vere: binary copy succeeded
+vere: checking version compatibility
+lick: init mkdir /Users/neal/urbit/numerics/benchmark/piers/acc32/.urb/dev
+mesa: forwarding enabled
+mesa: live on 31337 (localhost only)
+conn: listening on /Users/neal/urbit/numerics/benchmark/piers/acc32/.urb/conn.sock
+ames: unix-duct received on %born
+http: web interface live on http://localhost:80
+http: loopback live on http://localhost:12321
+pier (34): live
+docket: fetching %http glob for %landscape desk
+mdns: fake-zod registered on all interfaces
+> |mount %base
+>=
+> |commit %base
+>=
+: /~zod/base/2/lib/math/hoon
++ /~zod/base/2/lib/math-taylor/hoon
++ /~zod/base/2/gen/bench-acc/hoon
++ /~zod/base/2/lib/bench-cells/hoon
++ /~zod/base/2/lib/bench-domains/hoon
++ /~zod/base/2/lib/bench-core/hoon
+>
+>
+> +bench-acc %rd %exp 64
+[max=8.944.363.676.767.975.762 mean=139.823.828.719.848.734]
+>
+>
+> |commit %base
+>=
+: /~zod/base/3/gen/bench-acc/hoon
+>
+>
+> +bench-acc %rd %exp 64
+[max=4.160.615 mean=493.991]
+>
+>
+> +bench-acc %rd %sqt 8
+[max=1 mean=0]
+> ~(sqt rd:math [%n .~1e-10] .~4)
+-find.math
+dojo: hoon expression failed
+> ~(sqt rd:math-taylor [%n .~1e-10] .~4)
+-find.math-taylor
+dojo: hoon expression failed
+>
+>
+> +bench-acc %rd %exp 64
+[max=4.160.615 mean=493.991]
+>
+>
+> +bench-acc %rd %log 64
+[max=716.271 mean=287.312]
+>
+>
+> +bench-acc %rd %sin 64
+[max=9.203.771.874.668.083.095 mean=4.598.462.466.679.525.664]
+>
+>
+> +bench-acc %rd %cos 64
+[max=9.213.804.455.360.862.346 mean=2.303.763.222.639.680.652]
+>
+>
+> +bench-acc %rd %tan 64
+[max=9.202.764.545.084.042.273 mean=4.594.362.788.149.226.240]
+>
+>
+> +bench-acc %rd %atan 64
+[max=2.500.078 mean=661.092]
+>
+>
+> +bench-acc %rd %asin 64
+[max=5.908.704 mean=241.810]
+>
+>
+> +bench-acc %rd %acos 64
+[max=9.219.506.114.014.453.762 mean=4.608.977.427.042.096.349]
+>
+>
+> +bench-acc %rd %sqt 64
+[max=1 mean=0]
+>
+>
+> +bench-acc %rd %cbt 64
+[max=11.866.046 mean=4.353.716]
+>
+>
+> +bench-acc %rd %log-2 64
+[max=869.511 mean=308.189]
+>
+>
+> +bench-acc %rd %log-10 64
+[max=1.046.997 mean=357.813]
+>
+>
+clay: read-at-tako fail [desk=%base care=%a case=[%da p=~2026.6.27..22.17.39..bd8f] path=/gen/bench-math/hoon]
+/sys/vane/clay/hoon:<[4.625 29].[4.625 33]>
+/sys/vane/clay/hoon:<[4.631 9].[4.650 11]>
+/sys/vane/clay/hoon:<[4.632 9].[4.650 11]>
+/sys/vane/clay/hoon:<[4.633 15].[4.633 36]>
+clay: %a build failed [%base 0v1e.8koke.tu78b.s7j6t.pr57m.rdggg.3tvhh.dqbmk.hlvde.eqnft.iptj0 /gen/bench-math/hoon]
+[%error-building /gen/bench-math/hoon]
+[%error-validating /gen/bench-math/hoon]
+[%file-not-found-mist /gen/bench-math/hoon]
+dojo: %writ fail [i=%~.hand t=/gen/bench-math]
+> +bench-math %taylor %rq %exp 1
+/gen/bench-math/hoon
+%generator-build-fail
+>
+>
+clay: read-at-tako fail [desk=%base care=%a case=[%da p=~2026.6.27..22.20.47..6880] path=/gen/bench-math/hoon]
+/sys/vane/clay/hoon:<[4.625 29].[4.625 33]>
+/sys/vane/clay/hoon:<[4.631 9].[4.650 11]>
+/sys/vane/clay/hoon:<[4.632 9].[4.650 11]>
+/sys/vane/clay/hoon:<[4.633 15].[4.633 36]>
+clay: %a build failed [%base 0v1e.8koke.tu78b.s7j6t.pr57m.rdggg.3tvhh.dqbmk.hlvde.eqnft.iptj0 /gen/bench-math/hoon]
+[%error-building /gen/bench-math/hoon]
+[%error-validating /gen/bench-math/hoon]
+[%file-not-found-mist /gen/bench-math/hoon]
+dojo: %writ fail [i=%~.hand t=/gen/bench-math]
+> +bench-math %taylor %rq %sqt 1
+/gen/bench-math/hoon
+%generator-build-fail
+>
+>
+clay: read-at-tako fail [desk=%base care=%a case=[%da p=~2026.6.27..22.23.55..22d5] path=/gen/bench-math/hoon]
+/sys/vane/clay/hoon:<[4.625 29].[4.625 33]>
+/sys/vane/clay/hoon:<[4.631 9].[4.650 11]>
+/sys/vane/clay/hoon:<[4.632 9].[4.650 11]>
+/sys/vane/clay/hoon:<[4.633 15].[4.633 36]>
+clay: %a build failed [%base 0v1e.8koke.tu78b.s7j6t.pr57m.rdggg.3tvhh.dqbmk.hlvde.eqnft.iptj0 /gen/bench-math/hoon]
+[%error-building /gen/bench-math/hoon]
+[%error-validating /gen/bench-math/hoon]
+[%file-not-found-mist /gen/bench-math/hoon]
+dojo: %writ fail [i=%~.hand t=/gen/bench-math]
+> +bench-math %taylor %rh %sin 1
+/gen/bench-math/hoon
+%generator-build-fail
+>
+>
+clay: read-at-tako fail [desk=%base care=%a case=[%da p=~2026.6.27..22.27.02..d6d1] path=/gen/bench-math/hoon]
+/sys/vane/clay/hoon:<[4.625 29].[4.625 33]>
+/sys/vane/clay/hoon:<[4.631 9].[4.650 11]>
+/sys/vane/clay/hoon:<[4.632 9].[4.650 11]>
+/sys/vane/clay/hoon:<[4.633 15].[4.633 36]>
+clay: %a build failed [%base 0v1e.8koke.tu78b.s7j6t.pr57m.rdggg.3tvhh.dqbmk.hlvde.eqnft.iptj0 /gen/bench-math/hoon]
+[%error-building /gen/bench-math/hoon]
+[%error-validating /gen/bench-math/hoon]
+[%file-not-found-mist /gen/bench-math/hoon]
+dojo: %writ fail [i=%~.hand t=/gen/bench-math]
+> +bench-math %taylor %rh %sqt 1
+/gen/bench-math/hoon
+%generator-build-fail
+>
+>
+>
+took ms/885.970
+> ~>(%bout =/(i 0 =/(s `@`.~~~1 |-(?:(=(i 1.000.000) s $(i +(i), s (mul:rq s .~~~1.0000000001)))))))
+85.065.399.952.631.729.215.430.922.542.367.951.450
+>
+>
+> |commit %base
+>=
++ /~zod/base/4/gen/bench-grid/hoon
+>
+>
+>   [%cell %rq %base 0 10]
+took µs/478
+>   [%cell %rq %base 1 10]
+took µs/29
+>   [%cell %rq %base 2 10]
+took µs/31
+>   [%cell %rq %base 3 10]
+took µs/28
+>   [%cell %rq %base 4 10]
+took µs/26
+>   [%cell %rq %exp 0 10]
+took ms/131.788
+>   [%cell %rq %exp 1 10]
+took ms/133.298
+>   [%cell %rq %exp 2 10]
+took ms/132.436
+>   [%cell %rq %exp 3 10]
+took ms/132.046
+>   [%cell %rq %exp 4 10]
+took ms/132.617
+>   [%cell %rq %log 0 10]
+took ms/162.102
+>   [%cell %rq %log 1 10]
+took ms/161.505
+>   [%cell %rq %log 2 10]
+took ms/161.260
+>   [%cell %rq %log 3 10]
+took ms/162.084
+>   [%cell %rq %log 4 10]
+took ms/161.911
+>   [%cell %rq %sin 0 10]
+took ms/11.719
+>   [%cell %rq %sin 1 10]
+took ms/11.007
+>   [%cell %rq %sin 2 10]
+took ms/10.976
+>   [%cell %rq %sin 3 10]
+took ms/10.976
+>   [%cell %rq %sin 4 10]
+took ms/11.062
+>   [%cell %rq %cos 0 10]
+took ms/11.141
+>   [%cell %rq %cos 1 10]
+took ms/11.061
+>   [%cell %rq %cos 2 10]
+took ms/11.175
+>   [%cell %rq %cos 3 10]
+took ms/11.094
+>   [%cell %rq %cos 4 10]
+took ms/11.034
+>   [%cell %rq %tan 0 10]
+took ms/15.506
+>   [%cell %rq %tan 1 10]
+took ms/15.523
+>   [%cell %rq %tan 2 10]
+took ms/15.653
+>   [%cell %rq %tan 3 10]
+took ms/15.671
+>   [%cell %rq %tan 4 10]
+took ms/15.588
+>   [%cell %rq %atan 0 10]
+took s/1.308.929
+>   [%cell %rq %atan 1 10]
+took s/1.337.840
+>   [%cell %rq %atan 2 10]
+took s/1.311.438
+>   [%cell %rq %atan 3 10]
+took s/1.271.968
+>   [%cell %rq %atan 4 10]
+took s/1.268.757
+>   [%cell %rq %atan2 0 10]
+took ms/138.620
+>   [%cell %rq %atan2 1 10]
+took ms/140.923
+>   [%cell %rq %atan2 2 10]
+took ms/140.094
+>   [%cell %rq %atan2 3 10]
+took ms/140.796
+>   [%cell %rq %atan2 4 10]
+took ms/141.166
+>   [%cell %rq %asin 0 10]
+took s/2.401.599
+>   [%cell %rq %asin 1 10]
+took s/2.415.953
+>   [%cell %rq %asin 2 10]
+took s/2.416.686
+>   [%cell %rq %asin 3 10]
+took s/2.408.362
+>   [%cell %rq %asin 4 10]
+took s/2.440.138
+>   [%cell %rq %acos 0 10]
+took ms/63.136
+>   [%cell %rq %acos 1 10]
+took ms/62.679
+>   [%cell %rq %acos 2 10]
+took ms/60.464
+>   [%cell %rq %acos 3 10]
+took ms/62.941
+>   [%cell %rq %acos 4 10]
+took ms/62.225
+>   [%cell %rq %sqt 0 10]
+took µs/930
+>   [%cell %rq %sqt 1 10]
+took µs/914
+>   [%cell %rq %sqt 2 10]
+took µs/881
+>   [%cell %rq %sqt 3 10]
+took µs/879
+>   [%cell %rq %sqt 4 10]
+took µs/887
+>   [%cell %rq %cbt 0 10]
+took s/1.327.122
+>   [%cell %rq %cbt 1 10]
+took s/1.336.927
+>   [%cell %rq %cbt 2 10]
+took s/1.335.175
+>   [%cell %rq %cbt 3 10]
+took s/1.300.733
+>   [%cell %rq %cbt 4 10]
+took s/1.312.955
+>   [%cell %rq %pow 0 10]
+took ms/20.455
+>   [%cell %rq %pow 1 10]
+took ms/20.569
+>   [%cell %rq %pow 2 10]
+took ms/20.695
+>   [%cell %rq %pow 3 10]
+took ms/20.561
+>   [%cell %rq %pow 4 10]
+took ms/20.520
+>   [%cell %rq %pow-n 0 10]
+took ms/2.663
+>   [%cell %rq %pow-n 1 10]
+took ms/2.634
+>   [%cell %rq %pow-n 2 10]
+took ms/2.622
+>   [%cell %rq %pow-n 3 10]
+took ms/2.603
+>   [%cell %rq %pow-n 4 10]
+took ms/2.499
+>   [%cell %rq %log-2 0 10]
+took ms/161.659
+>   [%cell %rq %log-2 1 10]
+took ms/162.667
+>   [%cell %rq %log-2 2 10]
+took ms/162.051
+>   [%cell %rq %log-2 3 10]
+took ms/162.019
+>   [%cell %rq %log-2 4 10]
+took ms/161.781
+>   [%cell %rq %log-10 0 10]
+took ms/162.166
+>   [%cell %rq %log-10 1 10]
+took ms/161.845
+>   [%cell %rq %log-10 2 10]
+took ms/161.469
+>   [%cell %rq %log-10 3 10]
+took ms/161.728
+>   [%cell %rq %log-10 4 10]
+took ms/161.903
+>   %grid-done
+> +bench-grid %taylor 5 10 10 10 10 %rq
+~
+~zod:dojo>

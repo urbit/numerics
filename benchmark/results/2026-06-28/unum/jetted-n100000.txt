@@ -1,0 +1,96 @@
+[%cell %rpb %base]
+took ms/201.210
+[%cell %rpb %add]
+took ms/347.461
+[%cell %rpb %sub]
+took ms/350.724
+[%cell %rpb %mul]
+took ms/353.591
+[%cell %rpb %div]
+took ms/366.860
+[%cell %rpb %fma]
+took ms/379.836
+[%cell %rpb %sqt]
+took ms/343.556
+[%cell %rpb %neg]
+took ms/269.387
+[%cell %rpb %exp]
+took s/1.361.196
+[%cell %rpb %log]
+took s/1.992.308
+[%cell %rpb %sin]
+took s/1.734.641
+[%cell %rpb %cos]
+took s/1.725.140
+[%cell %rpb %atan]
+took s/4.711.162
+[%cell %rpb %pow]
+took s/2.921.758
+[%cell %rpb %lth]
+took ms/341.119
+[%cell %rph %base]
+took ms/201.493
+[%cell %rph %add]
+took ms/378.660
+[%cell %rph %sub]
+took ms/380.545
+[%cell %rph %mul]
+took ms/368.763
+[%cell %rph %div]
+took ms/360.478
+[%cell %rph %fma]
+took ms/398.496
+[%cell %rph %sqt]
+took s/1.140.286
+[%cell %rph %neg]
+took ms/275.133
+[%cell %rph %exp]
+took s/2.730.851
+[%cell %rph %log]
+took s/4.091.147
+[%cell %rph %sin]
+took s/3.613.529
+[%cell %rph %cos]
+took s/3.703.221
+[%cell %rph %atan]
+took s/46.093.061
+[%cell %rph %pow]
+took s/6.134.767
+[%cell %rph %lth]
+took ms/341.385
+[%cell %rps %base]
+took ms/213.612
+[%cell %rps %add]
+took ms/382.517
+[%cell %rps %sub]
+took ms/389.338
+[%cell %rps %mul]
+took ms/375.795
+[%cell %rps %div]
+took ms/357.904
+[%cell %rps %fma]
+took ms/403.311
+[%cell %rps %sqt]
+took s/1.944.009
+[%cell %rps %neg]
+took ms/287.158
+[%cell %rps %exp]
+took s/2.745.098
+[%cell %rps %log]
+took s/4.200.254
+[%cell %rps %sin]
+took s/3.688.782
+[%cell %rps %cos]
+took s/3.781.378
+[%cell %rps %atan]
+took s/85.240.487
+[%cell %rps %pow]
+took s/6.279.328
+[%cell %rps %lth]
+took ms/341.757
+[%fdp %rpb]
+took ms/8.910
+[%fdp %rph]
+took ms/26.396
+[%fdp %rps]
+took ms/26.986

@@ -31,6 +31,7 @@
 ::  gates of the same name.  Internal integer arithmetic therefore uses the
 ::  ^-prefixed forms (^add/^sub/^mul/^div) to reach the standard library.
 ::
+~%  %non  ..part  ~  :: nest non in hex for now (jet chapter, see /lib/math)
 |%
 ::  G-layer (decoded) representation of a posit, mirroring the stdlib float +$fn
 ::  (`[%f s=? e=@s a=@u]`):  value = (sign) a * 2^e, with a an integer
@@ -61,6 +62,7 @@
 ::  Specialize with %*: posit8 is bloq=3 (n=8), posit16 bloq=4, posit32 bloq=5.
 ::
 ++  pp
+  ~/  %unum
   |_  =bloq
   ++  n  (bex bloq)
   ++  es  2
@@ -168,15 +170,32 @@
   ++  gte-s  |=([a=@s b=@s] ^-(? !=(-1 (cmp:si a b))))
   ++  lte-s  |=([a=@s b=@s] ^-(? !=(--1 (cmp:si a b))))
   ::  Comparisons (= two's-complement integer ordering of the raw bits, sec 5.3).
-  ++  gth  |=([a=@ b=@] ^-(? (~(gth twoc:twoc bloq) a b)))
-  ++  lth  |=([a=@ b=@] ^-(? (~(lth twoc:twoc bloq) a b)))
-  ++  gte  |=([a=@ b=@] ^-(? (~(gte twoc:twoc bloq) a b)))
-  ++  lte  |=([a=@ b=@] ^-(? (~(lte twoc:twoc bloq) a b)))
-  ++  equ  |=([a=@ b=@] ^-(? =(a b)))
-  ++  neq  |=([a=@ b=@] ^-(? !=(a b)))
-  ++  neg  |=(a=@ ^-(@ (dis msk (^sub (bex n) a))))
-  ++  abs  |=(a=@ ^-(@ ?:(=(1 (~(msb twoc:twoc bloq) a)) (neg a) a)))
+  ++  gth
+    ~/  %gth
+    |=([a=@ b=@] ^-(? (~(gth twoc:twoc bloq) a b)))
+  ++  lth
+    ~/  %lth
+    |=([a=@ b=@] ^-(? (~(lth twoc:twoc bloq) a b)))
+  ++  gte
+    ~/  %gte
+    |=([a=@ b=@] ^-(? (~(gte twoc:twoc bloq) a b)))
+  ++  lte
+    ~/  %lte
+    |=([a=@ b=@] ^-(? (~(lte twoc:twoc bloq) a b)))
+  ++  equ
+    ~/  %equ
+    |=([a=@ b=@] ^-(? =(a b)))
+  ++  neq
+    ~/  %neq
+    |=([a=@ b=@] ^-(? !=(a b)))
+  ++  neg
+    ~/  %neg
+    |=(a=@ ^-(@ (dis msk (^sub (bex n) a))))
+  ++  abs
+    ~/  %abs
+    |=(a=@ ^-(@ ?:(=(1 (~(msb twoc:twoc bloq) a)) (neg a) a)))
   ++  sgn
+    ~/  %sgn
     |=  a=@
     ^-  @
     ?:  =(zero a)  zero
@@ -185,6 +204,7 @@
     one
   ::  Arithmetic (sec 5.4); exact g-layer combine, single round via +bit.
   ++  mul
+    ~/  %mul
     |=  [a=@ b=@]
     ^-  @
     =/  ua  (sea a)
@@ -195,6 +215,7 @@
     ?>  ?=(%p -.ub)
     (bit [%p =(s.ua s.ub) (sum:si e.ua e.ub) (^mul a.ua a.ub)])
   ++  add
+    ~/  %add
     |=  [a=@ b=@]
     ^-  @
     =/  ua  (sea a)
@@ -214,8 +235,11 @@
     ?:  (^gth s2 s1)
       (bit [%p s.ub emin (^sub s2 s1)])
     zero
-  ++  sub  |=([a=@ b=@] ^-(@ (add a (neg b))))
+  ++  sub
+    ~/  %sub
+    |=([a=@ b=@] ^-(@ (add a (neg b))))
   ++  div
+    ~/  %div
     |=  [a=@ b=@]
     ^-  @
     =/  ua  (sea a)
@@ -245,6 +269,7 @@
       r
     $(r nr)
   ++  sqt
+    ~/  %sqt
     |=  p=@
     ^-  @
     =/  u  (sea p)
@@ -277,17 +302,28 @@
     =?  hi  &(?=(%up mode) s.u !=(0 rem))     +(hi)
     ?:  =(0 hi)  zero
     (bit [%p s.u --0 hi])
-  ++  rnd  (round %near)
-  ++  flr  (round %down)
-  ++  cel  (round %up)
-  ++  sun  |=(v=@ ^-(@ ?:(=(0 v) zero (bit [%p %.y --0 v]))))
+  ::  rnd/flr/cel: eta-expanded to unary gates wrapping +round so they jet.
+  ++  rnd
+    ~/  %rnd
+    |=(p=@ ((round %near) p))
+  ++  flr
+    ~/  %flr
+    |=(p=@ ((round %down) p))
+  ++  cel
+    ~/  %cel
+    |=(p=@ ((round %up) p))
+  ++  sun
+    ~/  %sun
+    |=(v=@ ^-(@ ?:(=(0 v) zero (bit [%p %.y --0 v]))))
   ++  san
+    ~/  %san
     |=  v=@s
     ^-  @
     =+  [sn mg]=(old:si v)
     ?:  =(0 mg)  zero
     (bit [%p sn --0 mg])
   ++  toi
+    ~/  %toi
     |=  p=@
     ^-  (unit @s)
     =/  u  (sea p)
@@ -300,6 +336,7 @@
     =/  mag  ?:((gte-s e.ur --0) (lsh [0 sh] a.ur) (rsh [0 sh] a.ur))
     `(new:si s.ur mag)
   ++  fma
+    ~/  %fma
     |=  [a=@ b=@ c=@]
     ^-  @
     =/  ua  (sea a)
@@ -330,6 +367,7 @@
   ::
   ::    +exp:  @ -> @   (e^x = sum x^k/k!)
   ++  exp
+    ~/  %exp
     |=  x=@
     ^-  @
     =/  sum   one
@@ -342,6 +380,7 @@
     $(nn +(nn))
   ::    +sin:  @ -> @   (sum (-1)^k x^(2k+1)/(2k+1)!)
   ++  sin
+    ~/  %sin
     |=  x=@
     ^-  @
     =/  term  x
@@ -355,6 +394,7 @@
     $(nn +(nn))
   ::    +cos:  @ -> @   (sum (-1)^k x^2k/(2k)!)
   ++  cos
+    ~/  %cos
     |=  x=@
     ^-  @
     =/  term  one
@@ -367,9 +407,12 @@
     =.  sum   (add sum term)
     $(nn +(nn))
   ::    +tan:  @ -> @
-  ++  tan  |=(x=@ ^-(@ (div (sin x) (cos x))))
+  ++  tan
+    ~/  %tan
+    |=(x=@ ^-(@ (div (sin x) (cos x))))
   ::    +pow-n:  @ -> @u -> @   (integer power by repeated multiplication)
   ++  pow-n
+    ~/  %pow-n
     |=  [x=@ p=@u]
     ^-  @
     ?:  =(nar x)  nar            :: NaR propagates even when p=0
@@ -382,6 +425,7 @@
   ::  bit pattern, and posit zero) returns NaR rather than a divergent
   ::  series result.  Like the rest of /lib/math, accurate only near 1.
   ++  log
+    ~/  %log
     |=  x=@
     ^-  @
     ?:  (lte x zero)  nar
@@ -397,14 +441,21 @@
     =.  sum   (add sum (mul coef term))
     $(nn +(nn))
   ::    +log-2 / +log-10:  base-2 / base-10 logarithm
-  ++  log-2   |=(x=@ ^-(@ (div (log x) log2)))
-  ++  log-10  |=(x=@ ^-(@ (div (log x) log10)))
+  ++  log-2
+    ~/  %log-2
+     |=(x=@ ^-(@ (div (log x) log2)))
+  ++  log-10
+    ~/  %log-10
+    |=(x=@ ^-(@ (div (log x) log10)))
   ::    +pow:  @ -> @ -> @   (x^y = exp(y * log x))
-  ++  pow  |=([x=@ y=@] ^-(@ (exp (mul y (log x)))))
+  ++  pow
+    ~/  %pow
+    |=([x=@ y=@] ^-(@ (exp (mul y (log x)))))
   ::    +factorial:  @ -> @   (x! by repeated multiplication)
   ::  Domain x >= 0 (NaR otherwise, and NaR propagates); for integer x this is
   ::  exact up to the precision, halting once x <= 1.  Mirrors /lib/math.
   ++  factorial
+    ~/  %factorial
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -417,6 +468,7 @@
   ::  Domain x > 0 (NaR for x < 0, like the rest of the exp/log-based ops);
   ::  cbrt(0) = 0.  Mirrors /lib/math's `cbt = (pow x .0.33...)`.
   ++  cbrt
+    ~/  %cbrt
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -428,6 +480,7 @@
   ::  (1+x^2)^-0.5 and 1.  Fixed iteration count (AGM converges quadratically).
   ::  Odd in x, so negative arguments are handled by the carried sign.
   ++  atan
+    ~/  %atan
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -446,6 +499,7 @@
   ::  arcsin(x) = atan(x / sqrt(1 - x^2)) for |x| < 1; +-pi/2 at x = +-1;
   ::  NaR outside [-1, 1].  Mirrors /lib/math.
   ++  asin
+    ~/  %asin
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -458,6 +512,7 @@
   ::  arccos(x) = atan(sqrt(1 - x^2) / x) for 0 < |x| < 1 (pi/2 at 0); 0 at
   ::  x = 1, pi at x = -1; NaR outside [-1, 1].  Mirrors /lib/math.
   ++  acos
+    ~/  %acos
     |=  x=@
     ^-  @
     ?:  =(nar x)  nar
@@ -468,7 +523,9 @@
     ?:  (equ x (neg one))  pi
     nar
   ::    +is-close:  @ -> @ -> @ -> ?   (|a - b| <= tol)
-  ++  is-close  |=([a=@ b=@ tol=@] ^-(? (lte (abs (sub a b)) tol)))
+  ++  is-close
+    ~/  %is-close
+    |=([a=@ b=@ tol=@] ^-(? (lte (abs (sub a b)) tol)))
   ::
   ::  Quire (sec 3.4 / 5.11): a 16n-bit fixed-point exact accumulator, held
   ::  as a raw two's-complement atom.  Sums of products accumulate exactly and
@@ -482,6 +539,7 @@
   ++  q-nar   (bex (dec qbits))
   ++  q-zero  `@`0
   ++  p-to-q
+    ~/  %p-to-q
     |=  p=@
     ^-  @
     =/  u  (sea p)
@@ -491,6 +549,7 @@
     =/  m  (lsh [0 (abs:si (sum:si e.u (sun:si qscale)))] a.u)
     ?:(s.u m (^sub qmod m))
   ++  q-to-p
+    ~/  %q-to-p
     |=  q=@
     ^-  @
     =.  q  (dis (dec qmod) q)
@@ -500,6 +559,7 @@
     ?:  =(0 acc)  zero
     (bit [%p !neg (dif:si --0 (sun:si qscale)) acc])
   ++  q-mul-add
+    ~/  %q-mul-add
     |=  [q=@ a=@ b=@]
     ^-  @
     ?:  =(q-nar q)  q-nar
@@ -512,18 +572,30 @@
     =/  m   (lsh [0 (abs:si :(sum:si e.ua e.ub (sun:si qscale)))] (^mul a.ua a.ub))
     =/  qc  ?:(=(s.ua s.ub) m (^sub qmod m))
     (mod (^add q qc) qmod)
-  ++  q-mul-sub  |=([q=@ a=@ b=@] ^-(@ (q-mul-add q a (neg b))))
-  ++  q-add-p  |=([q=@ p=@] ^-(@ (q-mul-add q p one)))
-  ++  q-sub-p  |=([q=@ p=@] ^-(@ (q-mul-add q (neg p) one)))
-  ++  q-negate  |=(q=@ ^-(@ ?:(=(q-nar q) q-nar (mod (^sub qmod q) qmod))))
+  ++  q-mul-sub
+    ~/  %q-mul-sub
+    |=([q=@ a=@ b=@] ^-(@ (q-mul-add q a (neg b))))
+  ++  q-add-p
+    ~/  %q-add-p
+    |=([q=@ p=@] ^-(@ (q-mul-add q p one)))
+  ++  q-sub-p
+    ~/  %q-sub-p
+    |=([q=@ p=@] ^-(@ (q-mul-add q (neg p) one)))
+  ++  q-negate
+    ~/  %q-negate
+    |=(q=@ ^-(@ ?:(=(q-nar q) q-nar (mod (^sub qmod q) qmod))))
   ++  q-add-q
+    ~/  %q-add-q
     |=  [x=@ y=@]
     ^-  @
     ?:  |(=(q-nar x) =(q-nar y))  q-nar
     (mod (^add x y) qmod)
-  ++  q-sub-q  |=([x=@ y=@] ^-(@ (q-add-q x (q-negate y))))
+  ++  q-sub-q
+    ~/  %q-sub-q
+    |=([x=@ y=@] ^-(@ (q-add-q x (q-negate y))))
   ::    +fdp:  (list @) -> (list @) -> @  (fused dot product, single rounding)
   ++  fdp
+    ~/  %fdp
     |=  [av=(list @) bv=(list @)]
     ^-  @
     =|  q=@
@@ -552,15 +624,31 @@
     ?:  =(0 a.f)  [%z ~]
     [%p s.f e.f a.f]
   ::    +to-rh/rs/rd/rq:  this-width posit -> half/single/double/quad float
-  ++  to-rh  |=(p=@ ^-(@rh (bit:rh (up-to-fn (sea p)))))
-  ++  to-rs  |=(p=@ ^-(@rs (bit:rs (up-to-fn (sea p)))))
-  ++  to-rd  |=(p=@ ^-(@rd (bit:rd (up-to-fn (sea p)))))
-  ++  to-rq  |=(p=@ ^-(@rq (bit:rq (up-to-fn (sea p)))))
+  ++  to-rh
+    ~/  %to-rh
+    |=(p=@ ^-(@rh (bit:rh (up-to-fn (sea p)))))
+  ++  to-rs
+    ~/  %to-rs
+    |=(p=@ ^-(@rs (bit:rs (up-to-fn (sea p)))))
+  ++  to-rd
+    ~/  %to-rd
+    |=(p=@ ^-(@rd (bit:rd (up-to-fn (sea p)))))
+  ++  to-rq
+    ~/  %to-rq
+    |=(p=@ ^-(@rq (bit:rq (up-to-fn (sea p)))))
   ::    +from-rh/rs/rd/rq:  half/single/double/quad float -> this-width posit
-  ++  from-rh  |=(r=@rh ^-(@ (bit (fn-to-up (sea:rh r)))))
-  ++  from-rs  |=(r=@rs ^-(@ (bit (fn-to-up (sea:rs r)))))
-  ++  from-rd  |=(r=@rd ^-(@ (bit (fn-to-up (sea:rd r)))))
-  ++  from-rq  |=(r=@rq ^-(@ (bit (fn-to-up (sea:rq r)))))
+  ++  from-rh
+    ~/  %from-rh
+    |=(r=@rh ^-(@ (bit (fn-to-up (sea:rh r)))))
+  ++  from-rs
+    ~/  %from-rs
+    |=(r=@rs ^-(@ (bit (fn-to-up (sea:rs r)))))
+  ++  from-rd
+    ~/  %from-rd
+    |=(r=@rd ^-(@ (bit (fn-to-up (sea:rd r)))))
+  ++  from-rq
+    ~/  %from-rq
+    |=(r=@rq ^-(@ (bit (fn-to-up (sea:rq r)))))
   --
 ::  posit8   ("byte"),   posit<8,2>
 ++  rpb  %*(. pp bloq 3)

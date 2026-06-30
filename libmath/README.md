@@ -1,6 +1,6 @@
 #   `/lib/math` for Urbit
 
-An unjetted library for basic mathematical and special function support.
+A four-precision scalar transcendental library (`@rs`/`@rd`/`@rh`/`@rq`), jetted via SoftFloat for `@rs` and `@rd`; `@rh`/`@rq` jets in progress.
 
 We support the following functions and special functions:
 
@@ -19,6 +19,10 @@ We support the following functions and special functions:
 - `++sin`, $\sin$
 - `++cos`, $\cos$
 - `++tan`, $\tan$
+- `++asin`, $\arcsin$
+- `++acos`, $\arccos$
+- `++atan`, $\arctan$
+- `++atan2`, $\text{atan2}$
 - `++pow-n`, $\text{pow}$ to integer power
 - `++log`, $\log$ (natural logarithm)
 - `++log-10`, $\log_{10}$ (log base-10)
@@ -56,16 +60,11 @@ Constants (to machine accuracy):
 
 ---
 
-It would be nice to have the following special functions as well:
+Not yet implemented:
 
-- $\arcsin$
-- $\arccos$
-- $\arctan$
-- $\sinh$
-- $\cosh$
-- $\tanh$
+- $\sinh$, $\cosh$, $\tanh$ and their inverses
 
-We do not envision including the Bessel functions and other more abstruse functions.
+Bessel functions and other abstruse special functions are out of scope.
 
 We use naïve algorithms which are highly reproducible.  We special-case some arguments to make them tractable without catastrophic cancellation.
 
@@ -261,3 +260,33 @@ The following is the *planned* second interface for `/lib/unum`: standard-named 
 ### Conversions between posit format and decimal format
 
 ### Conversions between posit format and IEEE 754 format
+
+---
+
+# `/lib/complex` for Urbit
+
+Complex arithmetic over four precisions via four doors (`++cs`, `++cd`, `++ch`, `++cq`),
+corresponding to `@cs`/`@cd`/`@ch`/`@cq` (two `@rs` components packed, etc.).
+Storage is BLAS-interleaved (real, imaginary, real, imaginary, …).  Provides
+`++add`, `++sub`, `++mul`, `++div`, `++abs`, `++neg`, `++conj`, `++re`, `++im`,
+`++arg`, and elementary functions `++exp`, `++log`, `++pow`, `++sqrt`.
+
+---
+
+# `/lib/fixed` for Urbit
+
+Fixed-point Q-format arithmetic.  Operations are parameterized by precision
+`[a=@ b=@]` (integer bits · fractional bits; total width = a+b+1 including sign).
+Width must be a power of two.  Provides `++add`, `++sub`, `++mul`, `++div`.
+Precision is carried through arithmetic and lives in `meta.tail` when used as
+a Lagoon `%fixp` array element kind.
+
+---
+
+# `/lib/twoc` for Urbit
+
+Two's-complement signed integer arithmetic parameterized by bit width (must be a
+power of two).  Provides `++add`, `++sub`, `++mul`, `++div`, `++rem`, `++pow`,
+`++neg`, `++abs`, `++gth`, `++gte`, `++lth`, `++lte`, `++equ`, `++neq`, `++msb`.
+Used as the comparison substrate for posit ordering in `/lib/unum` and as the
+`%int2` element kind in Lagoon.

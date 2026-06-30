@@ -6,21 +6,23 @@
 
 This repository organizes the core numerical computing apparatus for Urbit:
 
-- `/lib/math` provides basic single-atom transcendental functions; it supersedes [`sigilante/libmath`](https://github.com/sigilante/libmath).
+- `libmath` provides scalar arithmetic libraries; all live in `libmath/desk/lib/`.
   - [`README.md`](./libmath/README.md)
+  - `/lib/math` — four-precision transcendentals (`@rs`/`@rd`/`@rh`/`@rq`), jetted via SoftFloat.
+  - `/lib/unum` — 2022 Posit Standard (`@rpb`/`@rph`/`@rps`/`@rpd`/`@rpq`) with quire.
+  - `/lib/complex` — BLAS-interleaved complex numbers (`@ch`/`@cs`/`@cd`/`@cq`).
+  - `/lib/fixed` — fixed-point Q-format arithmetic.
+  - `/lib/twoc` — two's-complement signed integers.
 - Lagoon (Linear AlGebra in hOON) offers operations in the tradition of BLAS and LAPACK (like NumPy's pure matrix operations).
   - [`README.md`](./lagoon/README.md)
-  - `/desk` contains the Hoon-specific code for Lagoon.
+  - `lagoon/desk` contains the Hoon-specific code for Lagoon.
     - `/lib/lagoon` is the main library for Lagoon operations.
-    - `/lib/twoc` supports two's-complement signed integers.
-    - `/lib/fixed` supports fixed-precision operations.
-    - `/lib/unum` supports Gustafson-style unums (2022 Type III specification).
-    - `/lib/complex` supports BLAS-interleaved complex numbers (`@ch`/`@cs`/`@cd`/`@cq`).
     - `/sur/lagoon` supplies type headers for Lagoon.
-  - `/vere` contains the C jets for the Vere runtime.
-- Saloon (Scientific ALgorithms in hOON) affords transcendental functions (like NumPy's transcendental functions, optimizers, etc.).
+  - `lagoon/vere` contains the C jets for the Vere runtime.
+- Saloon (Scientific ALgorithms in hOON) affords element-wise transcendentals and eigendecomposition over Lagoon rays.
   - [`README.md`](./saloon/README.md)
-  - `/desk` contains the Hoon-specific code for Saloon.
+  - `saloon/desk` contains the Hoon-specific code for Saloon.
+    - `/lib/saloon` is the main library for Saloon operations.
 - Maroon (MAchine LeaRning in hOON) implements machine learning algorithms as a sidecar to Urbit.
   - [`README.md`](./maroon/README.md)
   - `/desk` contains the Hoon-specific code for Maroon, currently an in-progress tinygrad implementation.

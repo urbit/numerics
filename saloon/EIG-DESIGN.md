@@ -99,11 +99,10 @@ externally if needed.)
 **Hermitian (`%cplx`) variant:** same skeleton with complex Givens rotations
 and `dagger` instead of transpose; defer until after the real case works.
 
-**Symmetry handling:** Phase A is only valid for symmetric input. Decision
-(for review): (a) `?>` assert `is-close` symmetry and crash otherwise, or
-(b) symmetrize `(A+Aᵀ)/2` silently, or (c) document "caller's responsibility."
-Recommend **(a)** — assert, so a nonsymmetric matrix doesn't quietly get the
-wrong algorithm (it should go to Phase B).
+**Symmetry handling:** Phase A is only valid for symmetric input.  The
+implementation asserts near-symmetry via `?>` and crashes on a non-symmetric
+matrix, so a caller cannot silently get the wrong algorithm (option a — chose
+over silent symmetrization or caller-responsibility).
 
 ---
 

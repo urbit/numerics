@@ -13,15 +13,12 @@ rays.
 
 ---
 
-We envision four libraries and associated jet code living in this repository:
+The numerics repository provides:
 
-- `/lib/math` offers basic special function support for floating-point atoms.
-- Lagoon (Linear AlGebra in hOON) offers BLAS-like operations (like NumPy's pure matrix operations).
-  - Lagoon `%real`s are slated to ship with [410 K](https://github.com/urbit/UIPs/pull/45).
-  - [SoftBLAS](https://github.com/urbit/SoftBLAS) provides a reproducible software-defined floating-point implementation of parts of BLAS and LAPACK suitable for jetting Lagoon.
-  - `/lib/fixed` provides operations for fixed-precision operations.
-- Saloon (Scientific ALgorithms in hOON) offers transcendental functions (like NumPy's transcendental functions, optimizers, etc.).
-- Maroon (MAchine LeaRning in hOON) offers machine learning algorithms, starting with tinygrad.
+- `/lib/math` — scalar transcendentals for `@rs`/`@rd`/`@rh`/`@rq`, jetted via SoftFloat.
+- Lagoon — BLAS-like N-D array operations.  [SoftBLAS](https://github.com/urbit/SoftBLAS) provides reproducible software-defined FP for jetting the `%i754` kind.
+- Saloon — element-wise transcendentals and eigendecomposition over Lagoon rays.
+- Supporting scalar libraries: `/lib/unum`, `/lib/complex`, `/lib/fixed`, `/lib/twoc`.
 
 ##  Type System
 
@@ -144,28 +141,13 @@ The following arms are provided:
 - `++el-wise-op` (helper function)
 - `++bin-op` (helper function)
 
-The Hoon release is available in `urbit/numerics`, branch `sigilante/reals-only`.  The Hoon release consists of the following files:
-
-- `/sur/lagoon` for data types necessary to use Lagoon.
-- `/lib/lagoon` for operations.
-- `/tests/lib/lagoon` for various array operation behavior tests.
-
-A PR is at [#6971](https://github.com/urbit/urbit/pull/6971).
-
-The Vere release is available in `urbit/vere`, branch `sigilante/lagoon-jets`.  The Vere release contains jets for 28 arms.  These have been tested for correctness against the reference Hoon results.
-
-A PR is at [#638](https://github.com/urbit/vere/pull/638).
-
-Points for discussion:
-
-1. Currently we ship Lagoon as `/lib/lagoon` and jet into the `f`/`hex` core in `tree.c`.  Since that generally deals with Zuse-level arms, is it advisable to introduce another level `g`/`hep` for `/lib` jets?
-2. `/sur/lagoon` still lists other types in `+$kind`, but these are commented out for the time being.
+Lagoon is shipped in `urbit/urbit` (Hoon: `/lib/lagoon`, `/sur/lagoon`) and `urbit/vere` (C jets via SoftBLAS).  All six element kinds are active in `+$kind`; none are commented out.
 
 Nonobvious points to note:
 
 1. The comparison gates for Lagoon flip back to boolean rather than loobean results.  Furthermore, they result in numerical ones (e.g. `0x3f80.0000` for `@rs`) rather than simple `0x1`s.  This is because we want sparse matrices to remain sparse when we eventually support them, and because we want multiplication times the result of a logical operation to set or clear fields appropriately without needing to change the `kind`.  (No solution appears to be completely satisfactory.)
 2. `++submatrix` and `++stack` are not jetted yet.  These are both dicey jets to get right due to multiple offsets.  Fortunately, once we have them correct they should work for all `kind`s since they only depend on `bloq` size not `kind`.
-3. The rounding mode for `%real` may be set for the core using the `++lake` gate.  This returns a copy of the Lagoon `++la` core with rounding mode changed to one of `?(%n %u %d %z)`.
+3. The rounding mode for `%i754` may be set for the core using the `++lake` gate.  This returns a copy of the Lagoon `++la` core with rounding mode changed to one of `?(%n %u %d %z)`.
 ```hoon
 > (cumsum:(lake:la %u) (en-ray:(lake:la %u) [~[7 1] 5 %i754 ~] ~[.1 .5 .-5 .2 .3 .-20 .-1]))
 [meta=[shape=~[1 1] bloq=5 kind=%i754 fxp=~] data=0x1.c170.0000]
@@ -182,14 +164,3 @@ to make:
 - [ ] pad
 - [ ] pow, exp, log, whatever not in Saloon
 
----
-
-THREE POSSIBILITIES:
-
-1. Logical loobean (0 true, terrible for sparse matrices)
-
-2. Logical boolean (1 true, normal but out of step w/ Hoon)
-
-3. Numeric boolean (0x3f80.0000 for 1, etc.)
-
-Here we follow the third option in `u3qf_la_gth_real()` etc.

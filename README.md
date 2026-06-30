@@ -15,6 +15,7 @@ This repository organizes the core numerical computing apparatus for Urbit:
     - `/lib/twoc` supports two's-complement signed integers.
     - `/lib/fixed` supports fixed-precision operations.
     - `/lib/unum` supports Gustafson-style unums (2022 Type III specification).
+    - `/lib/complex` supports BLAS-interleaved complex numbers (`@ch`/`@cs`/`@cd`/`@cq`).
     - `/sur/lagoon` supplies type headers for Lagoon.
   - `/vere` contains the C jets for the Vere runtime.
 - Saloon (Scientific ALgorithms in hOON) affords transcendental functions (like NumPy's transcendental functions, optimizers, etc.).

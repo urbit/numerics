@@ -11,6 +11,9 @@
 ::
 ::  A copy of the +la core with its rounding mode set to .inrnd (so subsequent
 ::  ops round in that mode); the bare +la defaults to %n.
+::  The rounding mode is honored by `%i754` and `%cplx` operations only;
+::  `%uint`, `%int2`, `%unum`, and `%fixp` operations use their own
+::  standard-defined rounding and ignore this parameter.
 ::  Source
 ++  lake
   |=  [inrnd=rounding-mode]
@@ -21,6 +24,9 @@
 ::  Holds every +$ray operation (constructors, indexing, elementwise math,
 ::  reductions, linear algebra).  Use bare for %n rounding, or +lake to pick a
 ::  mode.  Operations dispatch per-scalar on the ray's kind and bloq.
+::  The rounding mode is honored by `%i754` and `%cplx` operations only;
+::  `%uint`, `%int2`, `%unum`, and `%fixp` operations use their own
+::  standard-defined rounding and ignore this parameter.
 ::  Source
 ++  la
   ^|
@@ -424,6 +430,9 @@
   ::  0x1 most-significant "pin" above the elements (so leading-zero elements
   ::  aren't lost), so (met bloq data) counts prod(shape)+1 blocks; this asserts
   ::  prod(shape) == (met ...) - 1.  Every public arm calls it.
+  ::  Builder arms (`++zeros`, `++ones`, `++fill`, `++eye`, `++en-ray`,
+  ::  `++scalar-to-ray`, `++scale`) do not call `++check` since they construct
+  ::  a fresh ray with valid metadata.
   ::  Source
   ++  check
     |=  =ray
@@ -489,6 +498,9 @@
   ::  %uint<->%i754 and re-widening within a kind.  %unum/%cplx/%fixp conversions
   ::  are not yet wired (they crash with a message); note the %i754->%uint
   ::  negative-value limitation called out inline.
+  ::  Some unsupported conversion paths produce a diagnostic message; others crash
+  ::  with a bare `!!`.  Callers should verify the source and target kind are
+  ::  compatible.
   ::  Source
   ++  change
     |=  [=ray =kind =bloq]
@@ -664,6 +676,7 @@
   ::
   ::  A 1-D %uint index vector 0, 1, ..., n-1 for the length n in .meta (the
   ::  kind is overridden to %uint).  Runs 0 to n-1 to serve as an index.
+  ::  Crashes if `shape.meta` is not rank 1 (i.e. `lent shape.meta` must equal 1).
   ::    Examples
   ::      > (iota:la [~[4] 5 %uint ~])
   ::      [meta=[shape=~[4] bloq=5 kind=%uint tail=0] data=0x1.0000.0003.0000.0002.0000.0001.0000.0000]
@@ -734,6 +747,7 @@
       =/  bad  `(list @)`~[a]
       |-  ^-  baum
       ?:  (?:((~(lth rh rnd) ba .~~0) ~(lte rh rnd) ~(gte rh rnd)) (~(add rh rnd) (snag 0 bad) d) b)
+        =.  shape.meta  ~[(lent bad)]
         [meta (flop bad)]
       $(bad [(~(add rh rnd) (snag 0 bad) d) bad])
     ==
@@ -905,8 +919,8 @@
   ::
   ::    +cumsum:  ray -> ray
   ::
-  ::  The total sum of all elements of .a, boxed as an all-1s-shape ray.  (NB:
-  ::  despite the name, a full reduction to a scalar, not a running/prefix sum.)
+  ::  Total reduction to a scalar (NOT a running/prefix sum like NumPy's cumsum):
+  ::  sums all elements of .a and boxes the result as an all-1s-shape ray.
   ::  %unum sums exactly in the quire (single rounding); see +unum-sum.
   ::  Source
   ++  cumsum
@@ -1218,6 +1232,9 @@
   ::
   ::  The elementwise absolute value of .a (for %cplx the modulus, returned in
   ::  the real component).
+  ::  For `%cplx`, the modulus is stored in the real-component slot of a
+  ::  still-`%cplx` output (imaginary slot zeroed); `meta.kind` remains `%cplx`.
+  ::  Call `++change` or `++get-item` to extract a `%i754` scalar.
   ::  Source
   ++  abs
     ~/  %abs
@@ -1339,7 +1356,12 @@
   ::
   ::    +mod:  [a=ray b=ray] -> ray
   ::
-  ::  Elementwise remainder (C fmod: a - b*trunc(a/b); NaN on a zero divisor).
+  ::  Elementwise remainder.  Per-kind behavior:
+  ::  - %i754: C fmod (a - b*trunc(a/b)); NaN on a zero divisor or NaN operand.
+  ::  - %uint/%int2: truncated remainder; crashes on a zero divisor.
+  ::  - %unum: returns NaR on a zero divisor.
+  ::  - %fixp: truncated remainder; crashes on a zero divisor.
+  ::  - %cplx: not defined; crashes with a diagnostic message.
   ::  Source
   ++  mod
     ~/  %mod-rays
@@ -1407,8 +1429,11 @@
   ::
   ::    +equ:  [a=ray b=ray] -> ray
   ::
-  ::  Elementwise a == b as a numeric-boolean ray (bit-equality, so +0.0 != -0.0
-  ::  and NaN != NaN).
+  ::  Elementwise a == b as a numeric-boolean ray.  Per-kind behavior:
+  ::  `%i754` and `%fixp`: atom bit-equality (`+0.0 != -0.0`, `NaN != NaN`).
+  ::  `%unum`: Posit Standard equality (single zero; NaR inequality follows posit
+  ::  semantics).  `%cplx`: component-wise float equality.
+  ::  `%uint`/`%int2`: exact integer equality.
   ::  Source
   ++  equ
     :: ~/  %equ
@@ -1780,7 +1805,10 @@
       ::  comparisons are equ/neq only (complex has no total order, so
       ::  gth/gte/lth/lte crash); %conj is unary (see +trans-scalar).  Reductions
       ::  use the generic round-each-step path (no exact complex accumulator).
-      =/  ord  |=([a=@ b=@] ^-(@ ~|('lagoon: %cplx has no total order; use abs/equ' !!)))
+      ::  %mod is not defined for complex numbers.
+      =/  ord   |=([a=@ b=@] ^-(@ ~|('lagoon: %cplx has no total order; use abs/equ' !!)))
+      =/  mderr  |=([a=@ b=@] ^-(@ ~|('lagoon: %mod not defined for %cplx' !!)))
+      ?:  =(%mod fun)  mderr
       ?+    `^bloq`bloq  !!
           %5
         ?+  fun  !!

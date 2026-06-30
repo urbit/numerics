@@ -10,7 +10,10 @@
 +$  prec  [a=@ b=@]   ::  fixed-point precision, a+b+1=bloq
 +$  meta              ::  $meta:  metadata for a $ray
   $:  shape=(list @)  ::  list of dimension lengths
-      =bloq           ::  logarithm of bitwidth
+      =bloq           ::  logarithm of bitwidth.  For `%cplx`, bloq is the log₂
+                      ::  of the packed-pair element width (both components
+                      ::  combined) — e.g., `@cs` (two `@rs` components) has
+                      ::  bloq=6, while each component `@rs` has bloq=5.
       =kind           ::  name of data type
       tail=*          ::  per-kind specialization data (~ unless a kind needs
                       ::  it).  Deliberately last and untyped so a kind can add

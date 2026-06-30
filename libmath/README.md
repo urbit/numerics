@@ -75,11 +75,7 @@ We use naïve algorithms which are highly reproducible.  We special-case some ar
 
 A library for universal numbers (posits, quires, and valids) per the [2022 Posit Standard](https://posithub.org/docs/posit_standard-2.pdf) (Posit Working Group, John Gustafson chair).
 
-We implement the three standard precisions:
-
-- $\text{posit}\langle 8,2\rangle$
-- $\text{posit}\langle 16,2\rangle$
-- $\text{posit}\langle 32,2\rangle$
+We implement the three standard precisions ($\text{posit}\langle 8,2\rangle$, $\text{posit}\langle 16,2\rangle$, $\text{posit}\langle 32,2\rangle$) plus two extensions beyond the 2022 standard ($\text{posit}\langle 64,2\rangle$ and $\text{posit}\langle 128,2\rangle$), which are best-effort.
 
 > **Standard, not legacy.**  The 2022 Posit Standard fixes the exponent size at **`es = 2` for every width** (§2 defines the exponent field as a 2-bit unsigned integer).  This differs from the original 2017 draft (and from SoftPosit's *fast* `p8`/`p16` types), which scaled `es` with width as `posit<8,0>`, `posit<16,1>`, `posit<32,2>`.  Only `posit32` coincides between the two conventions; `posit8` and `posit16` have different bit layouts.  We target the standard.  The reference oracle for 8- and 16-bit posits is therefore SoftPosit's `pX2` (es=2 at any width) path, *not* the fast `p8`/`p16` types; `p32` is used directly.
 

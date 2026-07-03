@@ -377,12 +377,25 @@
   ::  exact (never-rounded) g-layer combine, shared by every migrated fn.
   ::  Not-yet-migrated arms keep the old naive-series comment inline.
   ::
-  ++  gmul                                   ::  exact multiply, no rounding
+  ::  SCOPE CAVEAT: these arms live in the generic, `bloq`-parameterized +pp
+  ::  core, so they run at EVERY instantiated width, including +rpd/+rpq
+  ::  (posit64/128) -- there is no width guard falling back to the old naive
+  ::  series there.  Correctness/faithful-rounding was only VERIFIED (against
+  ::  unum_cheb_check.py + mpmath) at posit8/16/32; the WBITS=128 constant
+  ::  precision was sized for posit32's worst case and has NOT been checked
+  ::  sufficient at posit64/128 (posit128's own significand can itself
+  ::  approach ~124 bits, leaving little margin).  Treat p64/p128 output from
+  ::  these arms as unverified, not merely "still naive," until someone
+  ::  extends the oracle sweep to those widths.
+  ::
+  ::    +gmul:  up -> up -> up   (exact multiply, no rounding)
+  ++  gmul
     |=  [x=up y=up]
     ^-  up
     ?>  &(?=(%p -.x) ?=(%p -.y))
     [%p =(s.x s.y) (sum:si e.x e.y) (^mul a.x a.y)]
-  ++  gadd                                   ::  exact add, no rounding
+  ::    +gadd:  up -> up -> up   (exact add, no rounding)
+  ++  gadd
     |=  [x=up y=up]
     ^-  up
     ?>  &(?=(%p -.x) ?=(%p -.y))
@@ -395,26 +408,36 @@
     ?:  (^gth s1 s2)  [%p s.x emin (^sub s1 s2)]
     ?:  (^gth s2 s1)  [%p s.y emin (^sub s2 s1)]
     [%p %.y --0 0]
-  ++  gneg                                   ::  exact negate
+  ::    +gneg:  up -> up   (exact negate)
+  ++  gneg
     |=  x=up
     ^-  up
     ?>  ?=(%p -.x)
     [%p !s.x e.x a.x]
-  ++  gsub                                   ::  exact subtract, no rounding
+  ::    +gsub:  up -> up -> up   (exact subtract, no rounding)
+  ++  gsub
     |=  [x=up y=up]
     ^-  up
     (gadd x (gneg y))
-  ++  gdiv                                   ::  x/y truncated to g bits of EXTRA precision beyond
-    |=  [x=up y=up g=@]                      ::  x's own (not exact -- g is a target-width margin).
-    ^-  up                                   ::  shift is g+(bit-width of y), NOT bare g: +gmul/+gadd
-    ?>  &(?=(%p -.x) ?=(%p -.y))             ::  never normalize (exact combine, no truncation), so a
-    ?:  =(0 a.x)  [%p %.y --0 0]             ::  Horner-accumulated x/y pair (e.g. tan's sin/cos) can
-    =/  shift  (^add g (met 0 a.y))          ::  have huge, unrelated raw bit-lengths -- a bare (x<<g)
+  ::    +gdiv:  up -> up -> @ -> up   (x/y truncated to g bits of EXTRA
+  ::    precision beyond x's own -- not exact, g is a target-width margin).
+  ::    shift is g+(bit-width of y), NOT bare g: +gmul/+gadd never normalize
+  ::    (exact combine, no truncation), so a Horner-accumulated x/y pair
+  ::    (e.g. tan's sin/cos) can have huge, unrelated raw bit-lengths -- a
+  ::    bare (x<<g) would silently produce a zero-bit quotient.
+  ++  gdiv
+    |=  [x=up y=up g=@]
+    ^-  up
+    ?>  &(?=(%p -.x) ?=(%p -.y))
+    ?:  =(0 a.x)  [%p %.y --0 0]
+    =/  shift  (^add g (met 0 a.y))
     [%p =(s.x s.y) (dif:si (dif:si e.x e.y) (sun:si shift)) (^div (lsh [0 shift] a.x) a.y)]
   ::  Wide (WBITS=128) fixed-point constants shared by the Chebyshev-basis
   ::  transcendentals below (+exp/+lr/+log-2/+log-10) -- see
   ::  libmath/tools/unum_cheb_check.py for how these are generated/verified.
-  ++  gpoly                                  ::  Horner over `cs` (highest degree first) at `z`
+  ::    +gpoly:  (list up) -> up -> up   (Horner over `cs`, highest degree
+  ::    first, at `z`)
+  ++  gpoly
     |=  [cs=(list up) z=up]
     ^-  up
     ?>  ?=(^ cs)
@@ -432,7 +455,8 @@
   ::  unlike exp/log where WBITS=128 is a flat, argument-independent margin.
   ++  pi2-wide     [%p %.y -200 0x192.1fb5.4442.d184.6989.8cc5.1701.b839.a252.049c.1114.cf98.e804]
   ++  invpi2-wide  [%p %.y -200 0xa2.f983.6e4e.4415.29fc.2757.d1f5.34dd.c0db.6295.993c.4390.41fe]
-  ++  g-round                                ::  up (%p/%z) -> @s, nearest int (ties away from 0)
+  ::    +g-round:  up (%p/%z) -> @s   (nearest int, ties away from 0)
+  ++  g-round
     |=  x=up
     ^-  @s
     ?:  ?=(%z -.x)  --0
@@ -487,6 +511,7 @@
     |=  ax=up
     ^-  [sn=up cs=up]
     ?>  ?=(%p -.ax)
+    ?>  s.ax                                 ::  precondition: ax>=0 (internal helper, not called directly)
     =/  q=@s  (g-round (gmul ax invpi2-wide))
     =/  qn=@  (abs:si q)
     =/  r     (gsub ax (gmul [%p %.y --0 qn] pi2-wide))
@@ -567,18 +592,19 @@
     |-
     ?:  =(0 p)  res
     $(p (dec p), res (mul res x))
-  ::    +lr:  up (x>0) -> [e=@s m=up]   shared mantissa/exponent reduction for
+  ::    +lr:  up (x>0) -> [e=@s lm=up]   shared mantissa/exponent reduction for
   ::    +log/+log-2/+log-10 (x = m*2^e, m in [1,2), free from +sea's own [a e]
-  ::    split -- no subnormal pre-scale needed, unlike /lib/math).  m=log(m)
-  ::    via log(m)=2*atanh(s), s=f/(m+1), f=m-1 -- the EXACT atanh Taylor
-  ::    series (no minimax fit: z=s*s<1/9 here converges fast on its own), one
-  ::    interior truncating divide (+gdiv) for `s`.  Degree 16 is the smallest
-  ::    that's correctly rounded at p8/16/32 -- see unum_cheb_check.py; lower
-  ::    degrees look fine near x~1 but blow up (100k+ ULP) near cancellation
-  ::    points where E*ln2 and log(m) nearly cancel (x close to a power of 2).
+  ::    split -- no subnormal pre-scale needed, unlike /lib/math).  `lm` is
+  ::    log(m), NOT the mantissa m itself -- via log(m)=2*atanh(s),
+  ::    s=f/(m+1), f=m-1 -- the EXACT atanh Taylor series (no minimax fit:
+  ::    z=s*s<1/9 here converges fast on its own), one interior truncating
+  ::    divide (+gdiv) for `s`.  Degree 16 is the smallest that's correctly
+  ::    rounded at p8/16/32 -- see unum_cheb_check.py; lower degrees look fine
+  ::    near x~1 but blow up (100k+ ULP) near cancellation points where E*ln2
+  ::    and log(m) nearly cancel (x close to a power of 2).
   ++  lr
     |=  g=up
-    ^-  [e=@s m=up]
+    ^-  [e=@s lm=up]
     ?>  ?=(%p -.g)
     =/  lead  (dec (met 0 a.g))
     =/  mup   [%p %.y (dif:si --0 (sun:si lead)) a.g]
@@ -623,7 +649,7 @@
     ?.  s.u  nar
     =/  em    (lr u)
     =/  eup   [%p (syn:si e.em) --0 (abs:si e.em)]
-    (bit (gadd (gmul eup ln2-wide) m.em))
+    (bit (gadd (gmul eup ln2-wide) lm.em))
   ::    +log-2 / +log-10:  base-2 / base-10 logarithm, via +lr directly (E +
   ::    log(m)/ln(b)) rather than dividing +log's result by a posit-rounded
   ::    log2/log10 constant -- avoids a second rounding step, correctly
@@ -639,7 +665,7 @@
     ?.  s.u  nar
     =/  em   (lr u)
     =/  eup  [%p (syn:si e.em) --0 (abs:si e.em)]
-    (bit (gadd eup (gmul m.em invln2-wide)))
+    (bit (gadd eup (gmul lm.em invln2-wide)))
   ++  log-10
     ~/  %log-10
     |=  x=@
@@ -651,7 +677,7 @@
     ?.  s.u  nar
     =/  em   (lr u)
     =/  eup  [%p (syn:si e.em) --0 (abs:si e.em)]
-    (bit (gadd (gmul eup log10-two-wide) (gmul m.em invln10-wide)))
+    (bit (gadd (gmul eup log10-two-wide) (gmul lm.em invln10-wide)))
   ::    +pow:  @ -> @ -> @   (x^y = exp(y * log x))
   ++  pow
     ~/  %pow
@@ -700,6 +726,7 @@
     |=  ax=up
     ^-  up
     ?>  ?=(%p -.ax)
+    ?>  s.ax                                 ::  precondition: ax>=0 (internal helper, not called directly)
     =/  one-g        [%p %.y --0 1]
     =/  half-g       [%p %.y -1 1]
     =/  threehalf-g  [%p %.y -1 3]
@@ -758,8 +785,10 @@
   ::    +asin:  @ -> @   (inverse sine)
   ::  arcsin(x) = atan(x / sqrt(1 - x^2)) for |x| < 1; +-pi/2 at x = +-1;
   ::  NaR outside [-1, 1].  Composes existing correctly-rounded +sqt/+div with
-  ::  the new +atan -- faithful (a few ULP near |x|~1, same order as the old
-  ::  naive AGM path) rather than a dedicated rational kernel; see
+  ::  the new +atan -- faithful, not correctly rounded (exhaustively measured
+  ::  worst case: 3 ULP at posit32, near |x|~1; acos's worst case is worse, up
+  ::  to 7 ULP at posit16 -- see its own comment below), same order as the old
+  ::  naive AGM path, rather than a dedicated rational kernel; see
   ::  unum_cheb_check.py.
   ++  asin
     ~/  %asin
@@ -779,6 +808,9 @@
   ::  (-pi/2,0) instead of the correct (pi/2,pi] -- e.g. acos(-0.5) should be
   ::  120 degrees, not -60) -- a pre-existing bug, not something the Chebyshev
   ::  rewrite introduced; caught while re-deriving this arm's correctness.
+  ::  Like +asin, faithful not correctly rounded: exhaustively measured worst
+  ::  case is 7 ULP at posit16 (near |x|~0.99), 4 ULP at posit32, 1 ULP at
+  ::  posit8 -- see unum_cheb_check.py.
   ++  acos
     ~/  %acos
     |=  x=@

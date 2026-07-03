@@ -16,7 +16,7 @@ Same harness and protocol as the 2026-06-28 run (see that directory's
 One difference from 2026-06-28's binary: this run's jet binary is the
 **Chebyshev-era vere build** (`sigilante/unum-jets-chebyshev`, GMP-linked,
 pkg/noun/jets/i/unum.c unchanged, `ext/softunum` re-pinned to SoftUnum
-`930fe6d`) — see [`unum-chebyshev-rewrite-plan` memory] for why the old
+`930fe6d`) — see `benchmark/MANIFEST.md`'s notes section for why the old
 Taylor jetted numbers can't be regenerated with this binary (the jet matches
 by name not battery-hash, so it would silently compute the NEW algorithm
 against the OLD Hoon's test points — invalid). The old Taylor numbers in this

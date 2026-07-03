@@ -18,7 +18,17 @@ bignum arithmetic via new shared `+gmul`/`+gadd`/`+gneg`/`+gsub`/`+gdiv`/
 `log-2`/`log-10`/`sin`/`cos`/`atan` are now correctly rounded (0 ULP vs
 mpmath) at posit8/16/32; `tan`/`asin`/`acos` are faithful (composed from the
 new `atan` plus existing correctly-rounded ops, not a dedicated rational
-kernel). Also fixed a pre-existing `+acos` bug (wrong quadrant for x<0).
+kernel — worst case observed is 7 ULP for `acos` at posit16, not merely "a
+few"). Also fixed a pre-existing `+acos` bug (wrong quadrant for x<0).
+
+**Scope gap, not yet closed**: these arms live in the generic `bloq`-
+parameterized `+pp` core with no width guard, so `+rpd`/`+rpq` (posit64/128)
+now run this same new code too — but accuracy there is UNVERIFIED (only
+posit8/16/32 were checked against the oracle; `WBITS=128` was sized for
+posit32's worst case, with no margin proven sufficient at posit128). This
+supersedes item 3's framing below ("rpd/rpq jets return u3_none, fall back to
+Hoon" is still true for the JET, but the Hoon itself is no longer the old
+naive series either — it's the new, unverified-at-that-width Chebyshev code).
 
 SoftUnum (the C jet twin) is ported to match, using **GMP** (`mpz_t`) for the
 transcendental kernels' exact g-layer arithmetic — the existing fixed-512-bit

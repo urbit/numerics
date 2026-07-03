@@ -2,8 +2,8 @@
 """Chebyshev/minimax transcendental harness for /lib/unum (posits), mirroring
 `cheb_check.py`'s role for /lib/math.
 
-Design (see numerics NEXT-STEPS.md item #4, and the plan doc in
-~/.claude/plans/wiggly-herding-dewdrop.md):
+Design (see numerics libmath/NEXT-STEPS.md, "Roadmap -- 2026-07-03
+(Chebyshev transcendentals)"):
   - Unlike /lib/math's IEEE floats (fixed-width hardware registers, forcing a
     hi/lo Cody-Waite constant split), Hoon `@` atoms are arbitrary-precision.
     So this algorithm-of-record does exact `Fraction` arithmetic throughout
@@ -84,8 +84,23 @@ def true_pattern(true_mpf, n):
     correct saturation to maxpos/minpos.  Comparing bit patterns directly
     (rather than an approximate ULP distance) avoids the pathology where a
     correctly-saturated result far from `true_mpf` looks like a huge "ULP
-    error" when it's actually the right answer."""
-    fr = Fraction(int(mp.nint(true_mpf * (mp.mpf(2) ** 300))), 1 << 300)
+    error" when it's actually the right answer.
+
+    Uses `mp.frexp` to keep 300 bits of SIGNIFICANT precision regardless of
+    magnitude, not 300 bits of fixed absolute scale -- an earlier version did
+    `Fraction(round(true_mpf * 2**300), 2**300)` directly, which silently
+    collapses any true_mpf smaller than ~2^-300 to an exact Fraction(0)
+    *before* `ref_value_encode`'s own tiny-magnitude-saturates-to-minpos
+    logic ever runs, mis-grading extreme-underflow cases as "should be 0"
+    when they should be minpos (posits have no underflow-to-zero). Caught by
+    exhaustive posit8 sweep hitting exp(-16777216): correct output is minpos
+    (0x01), the old version wrongly graded that as a 1-ULP error vs 0x00."""
+    if true_mpf == 0:
+        return ref_value_encode(Fraction(0), n)
+    man, exp = mp.frexp(true_mpf)          # true_mpf = man * 2**exp, 0.5<=|man|<1
+    SIGBITS = 300
+    scaled = int(mp.nint(man * (mp.mpf(2) ** SIGBITS)))
+    fr = Fraction(scaled, 1 << SIGBITS) * (Fraction(2) ** exp)
     return ref_value_encode(fr, n)
 
 def ulp_distance(a, b, n):

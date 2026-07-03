@@ -1,0 +1,10 @@
+Mean time taken for matrix of length 10: 0.0000047496 seconds +- 0.0000046374 seconds.
+Mean time taken for matrix of length 20: 0.0000018910 seconds +- 0.0000007721 seconds.
+Mean time taken for matrix of length 30: 0.0000013998 seconds +- 0.0000000060 seconds.
+Mean time taken for matrix of length 40: 0.0000023308 seconds +- 0.0000000058 seconds.
+Mean time taken for matrix of length 50: 0.0000040670 seconds +- 0.0000000042 seconds.
+Mean time taken for matrix of length 75: 0.0000071050 seconds +- 0.0000000181 seconds.
+Mean time taken for matrix of length 100: 0.0000138708 seconds +- 0.0000000472 seconds.
+Mean time taken for matrix of length 200: 0.0000578520 seconds +- 0.0000002582 seconds.
+Mean time taken for matrix of length 500: 0.0006746918 seconds +- 0.0000019120 seconds.
+Mean time taken for matrix of length 1000: 0.0049891523 seconds +- 0.0000075472 seconds.

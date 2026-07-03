@@ -32,7 +32,8 @@ def parse(path):
 jet, itp = parse(jet_f), parse(int_f)
 DOORS = ['rpb', 'rph', 'rps']
 ARMS = ['add','sub','mul','div','fma','sqt','neg','lth',
-        'exp','log','sin','cos','atan','pow']
+        'exp','log','log-2','log-10','sin','cos','tan','atan','asin','acos',
+        'cbrt','pow','pow-n']
 
 #  --- Python/SoftUnum (ctypes) per-call ---
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -43,19 +44,26 @@ u32 = ctypes.c_uint32
 PFX = {'rpb': 'p8', 'rph': 'p16', 'rps': 'p32'}
 ONE = {'rpb': 0x40, 'rph': 0x4000, 'rps': 0x40000000}
 HALF = {'rpb': 0x38, 'rph': 0x3800, 'rps': 0x38000000}
-UN = {'sqt','neg','exp','log','sin','cos','atan'}
+UN = {'sqt','neg','exp','log','log-2','log-10','sin','cos','tan','atan','asin','acos','cbrt'}
 BIN = {'add','sub','mul','div','pow','lth'}
+POWN = {'pow-n'}                        #  (posit, small @u exponent) -> posit
+#  hyphenated Hoon arm names -> SoftUnum's C names
+CNAME = {'sqt':'sqrt', 'log-2':'log2', 'log-10':'log10', 'pow-n':'pow_n'}
 
 def bind(pfx, arm):
-    nm = {'sqt':'sqrt'}.get(arm, arm)
+    nm = CNAME.get(arm, arm)
     f = getattr(L, f'{pfx}_{nm}')
-    n = 1 if arm in UN else (3 if arm=='fma' else 2)
-    f.argtypes = [u32]*n; f.restype = ctypes.c_int if arm=='lth' else u32
+    n = 1 if arm in UN else (3 if arm=='fma' else 2)   #  POWN is 2 (posit, @u exponent)
+    f.argtypes = [u32]*n
+    f.restype = ctypes.c_int if arm=='lth' else u32
     return f
 
 def py_us(door, arm):
     pfx = PFX[door]; f = bind(pfx, arm); x = HALF[door]; y = ONE[door]
-    args = (x,) if arm in UN else ((x,y,y) if arm=='fma' else (x,y))
+    if arm in POWN: args = (x, 3)                     #  match +cell's fixed exponent
+    elif arm in UN: args = (x,)
+    elif arm=='fma': args = (x,y,x)
+    else: args = (x,y)
     M = 200_000
     for _ in range(2000): f(*args)
     t0 = time.perf_counter()

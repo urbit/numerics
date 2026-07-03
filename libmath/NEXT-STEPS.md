@@ -7,6 +7,60 @@ IEEE-754 conversion, the quire + fused dot product, and naive transcendentals,
 at widths posit8/16/32/64/128.  This file tracks what is deliberately *not* yet
 done, roughly in dependency order.
 
+## Roadmap — 2026-07-03 (Chebyshev transcendentals)
+
+Item 4 below is **done**: `/lib/unum`'s naive Taylor/AGM transcendentals are
+replaced with range-reduced Chebyshev-minimax/exact-Taylor kernels, mirroring
+`/lib/math`'s own Chebyshev rewrite but exploiting Hoon's arbitrary-precision
+`@` atoms (no hi/lo constant splitting needed — decode once via `+sea`, exact
+bignum arithmetic via new shared `+gmul`/`+gadd`/`+gneg`/`+gsub`/`+gdiv`/
+`+gpoly`/`+g-round`/`+glt` helpers, round once via `+bit`). `exp`/`log`/
+`log-2`/`log-10`/`sin`/`cos`/`atan` are now correctly rounded (0 ULP vs
+mpmath) at posit8/16/32; `tan`/`asin`/`acos` are faithful (composed from the
+new `atan` plus existing correctly-rounded ops, not a dedicated rational
+kernel — worst case observed is 7 ULP for `acos` at posit16, not merely "a
+few"). Also fixed a pre-existing `+acos` bug (wrong quadrant for x<0).
+
+**Scope gap, not yet closed**: these arms live in the generic `bloq`-
+parameterized `+pp` core with no width guard, so `+rpd`/`+rpq` (posit64/128)
+now run this same new code too — but accuracy there is UNVERIFIED (only
+posit8/16/32 were checked against the oracle; `WBITS=128` was sized for
+posit32's worst case, with no margin proven sufficient at posit128). This
+supersedes item 3's framing below ("rpd/rpq jets return u3_none, fall back to
+Hoon" is still true for the JET, but the Hoon itself is no longer the old
+naive series either — it's the new, unverified-at-that-width Chebyshev code).
+
+SoftUnum (the C jet twin) is ported to match, using **GMP** (`mpz_t`) for the
+transcendental kernels' exact g-layer arithmetic — the existing fixed-512-bit
+`wide_t` can't replicate Hoon's never-truncate-until-final-round approach
+without its own precision-margin proof, and GMP already has precedent here
+(`/lib/twoc`'s jet). Along the way, found and fixed a real bug: GMP's
+allocator is hooked to vere's `u3a` per-road heap (`mp_set_memory_functions`
+in `manage.c`'s `u3m_init()`), so any C state cached in a `static` variable
+across separate jet calls silently corrupts once its allocating road's heap
+watermark resets on the next top-level call — no jet in vere caches raw heap
+state across calls (checked `/lib/twoc` too), so SoftUnum's transcendental
+kernels now recompute their shared constants fresh every call and clear them
+before returning, same convention as everywhere else.
+
+Benchmarked at `benchmark/results/2026-07-03/unum-chebyshev/`: interpreted
+transcendentals are **33–77× faster** (avoiding the naive series' repeated
+posit decode/encode per term); jetted is roughly a wash except `atan`, now
+**25–46× faster jetted at posit16/32** — the old AGM-based atan hit the
+`wide_t` bit-by-bit-`isqt` bottleneck (item 2 below) on every iteration, the
+new fdlibm-breakpoint atan has no `sqrt` in it at all, sidestepping that
+bottleneck as a side effect of an accuracy-motivated rewrite.
+
+PRs: numerics #71 (Hoon rewrite), SoftUnum `930fe6d` (GMP-backed C port,
+pushed to master), vere #1046 (updated in place — re-pinned `ext/softunum`,
+linked GMP via the already-vendored `ext/gmp`, `jets/i/unum.c` needed no
+changes).
+
+Still open from this item: quire-accumulated summation inside the polynomial
+evaluation (the more ambitious original idea here) wasn't needed — exact
+bignum Hoon-atom arithmetic already gives single-rounding correctness
+without it. Not revisited.
+
 ## Roadmap — 2026-06-28 (post-jets)
 
 The jet effort (old §5) is **done**: **SoftUnum** (`sigilante/SoftUnum`, the
@@ -35,10 +89,14 @@ Prioritized next steps:
     decompositions inherit it for free.
 
 2.  **Perf gaps the benchmark surfaced.**
-    - posit16/32 `sqt`/`atan` are slow even jetted (jetted `atan:rps` ~850 us):
-      the 512-bit `wide_t` **bit-by-bit `isqt`** in the AGM loop is the
-      bottleneck.  Replace with a faster wide sqrt (Newton + wide divmod, or an
-      `__int128` seed then refine).
+    - posit16/32 `sqt` is still slow even jetted (jetted `sqt:rps` ~17 us, was
+      ~17 us before too — unchanged code): the 512-bit `wide_t` **bit-by-bit
+      `isqt`** is the bottleneck.  Replace with a faster wide sqrt (Newton +
+      wide divmod, or an `__int128` seed then refine).  `atan`'s OWN instance
+      of this bottleneck is gone as of the 2026-07-03 Chebyshev rewrite (the
+      new fdlibm-breakpoint atan has no `sqrt` in it) — `sqt` itself, and
+      anything else that still calls it (e.g. `asin`/`acos`'s `1-x^2` step),
+      still hits the slow path.
     - posit16 over-uses the 512-bit `wide_t` (its quire is 256-bit, arithmetic
       fits `__int128`); a tighter p16 path would shave the common arithmetic.
 
@@ -48,11 +106,10 @@ Prioritized next steps:
     No external oracle (cerlane `pX2` caps at 32); verify vs the from-scratch
     reference + the Hoon.
 
-4.  **Accuracy: range-reduced / quire-accumulated transcendentals** (old §2).
-    The naive Taylor `exp`/`log`/`sin` are accurate only near the expansion
-    point.  Range-reduce (powers of 2 are exact for posits; trig by pi/2) and
-    run the series through the quire.  Coordinated Hoon + SoftUnum change (both
-    stay bit-exact).
+4.  **DONE (2026-07-03) — Accuracy: range-reduced transcendentals** (old §2).
+    See the "Roadmap — 2026-07-03" section above for the full writeup.
+    Quire-accumulation wasn't needed (exact bignum Hoon-atom arithmetic
+    already gives single-rounding correctness).
 
 5.  **Standard-name alias layer** (old §1): the 2022-standard public names
     (`addition`/`subtraction`/`sin-pi`/`compound`/`hypot`/`arctan2`/...) over
@@ -106,19 +163,16 @@ the implemented core.  Most are renames or one-line compositions:
 No new infrastructure; can land as one PR.  Decide whether aliases live in
 `unum.hoon` itself or a thin `unum-std.hoon` wrapper.
 
-## 2. Transcendental accuracy  (medium)
+## 2. Transcendental accuracy  (DONE 2026-07-03)
 
-The current `exp`/`sin`/`cos`/`log` are naive fixed-term Taylor series, accurate
-only near the expansion point (documented).  To make them usable across the full
-dynamic range:
-
-- **Range reduction**: reduce `exp`/`log` by powers of 2 (posits make this
-  exact), trig by multiples of `pi`/2.  Without it, `log(maxpos)` is off by ~3×.
-- **Quire-accumulated sums**: run each series sum through the quire (`q-mul-add`
-  → one `q-to-p`) so only the final rounding loses precision.  The hooks exist.
-- Oracle: `mpmath` at high precision → round to the target posit.  Decide a
-  per-width accuracy target (the 2022 standard requires correct rounding for
-  compliance; we may settle for ≤1 ulp as an interim).
+Was: naive fixed-term Taylor series, accurate only near the expansion point.
+Now: range-reduced Chebyshev-minimax/exact-Taylor kernels, correctly rounded
+(0 ULP vs mpmath) for `exp`/`log`/`log-2`/`log-10`/`sin`/`cos`/`atan` at
+posit8/16/32; faithful for `tan`/`asin`/`acos`. See the "Roadmap — 2026-07-03"
+section at the top of this file, `libmath/tools/unum_cheb_check.py` (the
+mpmath-verified algorithm-of-record), and numerics PR #71. Quire-accumulated
+sums (the original idea below) turned out not to be needed — exact bignum
+Hoon-atom arithmetic already gives single-rounding correctness without them.
 
 ## 3. Lagoon `%unum` integration  (medium; the high-value item)
 

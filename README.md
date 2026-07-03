@@ -1,6 +1,6 @@
 #   Numerical Libraries for Urbit
 
-**Status ~2026.6.27:  Two's complement and unum/posit/quire support added; Lagoon updated for Vere64 by @matthewlevan; Saloon conversion to Chebyshev basis functions completed by @sigilante.  Work proceeds on unum/posit/quire jetting using SoftUnum.**
+**Status ~2026.7.3:  Two's complement and unum/posit/quire support added; Lagoon updated for Vere64 by @matthewlevan; Saloon and `/lib/unum` conversion to Chebyshev basis functions completed by @sigilante.**
 
 ![An evocative scene of a mysterious futuristic castle in the style of Flash Gordon](./img/hero-scene.jpg)
 

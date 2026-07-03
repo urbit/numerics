@@ -10,9 +10,14 @@
 :-  %say
 |=  [* [n=@ud ~] ~]
 :-  %noun
+::  Same transcendental coverage as math's benchmark (exp log sin cos tan atan
+::  asin acos sqt cbrt pow pow-n log-2 log-10), minus atan2 (unum has no
+::  atan2 arm -- see NEXT-STEPS.md), plus the arithmetic arms math's grid
+::  doesn't separately test.
 =/  arms=(list @tas)
   :~  %base  %add  %sub  %mul  %div  %fma  %sqt  %neg
-      %exp  %log  %sin  %cos  %atan  %pow  %lth
+      %exp  %log  %log-2  %log-10  %sin  %cos  %tan  %atan  %asin  %acos
+      %cbrt  %pow  %pow-n  %lth
   ==
 =/  doors=(list @tas)  ~[%rpb %rph %rps]
 =/  rows

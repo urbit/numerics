@@ -1,96 +1,138 @@
 [%cell %rpb %base]
-took µs/184
+took µs/402
 [%cell %rpb %add]
-took ms/23.367
+took ms/23.187
 [%cell %rpb %sub]
-took ms/24.483
+took ms/25.166
 [%cell %rpb %mul]
-took ms/21.659
+took ms/21.498
 [%cell %rpb %div]
-took ms/23.735
+took ms/23.548
 [%cell %rpb %fma]
-took ms/31.529
+took ms/31.005
 [%cell %rpb %sqt]
-took ms/19.750
+took ms/20.367
 [%cell %rpb %neg]
-took µs/624
+took µs/638
 [%cell %rpb %exp]
-took ms/55.144
+took ms/55.059
 [%cell %rpb %log]
-took ms/73.809
+took ms/74.036
+[%cell %rpb %log-2]
+took ms/72.973
+[%cell %rpb %log-10]
+took ms/74.777
 [%cell %rpb %sin]
-took ms/81.566
+took ms/81.128
 [%cell %rpb %cos]
-took ms/80.979
+took ms/80.878
+[%cell %rpb %tan]
+took ms/84.040
 [%cell %rpb %atan]
-took ms/82.287
+took ms/82.221
+[%cell %rpb %asin]
+took ms/198.330
+[%cell %rpb %acos]
+took ms/210.084
+[%cell %rpb %cbrt]
+took ms/173.259
 [%cell %rpb %pow]
-took ms/139.952
+took ms/140.009
+[%cell %rpb %pow-n]
+took ms/68.784
 [%cell %rpb %lth]
 took ms/1.135
 [%cell %rph %base]
-took µs/193
+took µs/192
 [%cell %rph %add]
-took ms/23.309
+took ms/23.169
 [%cell %rph %sub]
-took ms/24.389
+took ms/24.268
 [%cell %rph %mul]
-took ms/21.877
+took ms/21.679
 [%cell %rph %div]
-took ms/23.960
+took ms/23.725
 [%cell %rph %fma]
-took ms/30.764
+took ms/30.883
 [%cell %rph %sqt]
-took ms/20.503
+took ms/20.521
 [%cell %rph %neg]
-took µs/621
+took µs/639
 [%cell %rph %exp]
-took ms/55.172
+took ms/55.756
 [%cell %rph %log]
-took ms/74.461
+took ms/74.203
+[%cell %rph %log-2]
+took ms/73.202
+[%cell %rph %log-10]
+took ms/76.255
 [%cell %rph %sin]
-took ms/81.142
+took ms/81.643
 [%cell %rph %cos]
-took ms/81.413
+took ms/81.297
+[%cell %rph %tan]
+took ms/84.598
 [%cell %rph %atan]
-took ms/82.296
+took ms/83.377
+[%cell %rph %asin]
+took ms/201.994
+[%cell %rph %acos]
+took ms/213.982
+[%cell %rph %cbrt]
+took ms/175.251
 [%cell %rph %pow]
-took ms/139.428
+took ms/139.521
+[%cell %rph %pow-n]
+took ms/69.119
 [%cell %rph %lth]
-took ms/1.108
+took ms/1.191
 [%cell %rps %base]
-took µs/207
+took µs/210
 [%cell %rps %add]
-took ms/23.407
+took ms/23.750
 [%cell %rps %sub]
-took ms/24.674
+took ms/25.093
 [%cell %rps %mul]
-took ms/21.893
+took ms/22.057
 [%cell %rps %div]
-took ms/24.374
+took ms/24.239
 [%cell %rps %fma]
-took ms/31.044
+took ms/31.462
 [%cell %rps %sqt]
-took ms/21.151
+took ms/21.116
 [%cell %rps %neg]
-took µs/679
+took µs/698
 [%cell %rps %exp]
-took ms/55.228
+took ms/57.365
 [%cell %rps %log]
-took ms/74.137
+took ms/74.670
+[%cell %rps %log-2]
+took ms/74.477
+[%cell %rps %log-10]
+took ms/75.802
 [%cell %rps %sin]
-took ms/81.560
+took ms/82.600
 [%cell %rps %cos]
-took ms/81.940
+took ms/82.790
+[%cell %rps %tan]
+took ms/84.571
 [%cell %rps %atan]
-took ms/83.414
+took ms/82.420
+[%cell %rps %asin]
+took ms/202.066
+[%cell %rps %acos]
+took ms/215.374
+[%cell %rps %cbrt]
+took ms/175.794
 [%cell %rps %pow]
-took ms/139.816
+took ms/139.841
+[%cell %rps %pow-n]
+took ms/70.012
 [%cell %rps %lth]
-took ms/1.105
+took ms/1.150
 [%fdp %rpb]
-took ms/15.804
+took ms/15.685
 [%fdp %rph]
-took ms/15.638
+took ms/15.583
 [%fdp %rps]
-took ms/15.676
+took ms/15.966

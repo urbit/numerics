@@ -6,6 +6,14 @@ Chebyshev-minimax rewrite (numerics PR #71 / SoftUnum `930fe6d` / vere PR
 #1046), each measured interpreted and jetted, at posit8/16/32
 (`rpb`/`rph`/`rps`). Full table in [`table.txt`](table.txt).
 
+This is a redo of the same dated run with **extended arm coverage**: the
+first pass only covered `add sub mul div fma sqt neg lth exp log sin cos
+atan pow` (plus `fdp`). This version adds `log-2 log-10 tan asin acos cbrt
+pow-n` — the same transcendental surface `/lib/math`'s own benchmark covers,
+minus `atan2` (`/lib/unum` has no `atan2` arm). The Taylor baseline never
+measured these seven, so their rows in `table.txt` show only the two
+Chebyshev columns, marked `n/a` for Taylor.
+
 ## Method
 
 Same harness and protocol as the 2026-06-28 run (see that directory's
@@ -32,16 +40,17 @@ is preserved at `benchmark/desk/lib/unum-taylor.hoon` for reference (see
 
 This is the biggest surprise in this data, and it's a real effect, not noise
 (the unchanged arithmetic arms below show the actual measurement noise floor
-is ~1.2–4.5×, an order of magnitude smaller):
+is ~1.25–8.4× interpreted, an order of magnitude smaller than the
+transcendentals' 33–77×):
 
 | arm | Taylor interp (µs) | Chebyshev interp (µs) | speedup |
 |---|---|---|---|
-| exp  | 18,483–19,427 | 550           | **~34–35×** |
-| log  | 35,992–39,067 | 736–742       | **~49–53×** |
-| sin  | 30,238–32,293 | 809–814       | **~37–40×** |
-| cos  | 30,259–32,481 | 808–817       | **~37–40×** |
-| atan | 61,659–63,708 | 821–832       | **~75–77×** |
-| pow  | 53,045–56,963 | 1,392–1,398   | **~38–41×** |
+| exp  | 18,483–19,427 | 547–572       | **~34×** |
+| log  | 35,992–39,067 | 736–745       | **~49–52×** |
+| sin  | 30,238–32,293 | 807–824       | **~37–40×** |
+| cos  | 30,259–32,481 | 805–826       | **~37–40×** |
+| atan | 61,659–63,708 | 818–832       | **~75–77×** |
+| pow  | 53,045–56,963 | 1,393–1,396   | **~38–41×** |
 
 The naive Taylor series called posit-level `mul`/`div`/`add` for every one of
 its 20–40 series terms — each such call independently decodes (`+sea`) and
@@ -57,9 +66,9 @@ call/decode/encode churn, and that dominates interpreted cost.
 
 | arm | Taylor jet (µs) | Chebyshev jet (µs) | ratio |
 |---|---|---|---|
-| exp/log/sin/cos/pow (rpb) | 11.6–45.1 | 16.5–30.8 | ~0.4–1.4× (mixed, within noise-ish range) |
-| exp/log/sin/cos/pow (rph/rps) | 25.3–60.7 | 16.5–31.2 | **~1.5–2.2× faster** |
-| **atan (rph/rps)** | **459/850** | **18.3/18.3** | **~25×/~46× faster** |
+| exp/log/sin/cos/pow (rpb) | 11.6–45.1 | 16.8–31.8 | ~0.4–1.5× (mixed, within noise-ish range) |
+| exp/log/sin/cos/pow (rph/rps) | 25.3–60.7 | 16.8–31.9 | **~1.4–2.2× faster** |
+| **atan (rph/rps)** | **459/850** | **18.7/18.8** | **~25×/~45× faster** |
 
 `atan`'s old Taylor implementation used a 40-iteration Gauss/AGM loop with a
 `sqrt` call per iteration — at posit16/32 that hits SoftUnum's known slow
@@ -69,17 +78,50 @@ fdlibm-breakpoint-reduced atan has no `sqrt` in it at all, so it completely
 sidesteps that bottleneck — as a side effect of an accuracy-motivated
 rewrite, not a targeted perf fix. `NEXT-STEPS.md`'s open "wide isqt" item is
 now much less urgent (still relevant to `sqt` itself, which is unchanged and
-still slow at rph/rps: ~9.3/17.1 µs jetted, matching the old baseline
-exactly).
+still slow at rph/rps: ~9.5/17.2 µs jetted, matching the old baseline
+within noise).
 
 Arithmetic (`add`/`sub`/`mul`/`div`/`fma`/`sqt`/`neg`/`lth`/`fdp`) is
 **unchanged code** (this rewrite only touched the transcendentals) — its
-jetted numbers match the old baseline within measurement noise (0.91–1.10×),
-confirming the harness/methodology is apples-to-apples. Its *interpreted*
-numbers also come out somewhat faster in this run (1.2–4.5×) despite
-identical code — that's environmental noise (background load/thermal
-conditions differ run to run), not a real effect; it's dwarfed by the
-33–77× transcendental speedup, which is far too large to be noise.
+jetted numbers match the old baseline within measurement noise (0.92–1.32×
+this run; this machine was busier than the 2026-06-28 run, with several
+other fakezod piers active in the background, so the noise band widened
+somewhat but stayed an order of magnitude below the transcendental effect).
+Its *interpreted* numbers also come out somewhat faster in this run
+(1.25–8.4×, widest for `neg`, whose absolute time is only a few µs so small
+absolute jitter reads as a large ratio) despite identical code — that's
+environmental noise, not a real effect; it's dwarfed by the 33–77×
+transcendental speedup, which is far too large to be noise.
+
+## Newly-covered arms: tan/asin/acos/cbrt/pow-n/log-2/log-10
+
+No Taylor baseline ever measured these seven — the 2026-06-28 benchmark only
+covered `exp/log/sin/cos/atan/pow` (plus arithmetic). Since there's nothing
+to compare them against, here are their absolute Chebyshev numbers (range
+across posit8/16/32) alongside the already-covered transcendentals, to judge
+whether they're in the same ballpark or not:
+
+| arm | interp µs | jetted µs | vs. already-covered |
+|---|---|---|---|
+| log-2  | 726–743   | 17.9–18.2 | same ballpark as `log` (736–745 / 17.9–18.0) — shares the same `+lr` reduction, just a different final scale constant |
+| log-10 | 744–761   | 18.1–18.3 | same ballpark as `log` |
+| tan    | 836–844   | 19.5–19.6 | close to `sin`/`cos` (807–826 / 18.5–18.9), consistent with `tan` = `sin`/`cos` plus one extra `+gdiv` |
+| pow-n  | 684–698   | **2.1–2.9** | interpreted cost is in the same range as `log`/`tan`, but jetted is dramatically *cheaper* — close to plain arithmetic (~2 µs), since `pow-n(x,3)` is just repeated multiplication, not a polynomial-evaluation kernel |
+| asin   | 1979–2019 | 20.5–39.6 | **~2.5–3× costlier** than the already-covered transcendentals, interpreted; jetted cost also *grows with posit width* (20.5 µs at rpb → 39.6 µs at rps), unlike exp/log/sin/cos/atan which stay flat ~17–19 µs across all three widths |
+| acos   | 2097–2152 | 21.8–40.9 | same shape as `asin` (built on the same reduction machinery), slightly pricier |
+| cbrt   | 1729–1756 | 31.6–32.3 | ~3× `exp`/`log`'s interpreted cost; jetted lands right next to `pow` (31.8–31.9) — both use a Newton-style refinement step |
+
+Summary: `log-2`/`log-10`/`tan` land right next to their nearest
+already-covered sibling (`log`, `sin`+`cos`), as expected since they reuse
+most of the same code path. `pow-n` is the cheap outlier — jetted, it's
+barely more expensive than raw multiplication, since integer powers need no
+polynomial evaluation at all. `asin`/`acos`/`cbrt` are the expensive
+outliers, both interpreted and jetted; `asin`/`acos` are also the only arms
+whose *jetted* per-call cost visibly grows with posit width (rps ~2× rpb).
+Nothing here looks pathological — even the priciest new arm is still
+~50–75× faster jetted than interpreted, in line with the rest of the
+table — but `asin`/`acos`'s width-scaling is worth a note for anyone
+planning to put them on a hot path.
 
 ## The real headline is accuracy, not speed
 

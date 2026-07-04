@@ -26,9 +26,9 @@ mpmath independently verifies the algorithm-of-record, it doesn't define it).
 | log | 0.841 (exh.) | 0.613 | 0.986 | 0.617 |
 | log-2 | 1.566 (exh.) | 0.901 | 1.210 | 0.600 |
 | log-10 | 1.370 (exh.) | 1.303 | 1.459 | 1.103 |
-| sin | **437,291** (exh.)† | 0.646 | 0.727 | 0.726 |
-| cos | **1,818,711** (exh.)† | 0.534 | 0.760 | 0.718 |
-| tan | **2.16e10** (exh.)† | 9.675 | 0.757‡ | 1.668 |
+| sin | 0.505 (exh.)† | 0.646 | 0.727 | 0.726 |
+| cos | 0.531 (exh.)† | 0.534 | 0.760 | 0.718 |
+| tan | 1.637 (exh.)†,∥ | 0.939∥ | 0.757‡ | 1.668∥ |
 | atan | 0.736 (exh.) | 0.575 | 0.713 | 0.533 |
 | atan2 | 1.800 (sampled) | 1.159 | 1.362 | 1.350 |
 | asin | 1.010 (exh.) | 0.849 | 0.837 | 0.765 |
@@ -37,19 +37,29 @@ mpmath independently verifies the algorithm-of-record, it doesn't define it).
 | cbrt | 6.700 (exh.)§ | 2.623§ | 4.394§ | 4.288§ |
 | pow | 31.0 (sampled)¶ | 48.0 | 133.7 | 60.7 |
 
-† **Real finding, not a checker artifact** (independently re-verified by a
-targeted bisection over `|x|`'s magnitude bins): `@rh` sin/cos/tan use a
-single fixed-precision `pi/2` reduction constant sized for small arguments.
-Error grows with `|x|` (since reduction error scales with the quotient
-`x*2/pi`, not just the constant's own precision) and is already >1 ULP by
-`|x|~2^9` (~500), reaching catastrophic magnitudes by `|x|~2^12`. This is the
-same class of large-argument range-reduction limitation `/lib/math` already
-documents at `@rd`/`@rs` for extreme inputs, just at a much smaller `|x|`
-threshold because `@rh` has so few mantissa bits to spend on the reduction
-constant. **Not previously documented.** Candidate fix mirrors `/lib/unum`'s
-`TRIG_WBITS` approach (a wider fixed-point reduction constant costs nothing
-extra in the Hoon reference implementation, arbitrary-precision atoms are
-free) — filed as a follow-up, not fixed in this pass.
+† **FIXED (2026-07-03), numbers below are post-fix.** `@rh` sin/cos/tan
+previously did quarter-turn reduction entirely in native `@rh` arithmetic —
+every constant piece and intermediate product was itself only an 11-bit-
+mantissa value. Half precision only guarantees exact integers up to 2048;
+once the reduction quotient `q=round(|x|*2/pi)` exceeded that (`|x|` past
+~500), `q`'s own rounding error (up to ~1) got multiplied by `pi/2`'s hi
+part, injecting a multi-radian error into the reduced remainder. The
+**pre-fix** numbers were catastrophic: max **437,291 ULP (sin)**,
+**1,818,711 ULP (cos)**, **21.6 billion ULP (tan)** — not previously
+documented, found while writing the paper's accuracy section. **Fixed** by
+widening to `@rs` (24-bit mantissa, exact `q` up to 2^24 — vastly beyond
+`@rh`'s entire dynamic range) via the existing-but-previously-unused
+`+widen-hs`/`+narrow-sh` primitives — exactly the architecture `+widen-hs`'s
+own docstring already claimed but was never wired up for trig. Verified
+exhaustively in the Python oracle AND live on a fresh ship (bit-for-bit
+match at the old blowup points; full `math-rh`/`math-trig`/`math-tan`/
+`math-derived`/`math-atan`/`math-ainv` test suites green). The C jet was
+also fixed to match (same widen/narrow pattern via SoftFloat's own
+`f16_to_f32`/`f32_to_f16`) and re-verified live with jets enabled — every
+case now runs in 50-65µs (jetted), not the ~8ms interpreted timing, and
+still bit-exact with the Hoon spec. See `libmath/NEXT-STEPS.md` for the
+full writeup; the Hoon/jet mismatch this fix could have introduced is
+closed, not open.
 
 ‡ `@rd` tan has a dedicated fdlibm kernel (`__kernel_tan`, 0.757 ULP) *and* a
 sin/cos-ratio fallback path (1.934 ULP) — the table reports the dedicated
@@ -68,6 +78,43 @@ ULP observed depending on precision, worst near extreme `(x,n)` pairs (e.g.
 tighter (spot-checked at `@rd`: 0.5 ULP at n=2, 1.2–1.9 ULP at n=3/5, 11.5 ULP
 at n=-3 — the negative-exponent case routes through division and inherits
 more error).
+
+∥ **A real bug in the oracle itself, caught by a reviewer — and the trail led
+to a genuine `@rs` accuracy improvement.** Originally, `tan` at `@rh`,
+`@rs`, and `@rq` was all `(div (sin x) (cos x))` in `math.hoon` — composed,
+no dedicated kernel — only `@rd` had one (`+rd-tan`, a genuine ported
+fdlibm `__kernel_tan`). `cheb_check.py`'s `check_tan_rs()` was nonetheless
+testing a *hypothetical* dedicated f32 tangent kernel (`tan_f32`/`ktan32`,
+mirroring `@rd`'s real one almost coefficient-for-coefficient) that had
+apparently been drafted at some point but never actually shipped in Hoon —
+so the originally-reported 9.675 ULP was measuring an algorithm that didn't
+exist in the codebase, not `@rs`'s actual `sin`/`cos` ratio (1.216 ULP, in
+line with its `@rh`/`@rd`/`@rq` neighbors at the time).
+
+Investigating *why* that abandoned draft scored worse than the ratio it was
+meant to replace (a dedicated kernel should never lose to a naive
+composition) turned up the real story: the draft multiplied its dominant
+linear term through the whole polynomial product instead of adding it
+**last**, the way fdlibm's own `kernel_tan` structures the computation.
+Fixing just that ordering — reusing the draft's Chebyshev-fit-quality
+coefficients — brought `@rs`'s *actual, native* dedicated kernel down to
+**0.939 ULP**, beating the composed ratio outright. This is now shipped:
+`+rs-tan` in `math.hoon`, the C jet `_rs_tan`, verified bit-exact on a live
+ship with jets enabled. `@rh` and `@rq` were also investigated (widening
+the same approach) but a dedicated kernel measurably regresses `@rh`
+(~2.25 ULP native vs. 1.64 composed — 11-bit mantissa, not enough headroom)
+and `@rq` needs a fundamentally different exact-arithmetic technique (its
+series coefficients grow rather than shrink at high degree, destabilizing
+native chained rounding) — both are deliberately left composed. Full
+writeup in `libmath/NEXT-STEPS.md`.
+
+Separately, audited every other `check_*_rs`/`_rq`/`_rh` function for the
+same failure mode (testing an aspirational algorithm instead of the shipped
+one) — `pow`, `cbrt`, `atan2`, and `sqt` at all four precisions, plus the
+(unaffected) `tan` at `@rd`/`@rh`/`@rq`, all correctly self-describe as
+composed and their Python bodies genuinely call the same composition
+math.hoon does. The `tan_rs` oracle bug was an isolated incident, not a
+systemic problem.
 
 ## Table B: `/lib/unum` (2022-standard posits), max observed ULP
 

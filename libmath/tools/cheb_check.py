@@ -779,23 +779,73 @@ def tan_f32(x):
     t = ktan32(rhi, rlo, iy)
     return f32(-t) if neg else t
 
+def old_ratio_tan_f32(x):
+    """math.hoon's OLD @rs +tan (superseded 2026-07-03): (div (sin x) (cos
+    x)).  Kept only as the historical comparison point (~1.2 ULP) in the
+    check output below -- @rs now has its own dedicated kernel, see
+    ktan32_shipped."""
+    x = f32(x)
+    if x != x or x == INF or x == -INF: return float('nan')
+    if x == 0.0: return x
+    s = sin_f32(x); c = cos_f32(x)
+    if c == 0.0: return float('nan')
+    return f32(s / c)
+
+_RS_TANQ = [of_bits32(b) for b in
+            (0x3b7bdd30, 0x3a9b5ccb, 0x3c233846, 0x3cb11eca,
+             0x3d5d294d, 0x3e088844, 0x3eaaaaab)]
+
+def ktan32_shipped(rhi, rlo, iy_is_tan):
+    """math.hoon's ACTUAL @rs +tan kernel (shipped 2026-07-03, mirrored in
+    the C jet _rs_tan): Q(z)=(tan(r)/r-1)/z, Chebyshev-fit (7 coeffs,
+    degree 6) evaluated via Horner, with the dominant linear term rhi added
+    LAST (w2=rhi+r) rather than multiplied through the polynomial -- an
+    earlier abandoned draft's failure (9.68 ULP, worse than the ratio it
+    was meant to replace) traced to getting this ordering wrong, not to
+    f32 precision being insufficient.  iy_is_tan=False takes the -cot path
+    (odd reduction quadrant) via a plain reciprocal."""
+    z = f32(rhi * rhi)
+    acc = _RS_TANQ[0]
+    for coeff in _RS_TANQ[1:]:
+        acc = f32(f32(acc * z) + coeff)
+    s = f32(z * rhi)
+    corrpoly = f32(s * acc)
+    rlo_corr = f32(rlo * f32(1.0 + z))
+    r_total = f32(corrpoly + rlo_corr)
+    w2 = f32(rhi + r_total)
+    if iy_is_tan: return w2
+    return f32(-1.0 / w2)
+
+def tan_f32_shipped(x):
+    x = f32(x)
+    if x != x or x == INF or x == -INF: return float('nan')
+    if x == 0.0: return x
+    neg = bits32(x) >> 31; ax = f32(abs(x))
+    q, rhi, rlo = reduce_pio2_32(ax)
+    t = ktan32_shipped(rhi, rlo, (q & 1) == 0)
+    return f32(-t) if neg else t
+
 def check_tan_rs():
-    print("# tan @rs: 3-part pi/2 reduction + f32 __kernel_tan")
-    print("T: " + " ".join(hexs(c) for c in TAN_T_S))
-    print(f"PIO4={hexs(PIO4_S)} PIO4LO={hexs(PIO4LO_S)} BIG={hexs(TAN_BIG_S)}")
-    wt = 0.0; xw = None
+    print("# tan @rs: dedicated kernel (shipped 2026-07-03; see ktan32_shipped), q*pi/2 reduction + Chebyshev-fit Q(z), -cot path for odd quadrants")
+    ws = 0.0; xs = None      # shipped: what math.hoon / the C jet actually compute
+    wo = 0.0; xo = None      # old composed sin/cos ratio, historical comparison only
     for t in range(-200000, 200001, 7):
         x = f32(mp.mpf(t) / 1000); tr = mp.tan(mp.mpf(x))
         if not math.isfinite(float(tr)) or abs(tr) > 1e7 or abs(tr) < 1e-6: continue
-        gt = tan_f32(x)
-        if math.isfinite(gt):
-            e = abs(ulps32(gt, tr))
-            if e > wt: wt, xw = e, x
-    print(f"dedicated max {wt:.3f} ULP at x={xw}")
+        gs = tan_f32_shipped(x)
+        if math.isfinite(gs):
+            e = abs(ulps32(gs, tr))
+            if e > ws: ws, xs = e, x
+        go = old_ratio_tan_f32(x)
+        if math.isfinite(go):
+            e = abs(ulps32(go, tr))
+            if e > wo: wo, xo = e, x
+    print(f"  max {ws:.3f} ULP at x={xs}  (dedicated kernel, shipped; sampled)")
+    print(f"  [historical comparison, superseded] old sin/cos ratio: max {wo:.3f} ULP at x={xo}")
     for x in [0.0, 0.5, 1.0, -1.0, 0.7853982, 2.0, 10.0, 100.0]:
-        print(f"  tan({x}) -> {hexs(tan_f32(x))}   in={hexs(x)}")
+        print(f"  tan({x}) -> {hexs(tan_f32_shipped(x))}   in={hexs(x)}")
     for name, x in [('+inf', INF), ('nan', float('nan')), ('-0', -0.0)]:
-        o = tan_f32(x)
+        o = tan_f32_shipped(x)
         ib = "0x7f800000" if x==INF else "0x7fc00000" if x!=x else hexs(x)
         print(f"  tan({name}) -> {hexs(o)}   in={ib}")
 

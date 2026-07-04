@@ -1,0 +1,842 @@
+---- starting MATH: exp @rd ----
+==== MATH: exp @rd  (0.1s) ====
+# exp @rd: Cody-Waite reduction + degree-11 minimax poly
+LOG2E = 0x3ff71547652b82fe   LN2HI = 0x3fe62e42fee00000   LN2LO = 0x3dea39ef35793c76
+coeffs (ascending, c0..c11), as f64 hex:
+  c0  = 0x3ff0000000000000   (1.0)
+  c1  = 0x3ff0000000000000   (1.0)
+  c2  = 0x3fe0000000000011   (0.5000000000000019)
+  c3  = 0x3fc555555555555a   (0.1666666666666668)
+  c4  = 0x3fa555555554f0cf   (0.0416666666664881)
+  c5  = 0x3f8111111110f225   (0.008333333333319601)
+  c6  = 0x3f56c16c187fbe02   (0.0013888888952314775)
+  c7  = 0x3f2a01a01b14378f   (0.00019841269890047113)
+  c8  = 0x3efa01991ac8730a   (2.4801485482328494e-05)
+  c9  = 0x3ec71ddf5749d126   (2.755724091857897e-06)
+  c10 = 0x3e928b4057f44145   (2.763263963904103e-07)
+  c11 = 0x3e5af631d0059bec   (2.5110037605963777e-08)
+max error over x in [-20,20]: 0.994 ULP  at x=5.214
+expected (input -> output) bit patterns:
+  exp(+0.0) -> 0x3ff0000000000000   in=0x0000000000000000
+  exp(+0.5) -> 0x3ffa61298e1e069c   in=0x3fe0000000000000
+  exp(+1.0) -> 0x4005bf0a8b14576a   in=0x3ff0000000000000
+  exp(-1.0) -> 0x3fd78b56362cef38   in=0xbff0000000000000
+  exp(+2.0) -> 0x401d8e64b8d4ddae   in=0x4000000000000000
+  exp(+10.0) -> 0x40d5829dcf950560   in=0x4024000000000000
+  exp(-5.0) -> 0x3f7b993fe00d5376   in=0xc014000000000000
+  exp(+0.1) -> 0x3ff1aec7b35a00d4   in=0x3fb999999999999a
+edge cases (in -> out):
+  exp(   +inf) -> 0x7ff0000000000000   in=0x7ff0000000000000
+  exp(   -inf) -> 0x0000000000000000   in=0xfff0000000000000
+  exp(    nan) -> 0x7ff8000000000000   in=0x7ff8000000000000
+  exp(  709.5) -> 0x7fe81e9b4b52d0c9   in=0x40862c0000000000
+  exp(  710.0) -> 0x7ff0000000000000   in=0x4086300000000000
+  exp(  720.0) -> 0x7ff0000000000000   in=0x4086800000000000
+  exp( -744.0) -> 0x0000000000000002   in=0xc087400000000000
+  exp( -745.2) -> 0x0000000000000000   in=0xc08749999999999a
+  exp( -750.0) -> 0x0000000000000000   in=0xc087700000000000
+
+---- starting MATH: exp @rs ----
+==== MATH: exp @rs  (0.1s) ====
+# exp @rs: Cody-Waite reduction + degree-6 minimax poly (f32)
+LOG2E = 0x3fb8aa3b   LN2HI = 0x3f317200   LN2LO = 0x35bfbe8e
+coeffs (ascending, c0..c6), as f32 hex:
+  c0  = 0x3f800000   (1.0)
+  c1  = 0x3f800000   (1.0)
+  c2  = 0x3f000000   (0.5)
+  c3  = 0x3e2aaa02   (0.16666415333747864)
+  c4  = 0x3d2aaa56   (0.04166635125875473)
+  c5  = 0x3c0937d3   (0.00837512593716383)
+  c6  = 0x3ab6ba99   (0.0013941108481958508)
+max error over x in [-20,20]: 0.860 ULP  at x=6.585999965667725
+expected (input -> output) bit patterns:
+  exp(+0.0) -> 0x3f800000   in=0x00000000
+  exp(+0.5) -> 0x3fd3094d   in=0x3f000000
+  exp(+1.0) -> 0x402df854   in=0x3f800000
+  exp(-1.0) -> 0x3ebc5ab2   in=0xbf800000
+  exp(+2.0) -> 0x40ec7326   in=0x40000000
+  exp(+10.0) -> 0x46ac14ee   in=0x41200000
+  exp(-5.0) -> 0x3bdcc9ff   in=0xc0a00000
+  exp(+0.1) -> 0x3f8d763e   in=0x3dcccccd
+edge cases (in -> out):
+  exp(   +inf) ->   0x7f800000   in=0x7f800000
+  exp(   -inf) ->   0x00000000   in=0xff800000
+  exp(    nan) ->   0x7fc00000   in=0x7fc00000
+  exp(   88.0) ->   0x7ef882b7   in=0x42b00000
+  exp(   89.0) ->   0x7f800000   in=0x42b20000
+  exp(  100.0) ->   0x7f800000   in=0x42c80000
+  exp( -103.0) ->   0x00000001   in=0xc2ce0000
+  exp( -104.0) ->   0x00000000   in=0xc2d00000
+  exp( -110.0) ->   0x00000000   in=0xc2dc0000
+
+---- starting MATH: exp @rh ----
+==== MATH: exp @rh  (0.7s) ====
+# exp @rh: Cody-Waite reduction + degree-4 minimax poly (exact math.hoon hex; exhaustive)
+  max 1.002 ULP at x=-9.3203125  (EXHAUSTIVE over 2^16, n=50573)
+
+---- starting MATH: exp @rq ----
+==== MATH: exp @rq  (3.2s) ====
+# exp @rq: Cody-Waite + fdlibm rational reconstruction
+#   exp(r) = 1 - ((lo - r*c/(2-c)) - hi),  c = r - t*P(t),  t = r*r
+LOG2E=0x3fff71547652b82fe1777d0ffda0d23a
+LN2HI=0x3ffe62e42fefa39ef35793c800000000
+LN2LO=0xbfad319ff0342542fc32f366359d274a
+P coeffs (ascending in t=r^2):
+  p0 =0x3ffc5555555555555555555555555555
+  p1 =0xbff66c16c16c16c16c16c16c16c09e83
+  p2 =0x3ff11566abc011566abc0115453d96dd
+  p3 =0xbfebbbd779334ef0aac663e4a6d65cca
+  p4 =0x3fe666a8f2bf70ebda06115986f507fb
+  p5 =0xbfe122805d64426743eb0e288c2e45a8
+  p6 =0x3fdbd6db2c4e050712be0476b628552f
+  p7 =0xbfd67da4e1efb419eb838f5da821635a
+  p8 =0x3fd1355867f7df64dc61daecbfc0d781
+  p9 =0xbfcbf56e4264f8ad54bb7852bc52bd99
+  p10=0x3fc68fc13579bfe0822162270789ca5f
+max error over [-20,20]: 0.806 ULP  (faithful; fdlibm beats the old flat Horner)
+  exp(1) -> 0x40005bf0a8b1457695355fb8ac404e7a
+  exp(0.5) -> 0x3fffa61298e1e069bc972dfefab6df34
+  exp(-2) -> 0x3ffc152aaa3bf81cb9fdb76eae12d029
+  exp(10) -> 0x400d5829dcf95055f9f07ea8c056d135
+
+---- starting MATH: log @rd ----
+==== MATH: log @rd  (0.4s) ====
+# log @rd: x=2^e*m reduction + degree-9 atanh poly
+LN2HI = 0x3fe62e42fee00000   LN2LO = 0x3dea39ef35793c76   SQRT2 = 0x3ff6a09e667f3bcd
+coeffs (ascending, c0..c9), as f64 hex:
+  c0  = 0x3fd5555555555555   (0.3333333333333333)
+  c1  = 0x3fc999999999999a   (0.2)
+  c2  = 0x3fc2492492492492   (0.14285714285714285)
+  c3  = 0x3fbc71c71c71c71c   (0.1111111111111111)
+  c4  = 0x3fb745d1745d1746   (0.09090909090909091)
+  c5  = 0x3fb3b13b13b13b14   (0.07692307692307693)
+  c6  = 0x3fb1111111111111   (0.06666666666666667)
+  c7  = 0x3fae1e1e1e1e1e1e   (0.058823529411764705)
+  c8  = 0x3faaf286bca1af28   (0.05263157894736842)
+  c9  = 0x3fa8618618618618   (0.047619047619047616)
+max error over x in (0,200]: 0.986 ULP  at x=1.471
+expected (input -> output) bit patterns:
+  log(1.0) -> 0x0000000000000000   in=0x3ff0000000000000
+  log(2.0) -> 0x3fe62e42fefa39ef   in=0x4000000000000000
+  log(0.5) -> 0xbfe62e42fefa39ef   in=0x3fe0000000000000
+  log(10.0) -> 0x40026bb1bbb55516   in=0x4024000000000000
+  log(100.0) -> 0x40126bb1bbb55516   in=0x4059000000000000
+  log(0.1) -> 0xc0026bb1bbb55515   in=0x3fb999999999999a
+  log(1e-300) -> 0xc085963447f87fb5   in=0x01a56e1fc2f8f359
+  log(7.38905609893065) -> 0x4000000000000000   in=0x401d8e64b8d4ddae
+edge cases (in -> out):
+  log(  +inf) -> 0x7ff0000000000000   in=0x7ff0000000000000
+  log(  -inf) -> 0x7ff8000000000000   in=0xfff0000000000000
+  log(   nan) -> 0x7ff8000000000000   in=0x7ff8000000000000
+  log(   0.0) -> 0xfff0000000000000   in=0x0000000000000000
+  log(  -1.0) -> 0x7ff8000000000000   in=0xbff0000000000000
+  log(   1.0) -> 0x0000000000000000   in=0x3ff0000000000000
+
+---- starting MATH: log @rs ----
+==== MATH: log @rs  (0.4s) ====
+# log @rs: x=2^e*m reduction + degree-4 atanh poly (f32)
+LN2HI = 0x3f317200   LN2LO = 0x35bfbe8e   SQRT2 = 0x3fb504f3
+coeffs (ascending, c0..c4), as f32 hex:
+  c0  = 0x3eaaaaab   (0.3333333432674408)
+  c1  = 0x3e4ccccd   (0.20000000298023224)
+  c2  = 0x3e124925   (0.1428571492433548)
+  c3  = 0x3de38e39   (0.1111111119389534)
+  c4  = 0x3dba2e8c   (0.09090909361839294)
+max error over x in (0,200]: 0.613 ULP  at x=2.8429999351501465
+expected (input -> output) bit patterns:
+  log(1.0) -> 0x00000000   in=0x3f800000
+  log(2.0) -> 0x3f317218   in=0x40000000
+  log(0.5) -> 0xbf317218   in=0x3f000000
+  log(10.0) -> 0x40135d8e   in=0x41200000
+  log(100.0) -> 0x40935d8e   in=0x42c80000
+  log(0.1) -> 0xc0135d8e   in=0x3dcccccd
+  log(1e-40) -> 0xc2b834f2   in=0x000116c2
+  log(7.389056) -> 0x40000000   in=0x40ec7326
+edge cases (in -> out):
+  log(  +inf) ->   0x7f800000   in=0x7f800000
+  log(  -inf) ->   0x7fc00000   in=0xff800000
+  log(   nan) ->   0x7fc00000   in=0x7fc00000
+  log(   0.0) ->   0xff800000   in=0x00000000
+  log(  -1.0) ->   0x7fc00000   in=0xbf800000
+  log(   1.0) ->   0x00000000   in=0x3f800000
+
+---- starting MATH: log @rh ----
+==== MATH: log @rh  (0.5s) ====
+# log @rh: x=2^e*m reduction + degree-1 atanh poly (exact math.hoon hex; exhaustive)
+  max 0.841 ULP at x=0.69677734375  (EXHAUSTIVE over 2^16 (x>0), n=31743)
+
+---- starting MATH: log @rq ----
+==== MATH: log @rq  (2.0s) ====
+# log @rq: x=2^e*m reduction + degree-22 EXACT atanh series (formula-derived; confirmed vs math.hoon hex)
+  max 0.617 ULP at x=5.5599999999999999999999999999999996610363297878464898621478821050527919372941099  (sampled, n=5406, x in (0,2000])
+
+---- starting MATH: log-2/log-10 @rd ----
+==== MATH: log-2/log-10 @rd  (1.0s) ====
+# log-2/log-10 @rd: +lr mantissa/exponent split + linear combine (composed; full simulation)
+  log-2: max 1.210 ULP at x=0.729  (sampled, n=28572, x in (0,200])
+    log-2(1.0) -> 0x0000000000000000
+    log-2(2.0) -> 0x3ff0000000000000
+    log-2(0.5) -> 0xbff0000000000000
+    log-2(10.0) -> 0x400a934f0979a371
+    log-2(100.0) -> 0x401a934f0979a371
+    log-2(0.1) -> 0xc00a934f0979a371
+  log-10: max 1.459 ULP at x=0.75  (sampled, n=28572, x in (0,200])
+    log-10(1.0) -> 0x0000000000000000
+    log-10(2.0) -> 0x3fd34413509f79ff
+    log-10(0.5) -> 0xbfd34413509f79ff
+    log-10(10.0) -> 0x3ff0000000000000
+    log-10(100.0) -> 0x4000000000000000
+    log-10(0.1) -> 0xbfefffffffffffff
+
+---- starting MATH: log-2/log-10 @rs ----
+==== MATH: log-2/log-10 @rs  (1.0s) ====
+# log-2/log-10 @rs: +lr mantissa/exponent split + linear combine (composed; full simulation)
+  log-2: max 0.901 ULP at x=0.7009999752044678  (sampled, n=28572, x in (0,200])
+  log-10: max 1.303 ULP at x=101.76000213623047  (sampled, n=28572, x in (0,200])
+
+---- starting MATH: log-2/log-10 @rh ----
+==== MATH: log-2/log-10 @rh  (1.1s) ====
+# log-2/log-10 @rh: +lr split + linear combine (exact math.hoon hex; exhaustive)
+  log-2: max 1.566 ULP at x=0.75732421875  (EXHAUSTIVE over 2^16 (x>0), n=31743)
+  log-10: max 1.370 ULP at x=1.2939453125  (EXHAUSTIVE over 2^16 (x>0), n=31743)
+
+---- starting MATH: log-2/log-10 @rq ----
+==== MATH: log-2/log-10 @rq  (4.0s) ====
+# log-2/log-10 @rq: +lr split + linear combine (composed)
+  log-2: max 0.600 ULP at x=198.69999999999999999999999999999999013923868473735243235339293396517212908491956  (sampled, n=5406)
+  log-10: max 1.103 ULP at x=1497.7699999999999999999999999999999842227818955797638917654286943442754065358713  (sampled, n=5406)
+
+---- starting MATH: sin @rd ----
+==== MATH: sin @rd  (1.5s) ====
+# sin @rd: x=q*pi/2+r reduction; kernels deg-7 (sin)/deg-7 (cos)
+INVPIO2=0x3fe45f306dc9c883  PIO2_1=0x3ff921fb54400000  PIO2_1T=0x3dd0b4611a626331
+SIN_C: 0xbfc5555555555555 0x3f81111111111111 0xbf2a01a01a01a01a 0x3ec71de3a556c734 0xbe5ae64567f544e4 0x3de6124613a86d09 0xbd6ae7f3e733b81f 0x3ce952c77030ad4a
+COS_C: 0x3fa5555555555555 0xbf56c16c16c16c17 0x3efa01a01a01a01a 0xbe927e4fb7789f5c 0x3e21eed8eff8d898 0xbda93974a8c07c9d 0x3d2ae7f3e733b81f 0xbca6827863b97d97
+max error over x in [-200,200] (|f|>1e-9): 0.727 ULP  at x=-85.62
+expected (input -> output):
+  sin(0.0) -> 0x0000000000000000   in=0x0000000000000000
+  sin(0.5) -> 0x3fdeaee8744b05f0   in=0x3fe0000000000000
+  sin(1.0) -> 0x3feaed548f090cee   in=0x3ff0000000000000
+  sin(-1.0) -> 0xbfeaed548f090cee   in=0xbff0000000000000
+  sin(1.5707963267948966) -> 0x3ff0000000000000   in=0x3ff921fb54442d18
+  sin(3.141592653589793) -> 0x3ca1a62633100000   in=0x400921fb54442d18
+  sin(10.0) -> 0xbfe1689ef5f34f52   in=0x4024000000000000
+  sin(100.0) -> 0xbfe03425b78c4db8   in=0x4059000000000000
+edges:
+  sin( +inf) -> 0x7ff8000000000000   in=0x7ff0000000000000
+  sin( -inf) -> 0x7ff8000000000000   in=0xfff0000000000000
+  sin(  nan) -> 0x7ff8000000000000   in=0x7ff8000000000000
+  sin(   -0) -> 0x8000000000000000   in=0x8000000000000000
+
+---- starting MATH: cos @rd ----
+==== MATH: cos @rd  (1.5s) ====
+# cos @rd: x=q*pi/2+r reduction; kernels deg-7 (sin)/deg-7 (cos)
+INVPIO2=0x3fe45f306dc9c883  PIO2_1=0x3ff921fb54400000  PIO2_1T=0x3dd0b4611a626331
+SIN_C: 0xbfc5555555555555 0x3f81111111111111 0xbf2a01a01a01a01a 0x3ec71de3a556c734 0xbe5ae64567f544e4 0x3de6124613a86d09 0xbd6ae7f3e733b81f 0x3ce952c77030ad4a
+COS_C: 0x3fa5555555555555 0xbf56c16c16c16c17 0x3efa01a01a01a01a 0xbe927e4fb7789f5c 0x3e21eed8eff8d898 0xbda93974a8c07c9d 0x3d2ae7f3e733b81f 0xbca6827863b97d97
+max error over x in [-200,200] (|f|>1e-9): 0.760 ULP  at x=-168.885
+expected (input -> output):
+  cos(0.0) -> 0x3ff0000000000000   in=0x0000000000000000
+  cos(0.5) -> 0x3fec1528065b7d50   in=0x3fe0000000000000
+  cos(1.0) -> 0x3fe14a280fb5068c   in=0x3ff0000000000000
+  cos(-1.0) -> 0x3fe14a280fb5068c   in=0xbff0000000000000
+  cos(1.5707963267948966) -> 0x3c91a62633100000   in=0x3ff921fb54442d18
+  cos(3.141592653589793) -> 0xbff0000000000000   in=0x400921fb54442d18
+  cos(10.0) -> 0xbfead9ac890c6b1f   in=0x4024000000000000
+  cos(100.0) -> 0x3feb981dbf665fdf   in=0x4059000000000000
+edges:
+  cos( +inf) -> 0x7ff8000000000000   in=0x7ff0000000000000
+  cos( -inf) -> 0x7ff8000000000000   in=0xfff0000000000000
+  cos(  nan) -> 0x7ff8000000000000   in=0x7ff8000000000000
+  cos(   -0) -> 0x3ff0000000000000   in=0x8000000000000000
+
+---- starting MATH: sin @rs ----
+==== MATH: sin @rs  (1.4s) ====
+# sin @rs: x=q*pi/2+r reduction (f32)
+INVPIO2=0x3f22f983  PIO2_1=0x3fc90000  PIO2_2=0x39fda000  PIO2_3=0x33a22169
+SIN_C: 0xbe2aaaab 0x3c088889 0xb9500d01 0x3638ef1d 0xb2d7322b
+COS_C: 0x3d2aaaab 0xbab60b61 0x37d00d01 0xb493f27e 0x310f76c7
+max error over x in [-200,200] (|f|>1e-6): 0.646 ULP  at x=84.822998046875
+expected (input -> output):
+  sin(0.0) -> 0x00000000   in=0x00000000
+  sin(0.5) -> 0x3ef57744   in=0x3f000000
+  sin(1.0) -> 0x3f576aa4   in=0x3f800000
+  sin(-1.0) -> 0xbf576aa4   in=0xbf800000
+  sin(1.5707964) -> 0x3f800000   in=0x3fc90fdb
+  sin(3.1415927) -> 0xb3bbbd2e   in=0x40490fdb
+  sin(10.0) -> 0xbf0b44f8   in=0x41200000
+  sin(100.0) -> 0xbf01a12e   in=0x42c80000
+  sin( +inf) ->   0x7fc00000   in=0x7f800000
+  sin( -inf) ->   0x7fc00000   in=0xff800000
+  sin(  nan) ->   0x7fc00000   in=0x7fc00000
+  sin(   -0) ->   0x80000000   in=0x80000000
+
+---- starting MATH: cos @rs ----
+==== MATH: cos @rs  (1.4s) ====
+# cos @rs: x=q*pi/2+r reduction (f32)
+INVPIO2=0x3f22f983  PIO2_1=0x3fc90000  PIO2_2=0x39fda000  PIO2_3=0x33a22169
+SIN_C: 0xbe2aaaab 0x3c088889 0xb9500d01 0x3638ef1d 0xb2d7322b
+COS_C: 0x3d2aaaab 0xbab60b61 0x37d00d01 0xb493f27e 0x310f76c7
+max error over x in [-200,200] (|f|>1e-6): 0.534 ULP  at x=161.22799682617188
+expected (input -> output):
+  cos(0.0) -> 0x3f800000   in=0x00000000
+  cos(0.5) -> 0x3f60a940   in=0x3f000000
+  cos(1.0) -> 0x3f0a5140   in=0x3f800000
+  cos(-1.0) -> 0x3f0a5140   in=0xbf800000
+  cos(1.5707964) -> 0xb33bbd2e   in=0x3fc90fdb
+  cos(3.1415927) -> 0xbf800000   in=0x40490fdb
+  cos(10.0) -> 0xbf56cd64   in=0x41200000
+  cos(100.0) -> 0x3f5cc0ee   in=0x42c80000
+  cos( +inf) ->   0x7fc00000   in=0x7f800000
+  cos( -inf) ->   0x7fc00000   in=0xff800000
+  cos(  nan) ->   0x7fc00000   in=0x7fc00000
+  cos(   -0) ->   0x3f800000   in=0x80000000
+
+---- starting MATH: sin @rh ----
+==== MATH: sin @rh  (1.1s) ====
+# sin @rh: quarter-turn reduction + 2-coeff kernel (exact math.hoon hex; exhaustive)
+  max 437290.542 ULP at x=3238.0  (EXHAUSTIVE over 2^16 (|f|>1e-3), n=52814)
+
+---- starting MATH: cos @rh ----
+==== MATH: cos @rh  (1.1s) ====
+# cos @rh: quarter-turn reduction + 2-coeff kernel (exact math.hoon hex; exhaustive)
+  max 1818710.580 ULP at x=6268.0  (EXHAUSTIVE over 2^16 (|f|>1e-3), n=62660)
+
+---- starting MATH: sin @rq ----
+==== MATH: sin @rq  (6.2s) ====
+# sin @rq: quarter-turn reduction + degree-16 EXACT Taylor kernel (formula-derived; confirmed vs math.hoon hex)
+  max 0.726 ULP at x=-776.77999999999999999999999999999997633417284336964583764814304151641310980380695  (sampled, n=10811, x in [-2000,2000])
+
+---- starting MATH: cos @rq ----
+==== MATH: cos @rq  (6.2s) ====
+# cos @rq: quarter-turn reduction + degree-16 EXACT Taylor kernel (formula-derived; confirmed vs math.hoon hex)
+  max 0.718 ULP at x=1650.0499999999999999999999999999999605569547389494097294135717358606885163396782  (sampled, n=10811, x in [-2000,2000])
+
+---- starting MATH: tan @rd ----
+==== MATH: tan @rd  (3.0s) ====
+# tan @rd: q*pi/2 reduction + fdlibm __kernel_tan (deg-13 + cot path)
+T: 0x3fd5555555555563 0x3fc111111110fe7a 0x3faba1ba1bb341fe 0x3f9664f48406d637 0x3f8226e3e96e8493 0x3f6d6d22c9560328 0x3f57dbc8fee08315 0x3f4344d8f2f26501 0x3f3026f71a8d1068 0x3f147e88a03792a6 0x3f12b80f32f0a7e9 0xbef375cbdb605373 0x3efb2a7074bf7ad4
+PIO4=0x3fe921fb54442d18 PIO4LO=0x3c81a62633145c07 BIG=0x3fe5942800000000
+dedicated max 0.757 ULP at x=-165.826;  sin/cos ratio max 1.934 ULP
+  tan(0.0) -> 0x0000000000000000   in=0x0000000000000000
+  tan(0.5) -> 0x3fe17b4f5bf3474a   in=0x3fe0000000000000
+  tan(1.0) -> 0x3ff8eb245cbee3a6   in=0x3ff0000000000000
+  tan(-1.0) -> 0xbff8eb245cbee3a6   in=0xbff0000000000000
+  tan(0.7853981633974483) -> 0x3fefffffffffffff   in=0x3fe921fb54442d18
+  tan(2.0) -> 0xc0017af62e0950f8   in=0x4000000000000000
+  tan(10.0) -> 0x3fe4bf5f34be3782   in=0x4024000000000000
+  tan(100.0) -> 0xbfe2ca74d62b5d38   in=0x4059000000000000
+  tan(+inf) -> 0x7ff8000000000000   in=0x7ff0000000000000
+  tan(nan) -> 0x7ff8000000000000   in=0x7ff8000000000000
+  tan(-0) -> 0x8000000000000000   in=0x8000000000000000
+
+---- starting MATH: tan @rs ----
+==== MATH: tan @rs  (1.3s) ====
+# tan @rs: 3-part pi/2 reduction + f32 __kernel_tan
+T: 0x3eaaaaab 0x3e088889 0x3d5d0dd1 0x3cb327a4 0x3c11371f 0x3b6b6916 0x3abede48
+PIO4=0x3f490fdb PIO4LO=0xb2bbbd2e BIG=0x3f2ca57a
+dedicated max 9.675 ULP at x=-135.98500061035156
+  tan(0.0) -> 0x00000000   in=0x00000000
+  tan(0.5) -> 0x3f0bda7b   in=0x3f000000
+  tan(1.0) -> 0x3fc75924   in=0x3f800000
+  tan(-1.0) -> 0xbfc75924   in=0xbf800000
+  tan(0.7853982) -> 0x3f800000   in=0x3f490fdb
+  tan(2.0) -> 0xc00bd7b1   in=0x40000000
+  tan(10.0) -> 0x3f25faf9   in=0x41200000
+  tan(100.0) -> 0xbf1653a6   in=0x42c80000
+  tan(+inf) -> 0x7fc00000   in=0x7f800000
+  tan(nan) -> 0x7fc00000   in=0x7fc00000
+  tan(-0) -> 0x80000000   in=0x80000000
+
+---- starting MATH: tan @rh ----
+==== MATH: tan @rh  (1.6s) ====
+# tan @rh: sin/cos ratio (exact math.hoon hex; exhaustive)
+  max 21557733081.759 ULP at x=42944.0  (EXHAUSTIVE over 2^16 (|f|>1e-3), n=52814)
+
+---- starting MATH: tan @rq ----
+==== MATH: tan @rq  (12.2s) ====
+# tan @rq: sin/cos ratio (formula-derived kernels)
+  max 1.668 ULP at x=-1899.3599999999999999999999999999999132253004256887014047098578188935147359472921  (sampled, n=10811)
+
+---- starting MATH: atan @rd ----
+==== MATH: atan @rd  (2.3s) ====
+# atan @rd: fdlibm breakpoint reduction + degree-10 minimax poly
+AT: 0x3fd555555555550d 0xbfc999999998ebc4 0x3fc24924920083ff 0xbfbc71c6fe231671 0x3fb745cdc54c206e 0xbfb3b0f2af749a6d 0x3fb10d66a0d03d51 0xbfadde2d52defd9a 0x3fa97b4b24760deb 0xbfa2b4442c6a6c2f 0x3f90ad3ae322da11
+BP: 0x3fdc000000000000 0x3fe6000000000000 0x3ff3000000000000 0x4003800000000000
+ATANHI: 0x3fddac670561bb4f 0x3fe921fb54442d18 0x3fef730bd281f69b 0x3ff921fb54442d18
+ATANLO: 0x3c7a2b7f222f65e2 0x3c81a62633145c07 0x3c7007887af0cbbd 0x3c91a62633145c07
+max error over x in [-500,500]: 0.713 ULP  at x=2.852
+expected:
+  atan(0.0) -> 0x0000000000000000   in=0x0000000000000000
+  atan(0.5) -> 0x3fddac670561bb4f   in=0x3fe0000000000000
+  atan(1.0) -> 0x3fe921fb54442d18   in=0x3ff0000000000000
+  atan(-1.0) -> 0xbfe921fb54442d18   in=0xbff0000000000000
+  atan(1.5) -> 0x3fef730bd281f69b   in=0x3ff8000000000000
+  atan(2.0) -> 0x3ff1b6e192ebbe44   in=0x4000000000000000
+  atan(10.0) -> 0x3ff789bd2c160054   in=0x4024000000000000
+  atan(0.1) -> 0x3fb983e282e2cc4d   in=0x3fb999999999999a
+  atan(-0.7) -> 0xbfe38b112d7bd4ad   in=0xbfe6666666666666
+  atan( +inf) -> 0x3ff921fb54442d18   in=0x7ff0000000000000
+  atan( -inf) -> 0xbff921fb54442d18   in=0xfff0000000000000
+  atan(  nan) -> 0x7ff8000000000000   in=0x7ff8000000000000
+  atan(   -0) -> 0x8000000000000000   in=0x8000000000000000
+
+---- starting MATH: atan @rs ----
+==== MATH: atan @rs  (2.2s) ====
+# atan @rs: fdlibm breakpoint reduction + degree-4 minimax poly (f32)
+AT: 0x3eaaaaa9 0xbe4cca98 0x3e11f50d 0xbdda1247 0x3d7cac25
+BP: 0x3ee00000 0x3f300000 0x3f980000 0x401c0000
+ATANHI: 0x3eed6338 0x3f490fdb 0x3f7b985f 0x3fc90fdb
+ATANLO: 0x31ac376a 0xb2bbbd2e 0xb2d7e096 0xb33bbd2e
+max error over x in [-500,500]: 0.575 ULP  at x=-2.621999979019165
+expected:
+  atan(0.0) -> 0x00000000   in=0x00000000
+  atan(0.5) -> 0x3eed6338   in=0x3f000000
+  atan(1.0) -> 0x3f490fdb   in=0x3f800000
+  atan(-1.0) -> 0xbf490fdb   in=0xbf800000
+  atan(1.5) -> 0x3f7b985f   in=0x3fc00000
+  atan(2.0) -> 0x3f8db70d   in=0x40000000
+  atan(10.0) -> 0x3fbc4de9   in=0x41200000
+  atan(0.1) -> 0x3dcc1f14   in=0x3dcccccd
+  atan(-0.7) -> 0xbf1c5889   in=0xbf333333
+  atan( +inf) ->   0x3fc90fdb   in=0x7f800000
+  atan( -inf) ->   0xbfc90fdb   in=0xff800000
+  atan(  nan) ->   0x7fc00000   in=0x7fc00000
+  atan(   -0) ->   0x80000000   in=0x80000000
+
+---- starting MATH: atan @rh ----
+==== MATH: atan @rh  (0.9s) ====
+# atan @rh: fdlibm breakpoint reduction + degree-2 minimax (exact math.hoon hex; exhaustive)
+  max 0.736 ULP at x=0.68017578125  (EXHAUSTIVE over 2^16, n=60134)
+
+---- starting MATH: atan @rq ----
+==== MATH: atan @rq  (11.7s) ====
+# atan @rq: fdlibm breakpoint reduction + degree-30 minimax (hex extracted from math.hoon)
+  max 0.533 ULP at x=-3.8900000000000000000000000000000001078520768856852077711347647847559298381336923  (sampled, n=27028, x in [-5000,5000])
+
+---- starting MATH: atan2 @rd ----
+==== MATH: atan2 @rd  (1.8s) ====
+# atan2 @rd: quadrant dispatch over +atan (composed; full simulation)
+  max 1.362 ULP at (y,x)=(-13.5, -5.31)  (sampled grid, n=94864, [-20,20]x[-20,20])
+
+---- starting MATH: atan2 @rs ----
+==== MATH: atan2 @rs  (1.8s) ====
+# atan2 @rs: composed; full simulation
+  max 1.159 ULP at (y,x)=(-17.010000228881836, -8.300000190734863)  (sampled grid, n=94864)
+
+---- starting MATH: atan2 @rh ----
+==== MATH: atan2 @rh  (2.3s) ====
+# atan2 @rh: quadrant dispatch over +atan (sampled grid, NOT exhaustive)
+  max 1.800 ULP at (y,x)=(2.671875, -1.0859375)  (sampled grid, n=150543)
+
+---- starting MATH: atan2 @rq ----
+==== MATH: atan2 @rq  (1.6s) ====
+# atan2 @rq: quadrant dispatch over +atan (composed)
+  max 1.350 ULP at (y,x)=(mpf('-8.0999999999999999999999999999999996918512088980422635110435291864116290339037362855'), mpf('15.0'))  (sampled grid, n=3364, [-20,20]x[-20,20])
+
+---- starting MATH: asin @rd ----
+==== MATH: asin @rd  (12.6s) ====
+# asin @rd: fdlibm rational kernel
+PS: 0x3fc5555555555555 0xbfd4d61203eb6f7d 0x3fc9c1550e884455 0xbfa48228b5688f3b 0x3f49efe07501b288 0x3f023de10dfdf709
+QS: 0xc0033a271c8a2d4b 0x40002ae59c598ac8 0xbfe6066c1b8d0159 0x3fb3b8c5b12e9282
+PIO2_H=0x3ff921fb54442d18 PIO2_L=0x3c91a62633145c07
+max error over x in [-1,1]: 0.837 ULP  at x=-0.508636
+  asin(0.0) -> 0x0000000000000000   in=0x0000000000000000
+  asin(0.5) -> 0x3fe0c152382d7366   in=0x3fe0000000000000
+  asin(1.0) -> 0x3ff921fb54442d18   in=0x3ff0000000000000
+  asin(-1.0) -> 0xbff921fb54442d18   in=0xbff0000000000000
+  asin(0.25) -> 0x3fd02be9ce0b87cd   in=0x3fd0000000000000
+  asin(0.75) -> 0x3feb235315c680dc   in=0x3fe8000000000000
+  asin(0.9) -> 0x3ff1ea93705fa172   in=0x3feccccccccccccd
+  asin(0.99) -> 0x3ff6de3c6f33d51d   in=0x3fefae147ae147ae
+  asin(-0.6) -> 0xbfe4978fa3269ee1   in=0xbfe3333333333333
+  asin(0.1) -> 0x3fb9a49276037884   in=0x3fb999999999999a
+  asin(nan) -> 0x7ff8000000000000
+  asin(-0) -> 0x8000000000000000
+  asin(1.5) -> 0x7ff8000000000000
+  asin(-2) -> 0x7ff8000000000000
+
+---- starting MATH: acos @rd ----
+==== MATH: acos @rd  (12.2s) ====
+# acos @rd: fdlibm rational kernel (shares asin P/Q)
+max error over x in [-1,1]: 0.887 ULP  at x=-0.528628
+  acos(0.0) -> 0x3ff921fb54442d18   in=0x0000000000000000
+  acos(0.5) -> 0x3ff0c152382d7366   in=0x3fe0000000000000
+  acos(1.0) -> 0x0000000000000000   in=0x3ff0000000000000
+  acos(-1.0) -> 0x400921fb54442d18   in=0xbff0000000000000
+  acos(0.25) -> 0x3ff51700e0c14b25   in=0x3fd0000000000000
+  acos(0.75) -> 0x3fe720a392c1d955   in=0x3fe8000000000000
+  acos(0.9) -> 0x3fdcdd9f8f922e98   in=0x3feccccccccccccd
+  acos(-0.6) -> 0x4001b6e192ebbe44   in=0xbfe3333333333333
+  acos(-0.9) -> 0x400586476251e745   in=0xbfeccccccccccccd
+  acos(0.1) -> 0x3ff787b22ce3f590   in=0x3fb999999999999a
+  acos(nan) -> 0x7ff8000000000000
+  acos(1.5) -> 0x7ff8000000000000
+  acos(-2) -> 0x7ff8000000000000
+
+---- starting MATH: asin @rs ----
+==== MATH: asin @rs  (5.2s) ====
+# asin @rs: fdlibm rational kernel (f32)
+PS: 0x3e2aaa75 0xbd2f13ba 0xbc0dd36b  QS1: 0xbf34e5ae
+PIO2_H=0x3fc90fdb PIO2_L=0xb33bbd2e PI_H=0x40490fdb
+max error over x in [-1,1]: 0.849 ULP  at x=0.5005199909210205
+  asin(0.0) -> 0x00000000   in=0x00000000
+  asin(0.5) -> 0x3f060a92   in=0x3f000000
+  asin(1.0) -> 0x3fc90fdb   in=0x3f800000
+  asin(-1.0) -> 0xbfc90fdb   in=0xbf800000
+  asin(0.25) -> 0x3e815f4e   in=0x3e800000
+  asin(0.75) -> 0x3f591a99   in=0x3f400000
+  asin(0.9) -> 0x3f8f549b   in=0x3f666666
+  asin(-0.6) -> 0xbf24bc7e   in=0xbf19999a
+  asin(0.1) -> 0x3dcd2494   in=0x3dcccccd
+  asin(nan) -> 0x7fc00000
+  asin(1.5) -> 0x7fc00000
+
+---- starting MATH: acos @rs ----
+==== MATH: acos @rs  (4.9s) ====
+# acos @rs: fdlibm rational kernel (f32)
+max error over x in [-1,1]: 0.980 ULP  at x=0.9686660170555115
+  acos(0.0) -> 0x3fc90fdb   in=0x00000000
+  acos(0.5) -> 0x3f860a92   in=0x3f000000
+  acos(1.0) -> 0x00000000   in=0x3f800000
+  acos(-1.0) -> 0x40490fdb   in=0xbf800000
+  acos(0.25) -> 0x3fa8b807   in=0x3e800000
+  acos(0.75) -> 0x3f39051c   in=0x3f400000
+  acos(0.9) -> 0x3ee6ecfe   in=0x3f666666
+  acos(-0.6) -> 0x400db70d   in=0xbf19999a
+  acos(0.1) -> 0x3fbc3d91   in=0x3dcccccd
+  acos(nan) -> 0x7fc00000
+  acos(1.5) -> 0x7fc00000
+
+---- starting MATH: asin @rh ----
+==== MATH: asin @rh  (0.5s) ====
+# asin @rh: fdlibm rational kernel (exact math.hoon hex; exhaustive)
+  max 1.010 ULP at x=0.9853515625  (EXHAUSTIVE over 2^16 (|x|<=1), n=27366)
+
+---- starting MATH: acos @rh ----
+==== MATH: acos @rh  (0.5s) ====
+# acos @rh: fdlibm rational kernel (exact math.hoon hex; exhaustive)
+  max 0.996 ULP at x=0.85693359375  (EXHAUSTIVE over 2^16 (|x|<=1), n=30721)
+
+---- starting MATH: asin @rq ----
+==== MATH: asin @rq  (12.9s) ====
+# asin @rq: fdlibm-style degree-30 rational-fit kernel (hex extracted from math.hoon)
+  max 0.765 ULP at x=-0.50456199999999999999999999999999998498699089751261907825804074196197456653179003  (sampled, n=28170, x in [-1,1])
+
+---- starting MATH: acos @rq ----
+==== MATH: acos @rq  (12.5s) ====
+# acos @rq: fdlibm-style degree-30 rational-fit kernel (hex extracted from math.hoon)
+  max 0.856 ULP at x=-0.50910599999999999999999999999999996260306271186640909970024270206291529955455744  (sampled, n=28170, x in [-1,1])
+
+---- starting MATH: sqt @rd ----
+==== MATH: sqt @rd  (0.6s) ====
+# sqt @rd: Markstein-corrected sqrt (composed; full simulation)
+  max 0.500 ULP at x=436.194  (sampled, n=54055, x in (0,2000])
+
+---- starting MATH: sqt @rs ----
+==== MATH: sqt @rs  (0.6s) ====
+# sqt @rs: native f32 sqrt (composed; full simulation)
+  max 0.500 ULP at x=256.0039978027344  (sampled, n=54055, x in (0,2000])
+
+---- starting MATH: sqt @rh ----
+==== MATH: sqt @rh  (0.4s) ====
+# sqt @rh: native f16 sqrt (exhaustive)
+  max 0.500 ULP at x=0.00024402141571044922  (EXHAUSTIVE over 2^16 (x>=0), n=31745)
+
+---- starting MATH: sqt @rq ----
+==== MATH: sqt @rq  (0.1s) ====
+# sqt @rq: Markstein-corrected sqrt (composed)
+  max 0.500 ULP at x=1371.7089999999999999999999999999999337356839614350083454148005162459567074506595  (sampled, n=2048, x in (0,2000])
+
+---- starting MATH: cbrt @rd ----
+==== MATH: cbrt @rd  (2.1s) ====
+# cbrt @rd: sign(x)*exp(log|x|/3) (composed; full simulation)
+  max 4.394 ULP at x=-511.786  (sampled, n=108109, x in [-2000,2000])
+
+---- starting MATH: cbrt @rs ----
+==== MATH: cbrt @rs  (2.0s) ====
+# cbrt @rs: sign(x)*exp(log|x|/3) (composed; full simulation)
+  max 2.623 ULP at x=-1683.5760498046875  (sampled, n=108109, x in [-2000,2000])
+
+---- starting MATH: cbrt @rh ----
+==== MATH: cbrt @rh  (1.1s) ====
+# cbrt @rh: sign(x)*exp(log|x|/3) (exhaustive)
+  max 6.700 ULP at x=2.3245811462402344e-06  (EXHAUSTIVE over 2^16, n=63488)
+
+---- starting MATH: cbrt @rq ----
+==== MATH: cbrt @rq  (2.5s) ====
+# cbrt @rq: sign(x)*exp(log|x|/3) (composed)
+  max 4.288 ULP at x=490.37300000000000000000000000000000157772181044202361082345713056557245934641287  (sampled, n=4095, x in [-2000,2000])
+
+---- starting MATH: pow/pow-n @rd ----
+==== MATH: pow/pow-n @rd  (5.8s) ====
+# pow/pow-n @rd: pow-n repeated-multiply (int n>0) else exp(n*log x) (composed; full simulation)
+  max 133.695 ULP at (x,n)=(0.01, -20.0)  (sampled grid, n=242788, x in (0,20], n in [-20,20])
+  pow-n exact-int-exponent spot check (n=2,3,5,-3):
+    n=2: max 0.495 ULP at x=18.49 (n=429)
+    n=3: max 1.175 ULP at x=22.76 (n=429)
+    n=5: max 1.917 ULP at x=20.73 (n=429)
+    n=-3: max 11.536 ULP at x=0.01 (n=429)
+
+---- starting MATH: pow/pow-n @rs ----
+==== MATH: pow/pow-n @rs  (5.5s) ====
+# pow/pow-n @rs: composed; full simulation
+  max 48.024 ULP at (x,n)=(0.009999999776482582, 19.81999969482422)  (sampled grid, n=242781)
+
+---- starting MATH: pow/pow-n @rh ----
+==== MATH: pow/pow-n @rh  (26.3s) ====
+# pow/pow-n @rh: composed (sampled grid over x,n, NOT exhaustive)
+  max 31.000 ULP at (x,n)=(0.98388671875, 3248.0)  (sampled grid, n=119373)
+
+---- starting MATH: pow/pow-n @rq ----
+==== MATH: pow/pow-n @rq  (5.8s) ====
+# pow/pow-n @rq: pow-n repeated-multiply (int n>0) else exp(n*log x) (composed)
+  max 60.722 ULP at (x,n)=(mpf('13.25'), mpf('17.949999999999999999999999999999999383702417796084527022087058372823258067807472571'))  (sampled grid, n=9782, x in (0,20], n in [-20,20])
+
+---- starting UNUM: pow-n (rpb/rph/rps) ----
+==== UNUM: pow-n (rpb/rph/rps)  (0.2s) ====
+# unum pow-n: repeated posit-rounded multiply -- EXACT rational ground truth (no mpmath needed)
+  pow-n(x,2) rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,3) rpb (n=8): max 1 ULP at x=-6.0; 0 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,5) rpb (n=8): max 1 ULP at x=-6.0; 0 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,7) rpb (n=8): max 2 ULP at x=-3.25; 16 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,2) rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,3) rph (n=16): max 1 ULP at x=-9.96484375; 0 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,5) rph (n=16): max 2 ULP at x=-2.533203125; 2 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,7) rph (n=16): max 2 ULP at x=-3.2001953125; 4 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,2) rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,3) rps (n=32): max 1 ULP at x=-9.833333313465118; 0 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,5) rps (n=32): max 1 ULP at x=-9.933333337306976; 0 non-faithful (>1 ULP) of 600 tested
+  pow-n(x,7) rps (n=32): max 2 ULP at x=-0.8999999985098839; 2 non-faithful (>1 ULP) of 600 tested
+
+---- starting UNUM: pow (rpb/rph/rps) ----
+==== UNUM: pow (rpb/rph/rps)  (0.6s) ====
+# unum pow: exp(mul(y, log(x))) -- composed; full simulation (mpmath oracle)
+  pow rpb (n=8): max 3 ULP at (x,y)=(Fraction(11, 1), Fraction(-7, 8)); 25 non-faithful (>1 ULP) of 1682 tested (x in (0,40], y in [-10,10])
+  pow rph (n=16): max 4 ULP at (x,y)=(Fraction(17, 2), Fraction(-2355, 1024)); 40 non-faithful (>1 ULP) of 1682 tested (x in (0,40], y in [-10,10])
+  pow rps (n=32): max 4 ULP at (x,y)=(Fraction(97307853, 33554432), Fraction(87241523, 33554432)); 46 non-faithful (>1 ULP) of 1682 tested (x in (0,40], y in [-10,10])
+
+---- starting UNUM: cbrt (rpb/rph/rps) ----
+==== UNUM: cbrt (rpb/rph/rps)  (0.2s) ====
+# unum cbrt: pow(x, div(one,sun(3))) -- posit-ROUNDED 1/3, not exact; full simulation (mpmath oracle)
+# NOTE: unlike /lib/math's cbrt (sign(x)*exp(log|x|/3), defined for all reals), /lib/unum's
+#   +cbrt explicitly returns NaR for x<0 (no sign-extraction trick) -- verified below, and the
+#   ULP sweep is restricted to x>0 accordingly (comparing NaR against a negative real cube root
+#   oracle would score a domain restriction as a bogus multi-billion-ULP 'error').
+  domain check: cbrt(-1/8) -> 0x80  (nar = 0x80)
+  cbrt rpb (n=8): max 1 ULP at x=0.078125; 0 non-faithful (>1 ULP) of 572 tested (x>0 only)
+  cbrt rph (n=16): max 2 ULP at x=20.234375; 15 non-faithful (>1 ULP) of 572 tested (x>0 only)
+  cbrt rps (n=32): max 2 ULP at x=24.44000005722046; 8 non-faithful (>1 ULP) of 572 tested (x>0 only)
+
+
+TOTAL TIME: 192.7s
+=== unum: log2log10 (fixed: now has a real ULP sweep) ===
+log10-2-wide = 0x004d104d427de7fbcc47c4acd605be48bc
+invln10-wide = 0x006f2dec549b9438ca9aadd557d699ee19
+  log2 rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+  log2 rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+  log2 rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+  log10 rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+  log10 rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+  log10 rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+  rpb log2(   1) in=0x40 -> out=0x00
+  rpb log2(   2) in=0x48 -> out=0x40
+  rpb log2(half) in=0x38 -> out=0xc0
+  rpb log2(  10) in=0x5a -> out=0x4d
+  rpb log2( 100) in=0x6a -> out=0x55
+  rph log2(   1) in=0x4000 -> out=0x0000
+  rph log2(   2) in=0x4800 -> out=0x4000
+  rph log2(half) in=0x3800 -> out=0xc000
+  rph log2(  10) in=0x5a00 -> out=0x4d4a
+  rph log2( 100) in=0x6a40 -> out=0x554a
+  rps log2(   1) in=0x40000000 -> out=0x00000000
+  rps log2(   2) in=0x48000000 -> out=0x40000000
+  rps log2(half) in=0x38000000 -> out=0xc0000000
+  rps log2(  10) in=0x5a000000 -> out=0x4d49a785
+  rps log2( 100) in=0x6a400000 -> out=0x5549a785
+  rpb log10(   1) in=0x40 -> out=0x00
+  rpb log10(   2) in=0x48 -> out=0x32
+  rpb log10(half) in=0x38 -> out=0xce
+  rpb log10(  10) in=0x5a -> out=0x40
+  rpb log10( 100) in=0x6a -> out=0x48
+  rph log10(   1) in=0x4000 -> out=0x0000
+  rph log10(   2) in=0x4800 -> out=0x31a2
+  rph log10(half) in=0x3800 -> out=0xce5e
+  rph log10(  10) in=0x5a00 -> out=0x4000
+  rph log10( 100) in=0x6a40 -> out=0x4800
+  rps log10(   1) in=0x40000000 -> out=0x00000000
+  rps log10(   2) in=0x48000000 -> out=0x31a209a8
+  rps log10(half) in=0x38000000 -> out=0xce5df658
+  rps log10(  10) in=0x5a000000 -> out=0x40000000
+  rps log10( 100) in=0x6a400000 -> out=0x48000000
+
+=== unum: trig incl. tan (fixed: tan now measured) ===
+# unum sin/cos: quarter-turn |x| reduction + degree-6 EXACT Taylor kernels
+# TRIG_WBITS=200 (wider than WBITS=128 -- see module docstring: large-x reduction error scales with the argument, not just the constant's own precision)
+PI2    = 0x1921fb54442d18469898cc51701b839a252049c1114cf98e804
+INVPI2 = 0xa2f9836e4e441529fc2757d1f534ddc0db6295993c439041fe
+  sin rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  sin rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  sin rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  cos rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  cos rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  cos rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  tan rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  tan rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  tan rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 21980 tested
+  huge-x sweep (posit32, |x| up to ~2^120): max 0 ULP at x~None
+expected bit patterns (rpb/rph/rps), for the Hoon test suite:
+  rpb sin(   0) in=0x00 -> out=0x00   cos(   0) -> out=0x40
+  rpb sin(   1) in=0x40 -> out=0x3d   cos(   1) -> out=0x39
+  rpb sin(  -1) in=0xc0 -> out=0xc3   cos(  -1) -> out=0x39
+  rpb sin( pi2) in=0x45 -> out=0x40   cos( pi2) -> out=0xe1
+  rpb sin(  pi) in=0x4d -> out=0xda   cos(  pi) -> out=0xc0
+  rpb sin(  10) in=0x5a -> out=0xc7   cos(  10) -> out=0xc3
+  rph sin(   0) in=0x0000 -> out=0x0000   cos(   0) -> out=0x4000
+  rph sin(   1) in=0x4000 -> out=0x3d77   cos(   1) -> out=0x38a5
+  rph sin(  -1) in=0xc000 -> out=0xc289   cos(  -1) -> out=0x38a5
+  rph sin( pi2) in=0x4491 -> out=0x4000   cos( pi2) -> out=0xfceb
+  rph sin(  pi) in=0x4c91 -> out=0xfc6b   cos(  pi) -> out=0xc000
+  rph sin(  10) in=0x5a00 -> out=0xc74c   cos(  10) -> out=0xc293
+  rps sin(   0) in=0x00000000 -> out=0x00000000   cos(   0) -> out=0x40000000
+  rps sin(   1) in=0x40000000 -> out=0x3d76aa48   cos(   1) -> out=0x38a51408
+  rps sin(  -1) in=0xc0000000 -> out=0xc28955b8   cos(  -1) -> out=0x38a51408
+  rps sin( pi2) in=0x4490fdaa -> out=0x40000000   cos( pi2) -> out=0x00610b46
+  rps sin(  pi) in=0x4c90fdaa -> out=0x00710b46   cos(  pi) -> out=0xc0000000
+  rps sin(  10) in=0x5a000000 -> out=0xc74bb085   cos(  10) -> out=0xc29329bb
+
+=== unum: exp/log/atan/ainv (pre-existing, re-run for the record) ===
+# unum exp: k*ln2+r reduction (no hi/lo split; exact Fraction arithmetic)
+# degree-7 minimax poly, WBITS=128
+LN2    = 0x00b17217f7d1cf79abc9e3b39803f2f6af  (den 2^128)
+INVLN2 = 0x0171547652b82fe1777d0ffda0d23a7d12  (den 2^128)
+coeffs (ascending, c0..c7), numerator over 2^128:
+  c0  = 0x00ffffffffd389a50d1cdb82b4c34e2f1d   (~0.99999999995956179)
+  c1  = 0x00fffffffffb0fe8442a05c50f9cfaea45   (~0.99999999999550904)
+  c2  = 0x008000002e44f26dbc722719432ee4604c   (~0.50000001077291656)
+  c3  = 0x002aaaaaafce24bb583aef94f8c614beae   (~0.16666666786308587)
+  c4  = 0x000aaaa3250783cf22e306b08bd797037e   (~0.041666218319291945)
+  c5  = 0x000222214c445d4691bf8c9a8af541fc45   (~0.0083332835387085278)
+  c6  = 0x00005b69d4c616b405aa1ffc644cd9fc9e   (~0.0013948578326459795)
+  c7  = 0x00000d0bef97615e3036b3f095cd13a64d   (~0.00019907569310848288)
+  rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 1143 tested (x in [-40,40] grid)
+  rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 1143 tested (x in [-40,40] grid)
+  rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 1143 tested (x in [-40,40] grid)
+edge cases (posit8):
+  exp(   0) in=0x00 -> out=0x40
+  exp( NaR) in=0x80 -> out=0x80
+  exp(   1) in=0x40 -> out=0x4b
+  exp(  -1) in=0xc0 -> out=0x34
+  exp(  10) in=0x5a -> out=0x7a
+  exp(  50) in=0x66 -> out=0x7f
+  exp( 100) in=0x6a -> out=0x7f
+expected bit patterns (rpb/rph/rps), for the Hoon test suite:
+  rpb exp(   0) in=0x00 -> out=0x40
+  rpb exp(   1) in=0x40 -> out=0x4b
+  rpb exp(  -1) in=0xc0 -> out=0x34
+  rpb exp(half) in=0x38 -> out=0x45
+  rpb exp(  10) in=0x5a -> out=0x7a
+  rpb exp(  50) in=0x66 -> out=0x7f
+  rpb exp( 100) in=0x6a -> out=0x7f
+  rph exp(   0) in=0x0000 -> out=0x4000
+  rph exp(   1) in=0x4000 -> out=0x4ae0
+  rph exp(  -1) in=0xc000 -> out=0x33c6
+  rph exp(half) in=0x3800 -> out=0x4531
+  rph exp(  10) in=0x5a00 -> out=0x7a58
+  rph exp(  50) in=0x6640 -> out=0x7fff
+  rph exp( 100) in=0x6a40 -> out=0x7fff
+  rps exp(   0) in=0x00000000 -> out=0x40000000
+  rps exp(   1) in=0x40000000 -> out=0x4adf8546
+  rps exp(  -1) in=0xc0000000 -> out=0x33c5ab1b
+  rps exp(half) in=0x38000000 -> out=0x453094c7
+  rps exp(  10) in=0x5a000000 -> out=0x7a5829dd
+  rps exp(  50) in=0x66400000 -> out=0x7ffff032
+  rps exp( 100) in=0x6a400000 -> out=0x7fffffff
+# unum log: mantissa/exponent split (free from +sea) + atanh series
+# degree-16 EXACT Taylor tail (no minimax fit needed), GDIV_GUARD=160, WBITS=128
+  c_16= 1/33  = 0x0007c1f07c1f07c1f07c1f07c1f07c1f08
+  c_15= 1/31  = 0x0008421084210842108421084210842108
+  c_14= 1/29  = 0x0008d3dcb08d3dcb08d3dcb08d3dcb08d4
+  c_13= 1/27  = 0x00097b425ed097b425ed097b425ed097b4
+  c_12= 1/25  = 0x000a3d70a3d70a3d70a3d70a3d70a3d70a
+  c_11= 1/23  = 0x000b21642c8590b21642c8590b21642c86
+  c_10= 1/21  = 0x000c30c30c30c30c30c30c30c30c30c30c
+  c_9 = 1/19  = 0x000d79435e50d79435e50d79435e50d794
+  c_8 = 1/17  = 0x000f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f
+  c_7 = 1/15  = 0x0011111111111111111111111111111111
+  c_6 = 1/13  = 0x0013b13b13b13b13b13b13b13b13b13b14
+  c_5 = 1/11  = 0x001745d1745d1745d1745d1745d1745d17
+  c_4 = 1/9   = 0x001c71c71c71c71c71c71c71c71c71c71c
+  c_3 = 1/7   = 0x0024924924924924924924924924924925
+  c_2 = 1/5   = 0x0033333333333333333333333333333333
+  c_1 = 1/3   = 0x0055555555555555555555555555555555
+  rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+  rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+  rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 13984 tested (broad + near-power-of-2 grid)
+edge/domain cases (posit8):
+  log(   0) in=0x00 -> out=0x80
+  log( NaR) in=0x80 -> out=0x80
+  log(   1) in=0x40 -> out=0x00
+  log(  -1) in=0xc0 -> out=0x80
+  log(   2) in=0x48 -> out=0x3b
+  log( 100) in=0x6a -> out=0x51
+expected bit patterns (rpb/rph/rps), for the Hoon test suite:
+  rpb log(   1) in=0x40 -> out=0x00
+  rpb log(   2) in=0x48 -> out=0x3b
+  rpb log(half) in=0x38 -> out=0xc5
+  rpb log(  10) in=0x5a -> out=0x49
+  rpb log( 100) in=0x6a -> out=0x51
+  rph log(   1) in=0x4000 -> out=0x0000
+  rph log(   2) in=0x4800 -> out=0x3b17
+  rph log(half) in=0x3800 -> out=0xc4e9
+  rph log(  10) in=0x5a00 -> out=0x4936
+  rph log( 100) in=0x6a40 -> out=0x5136
+  rps log(   1) in=0x40000000 -> out=0x00000000
+  rps log(   2) in=0x48000000 -> out=0x3b17217f
+  rps log(half) in=0x38000000 -> out=0xc4e8de81
+  rps log(  10) in=0x5a000000 -> out=0x4935d8de
+  rps log( 100) in=0x6a400000 -> out=0x5135d8de
+# unum atan: fdlibm breakpoint reduction + degree-13 EXACT Taylor kernel
+  atan rpb (n=8): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 11970 tested
+  atan rph (n=16): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 11970 tested
+  atan rps (n=32): max 0 ULP at x=None; 0 non-faithful (>1 ULP) of 11970 tested
+expected bit patterns (rpb/rph/rps), for the Hoon test suite:
+  rpb atan(   0) in=0x00 -> out=0x00
+  rpb atan(   1) in=0x40 -> out=0x3d
+  rpb atan(  -1) in=0xc0 -> out=0xc3
+  rpb atan(half) in=0x38 -> out=0x37
+  rpb atan(  10) in=0x5a -> out=0x44
+  rph atan(   0) in=0x0000 -> out=0x0000
+  rph atan(   1) in=0x4000 -> out=0x3c91
+  rph atan(  -1) in=0xc000 -> out=0xc36f
+  rph atan(half) in=0x3800 -> out=0x36d6
+  rph atan(  10) in=0x5a00 -> out=0x43c5
+  rps atan(   0) in=0x00000000 -> out=0x00000000
+  rps atan(   1) in=0x40000000 -> out=0x3c90fdaa
+  rps atan(  -1) in=0xc0000000 -> out=0xc36f0256
+  rps atan(half) in=0x38000000 -> out=0x36d63383
+  rps atan(  10) in=0x5a000000 -> out=0x43c4de96
+  asin rpb (n=8): max 1 ULP at x=-0.875; 0 non-faithful (>1 ULP) of 286 tested
+  asin rph (n=16): max 1 ULP at x=-0.991943359375; 0 non-faithful (>1 ULP) of 286 tested
+  asin rps (n=32): max 3 ULP at x=-0.9990000016987324; 1 non-faithful (>1 ULP) of 286 tested
+  acos rpb (n=8): max 1 ULP at x=-0.9375; 0 non-faithful (>1 ULP) of 286 tested
+  acos rph (n=16): max 7 ULP at x=0.989013671875; 6 non-faithful (>1 ULP) of 286 tested
+  acos rps (n=32): max 4 ULP at x=0.9890000000596046; 4 non-faithful (>1 ULP) of 286 tested
+expected bit patterns (rpb/rph/rps), for the Hoon test suite:
+  rpb asin(    0) in=0x00 -> out=0x00   acos(    0) -> out=0x45
+  rpb asin(    1) in=0x40 -> out=0x45   acos(    1) -> out=0x00
+  rpb asin(   -1) in=0xc0 -> out=0xbb   acos(   -1) -> out=0x4d
+  rpb asin( half) in=0x38 -> out=0x38   acos( half) -> out=0x40
+  rpb asin(-half) in=0xc8 -> out=0xc8   acos(-half) -> out=0x49
+  rph asin(    0) in=0x0000 -> out=0x0000   acos(    0) -> out=0x4491
+  rph asin(    1) in=0x4000 -> out=0x4491   acos(    1) -> out=0x0000
+  rph asin(   -1) in=0xc000 -> out=0xbb6f   acos(   -1) -> out=0x4c91
+  rph asin( half) in=0x3800 -> out=0x3861   acos( half) -> out=0x4061
+  rph asin(-half) in=0xc800 -> out=0xc79f   acos(-half) -> out=0x4860
+  rps asin(    0) in=0x00000000 -> out=0x00000000   acos(    0) -> out=0x4490fdaa
+  rps asin(    1) in=0x40000000 -> out=0x4490fdaa   acos(    1) -> out=0x00000000
+  rps asin(   -1) in=0xc0000000 -> out=0xbb6f0256   acos(   -1) -> out=0x4c90fdaa
+  rps asin( half) in=0x38000000 -> out=0x3860a91c   acos( half) -> out=0x4060a91c
+  rps asin(-half) in=0xc8000000 -> out=0xc79f56e4   acos(-half) -> out=0x4860a91c
+
+=== unum: sqt (verified via my_sqrt cross-check, correctly-rounded by construction) ===

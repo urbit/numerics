@@ -14,7 +14,8 @@ benchmark/
     lib/                 the libraries under test
       math.hoon          current Chebyshev (jetted + cheb-interp)
       math-taylor.hoon   legacy iterative Taylor (ca42387^)
-      unum.hoon fixed.hoon complex.hoon twoc.hoon   pure-Hoon (no jets yet)
+      unum.hoon twoc.hoon    jetted (SoftUnum, /lib/twoc's C jet)
+      fixed.hoon complex.hoon   pure-Hoon (no jets yet)
       bench-core.hoon    shared %bout timing loop + baseline + input helpers
       bench-domains.hoon per-(lib,arm) input-domain table
     gen/

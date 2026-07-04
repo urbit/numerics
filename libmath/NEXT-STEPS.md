@@ -61,6 +61,144 @@ evaluation (the more ambitious original idea here) wasn't needed — exact
 bignum Hoon-atom arithmetic already gives single-rounding correctness
 without it. Not revisited.
 
+## `/lib/math` — `@rh` sin/cos/tan large-argument bug, FIXED (2026-07-03)
+
+`math.hoon`'s `@rh` (half-precision) `+rh-trig` engine did quarter-turn range
+reduction (`q=round(|x|*2/pi)`, `r=|x|-q*(pi/2)`, 3-part `pi/2` split) entirely
+in native `@rh` arithmetic — every constant piece and every intermediate
+product was itself only an 11-bit-mantissa half-precision value. Half
+precision only guarantees exact integer representation up to 2048; once
+`q` exceeds that (`|x|` past ~500), `qf=(sun q)` silently rounds to the
+nearest even `@rh`-representable integer, and that error (up to ~1) gets
+multiplied by `pi/2`'s hi part (1.5), injecting a multi-radian error into the
+reduced remainder. Measured impact: max ULP error grew from faithful (<1
+ULP) below `|x|~500` to **437,291 ULP (sin)**, **1,818,711 ULP (cos)**, and
+**21.6 billion ULP (tan)** by `|x|~3000-43000` — well within `@rh`'s normal
+range (max ~65504), not an edge case. Not previously documented; found while
+writing the paper's accuracy section (`doc/` USTJ manuscript).
+
+**Fixed** by widening to `@rs` (single precision, 24-bit mantissa — exact
+integer `q` up to 2^24, vastly beyond anything `@rh`'s dynamic range can
+demand) via the existing-but-previously-unused `+widen-hs` (exact) and
+narrowing back via `+narrow-sh` (correctly-rounded RNE) — this is exactly the
+architecture `+widen-hs`'s own docstring already claimed ("The @rh
+transcendentals compute in the (more precise) @rs door"), just not actually
+wired up for trig before now. The old native-`@rh` `+rh-trig` engine
+(`sc`/`cc`/`neg`/`ksin`/`kcos`/`trig-fin`) is now dead code, removed.
+Verified: Python oracle (`cheb_check.py`) exhaustively over the full `@rh`
+domain gives max 0.505 ULP (sin), 0.531 ULP (cos), 1.637 ULP (tan) — matches
+live on-ship behavior exactly (spot-checked at the old blowup points, plus
+the full `math-rh`/`math-trig`/`math-tan`/`math-derived`/`math-atan`/
+`math-ainv` test suites, all green). New regression tests added to
+`tests/lib/math-rh.hoon` covering the old blowup points.
+
+**Hoon/jet mismatch: CLOSED (2026-07-03).** `libmath/vere/noun/jets/i/math.c`
+and `vere64`'s copy previously still implemented the OLD, superseded
+native-`@rh` algorithm line-for-line (jets for `sin`/`cos`/`tan`\@`@rh` are
+registered `no_hashes`, i.e. matched by name only), so a jetted host was
+silently computing a **different, wrong** answer than the corrected Hoon
+specification for large `|x|` — a real jet mismatch by this project's own
+architectural discipline (Section 3 of the USTJ paper). Discovered while
+ship-verifying the Hoon fix: testing the Hoon change required temporarily
+stripping the `~/  %sin`/`~/  %cos`/`~/  %tan` jet hints to observe pure-Hoon
+behavior, since the stale jet otherwise silently overrode every test — a
+reminder that `no_hashes` jets are invisible landmines for any future
+algorithm change to these arms.
+
+**Fixed** by porting the same widen-@rs/narrow-@rh pattern to C: `_rh_sin`/
+`_rh_cos` now call SoftFloat's own `f16_to_f32` (exact) and `f32_to_f16`
+(correctly rounded RNE) around the existing, already-correct `_rs_sin`/
+`_rs_cos`, removing the old native-`@rh` kernel
+(`_rh_ksin`/`_rh_kcos`/`_rh_trigfin`) entirely — both conversion primitives
+were already compiled into the linked SoftFloat library, so no new code
+beyond the jet functions themselves was needed. Applied to the real vere
+source (`pkg/noun/jets/i/math.c`) and mirrored to both
+`libmath/vere/noun/jets/i/math.c` and `libmath/vere64/noun/jets/i/math.c`.
+Rebuilt vere (`zig build`, aarch64-macos-none target) and verified on a
+freshly booted ship: the full `tests/lib/math-rh.hoon` suite (including the
+large-`|x|` regression cases added for this fix) passes with jets **enabled**,
+and every case runs in 50-65 microseconds — confirming the new jet fires
+(not falling back to interpretation) and is bit-exact with the corrected
+Hoon specification, closing the mismatch.
+
+## `/lib/math` — `@rs` dedicated `tan` kernel, DONE; `@rh`/`@rq` deliberately left composed (2026-07-03)
+
+Prompted by a reviewer noticing `@rs` `+tan`'s 9.68 ULP figure (Table
+tab:ulp-math) was an unexplained outlier next to its 0.5–1.7 ULP neighbors:
+investigation found the 9.68 ULP number was itself an oracle bug (see the
+`tan_rs`-mismatch entry above), and that fixing the oracle revealed `@rs`
+was on the plain `(div (sin x) (cos x))` composed path (~1.22 ULP) the
+whole time — only `@rd` has ever had a genuine dedicated kernel
+(`+rd-tan`, a real ported fdlibm `__kernel_tan`). This prompted the
+question: why not give every precision a dedicated kernel, for uniformity?
+
+**Investigated all three (`@rh`, `@rs`, `@rq`) via the Python oracle before
+touching any Hoon, mirroring the project's established discipline.**
+Findings, in order of increasing surprise:
+
+- **`@rs`: a clean, real win — DONE.** A properly Chebyshev-fit low-degree
+  (7-coefficient) polynomial for `Q(z)=(tan(r)/r-1)/z`, evaluated in
+  genuinely native `@rs` arithmetic (no borrowing a wider precision),
+  reaches **0.939 ULP** — beating the composed ratio's 1.22 and even
+  `@rd`'s own dedicated kernel (0.757 is close; 0.939 is competitive).  The
+  key insight, found by trial: the kernel's dominant linear term (`rhi`)
+  must be **added last** (`w2 = rhi + r`, mirroring fdlibm's own structure)
+  rather than multiplied through the whole polynomial product — the
+  abandoned `@rs` draft this project already had (see the oracle-bug entry
+  above, `tan_f32`/`ktan32`, 9.68 ULP measured) got exactly this wrong,
+  which is *why* it scored worse than the ratio it was meant to replace,
+  not because a native `@rs` kernel is inherently a bad idea. A raw
+  16-term exact-Taylor attempt (no minimax-quality fit) also
+  underperformed at ~1.5 ULP — degree matters as much as structure once
+  enough terms accumulate chained-rounding error. Shipped: `+rs-tan` door
+  in `math.hoon` (`+redq`/`+ktan`/`+main`, mirroring `+rd-tan`'s shape),
+  the C jet `_rs_tan` (ported to the same algorithm using SoftFloat ops
+  directly), mirrored to both `libmath/vere` and `libmath/vere64`. Verified
+  on a fresh ship with jets enabled: `tests/lib/math-tan.hoon`'s new
+  `test-tan-rs-*` cases plus the full `math-trig`/`math-derived`/
+  `math-atan`/`math-ainv`/`math-rh` regression suite all green, every case
+  running in ~50µs (jetted).  One test-vector correction along the way: the
+  `x=pi/4` exact-tie case (`ax*2/pi` lands precisely on `.5`) exposed a
+  genuine rounding discrepancy between `cheb_check.py`'s own
+  `reduce_pio2_32` (gave `q=1` at this tie) and Hoon's actual
+  round-to-even `+redq` (gives `q=0`) — checked against `mpmath` directly,
+  Hoon's `q=0` answer (`0x3f800000`) is the mathematically closer one, so
+  the test vector was wrong, not the shipped code; harmless for the
+  measured ~0.94 ULP figure since a continuous 200k-point sweep essentially
+  never lands exactly on a tie.
+
+- **`@rh`: a dedicated kernel would be a regression — NOT done, by
+  design.** Even after fixing the reduction (reusing the same widen-based
+  approach that fixed `@rh`'s sin/cos), the best native-`@rh` kernel found
+  plateaus around **2.25 ULP** — *worse* than the composed ratio's 1.64.
+  `@rh`'s 11-bit mantissa doesn't leave enough headroom for a multi-step
+  polynomial-plus-reciprocal kernel to beat two already-accurate `+sin`/
+  `+cos` calls and one division. Left composed.
+
+- **`@rq`: a dedicated kernel is possible but needs a fundamentally
+  different technique — NOT done, deferred.** `tan`'s series coefficients
+  *grow* in magnitude at high degree (unlike `sin`/`cos`'s shrinking
+  factorial-decay coefficients), and `@rq` needs 45-60+ terms to converge
+  at 112-bit precision. Native chained `@rq` arithmetic over that many
+  growing-magnitude terms is catastrophically unstable (errors observed in
+  the billions of ULP, worsening — not improving — with more terms, a
+  classic symptom of the wrong technique rather than insufficient degree).
+  The only approach that worked (0.498 ULP) computed the kernel using
+  exact/unrounded arithmetic internally, rounding to `@rq` once at the very
+  end — mirroring `/lib/unum`'s own g-layer philosophy, but a genuinely
+  different internal technique than `@rd`'s or the new `@rs`'s native
+  chained-arithmetic style, and not attempted in Hoon here. Left composed
+  (~1.67 ULP, already faithful) as a known, explicitly-scoped gap rather
+  than a silently-incomplete uniformity story.
+
+**Net effect**: "the same algorithm everywhere" turned out not to be the
+right frame — `@rd`'s specific hi/lo-split minimax technique doesn't scale
+cleanly to either a much coarser (`@rh`) or much wider (`@rq`) precision.
+The honest per-precision picture is now: `@rs` and `@rd` have dedicated
+kernels (0.94 and 0.76 ULP), `@rh` and `@rq` use the composed ratio (1.64
+and 1.67 ULP) because that's what each precision's own constraints
+actually support best today.
+
 ## Roadmap — 2026-06-28 (post-jets)
 
 The jet effort (old §5) is **done**: **SoftUnum** (`sigilante/SoftUnum`, the

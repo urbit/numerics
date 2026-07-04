@@ -432,8 +432,33 @@ def check_log2log10():
     LOG_COEFFS = gen_log_coeffs(16)
     print(f"log10-2-wide = {hexn(raw128(quant(mp.log(2)/mp.log(10))), 8*((WBITS+7)//8+1))}")
     print(f"invln10-wide = {hexn(raw128(quant(1/mp.log(10))), 8*((WBITS+7)//8+1))}")
+    #  NOTE: this function previously only printed bit patterns for a handful
+    #  of round values with no ULP sweep at all -- added below (mirrors
+    #  check_log's own broad + near-power-of-2 grid) since log-2/log-10 were
+    #  otherwise the only unum transcendentals never actually measured.
+    broad = [Fraction(t, 1000) for t in range(1, 200001, 101)]
+    near = [Fraction(1) + Fraction(t, 1 << 24) for t in range(-2000, 2001)]
+    near += [Fraction(2) + Fraction(t, 1 << 24) for t in range(-2000, 2001)]
+    near += [Fraction(1, 2) + Fraction(t, 1 << 24) for t in range(-2000, 2001)]
+    grid = broad + near
     for name, fn, truefn in [('log2', log2_g, lambda xm: mp.log(xm) / mp.log(2)),
                               ('log10', log10_g, lambda xm: mp.log(xm) / mp.log(10))]:
+        for wname, n in WIDTHS:
+            worst = 0; xw = None; bad = 0; tested = 0
+            for xv in grid:
+                p = ref_value_encode(xv, n)
+                x = val(p, n)
+                if x is None or x == 0: continue
+                got = fn(p, n)
+                true_v = truefn(mp.mpf(x.numerator) / mp.mpf(x.denominator))
+                want = true_pattern(true_v, n)
+                tested += 1
+                d = ulp_distance(got, want, n)
+                if d > worst: worst, xw = d, x
+                if d > 1: bad += 1
+            print(f"  {name} {wname} (n={n}): max {worst} ULP at x={float(xw) if xw is not None else None}; "
+                  f"{bad} non-faithful (>1 ULP) of {tested} tested (broad + near-power-of-2 grid)")
+    for name, fn in [('log2', log2_g), ('log10', log10_g)]:
         for wname, n in WIDTHS:
             for label, xv in [('1', Fraction(1)), ('2', Fraction(2)), ('half', Fraction(1, 2)),
                                 ('10', Fraction(10)), ('100', Fraction(100))]:
@@ -548,7 +573,11 @@ def check_trig():
         c = quant(mp.pi * k / 4)
         near += [c + Fraction(t, 1 << 40) for t in range(-500, 501)]
     grid = broad + near
-    for fname, fn, truefn in [('sin', sin_g, mp.sin), ('cos', cos_g, mp.cos)]:
+    #  NOTE: tan_g is defined (used internally, e.g. the GDIV_GUARD tuning
+    #  comment above) but had NO dedicated ULP check anywhere in this file --
+    #  added here (same grid as sin/cos) since it's otherwise the only unum
+    #  trig arm never actually measured.
+    for fname, fn, truefn in [('sin', sin_g, mp.sin), ('cos', cos_g, mp.cos), ('tan', tan_g, mp.tan)]:
         for wname, n in WIDTHS:
             worst = 0; xw = None; bad = 0; tested = 0
             for xv in grid:
@@ -558,6 +587,7 @@ def check_trig():
                     if x is None: continue
                     got = fn(p, n)
                     true_v = truefn(mp.mpf(x.numerator) / mp.mpf(x.denominator))
+                    if fname == 'tan' and (not mp.isfinite(true_v) or abs(true_v) > mp.mpf('1e15')): continue
                     want = true_pattern(true_v, n)
                     tested += 1
                     d = ulp_distance(got, want, n)
@@ -775,7 +805,126 @@ def check_ainv():
             print(f"  {wname} asin({label:>5}) in={hexn(p,n)} -> out={hexn(asin_g(p,n),n)}"
                   f"   acos({label:>5}) -> out={hexn(acos_g(p,n),n)}")
 
+# ================================= cbrt / pow / pow-n =================================
+#  All three are literal compositions of already-checked primitives in
+#  lib/unum.hoon (not separate polynomial kernels):
+#    +pow-n:  [x=@ p=@u] -> @   repeated `mul` (posit-rounded multiply), p times
+#    +pow:    [x=@ y=@] -> @   (exp (mul y (log x)))  -- ALWAYS via exp/log, no
+#                               integer-exponent fast path (unlike /lib/math's
+#                               +pow, which falls through to +pow-n for y>0 int)
+#    +cbrt:   @ -> @            (pow x (div one (sun 3)))  -- note this divides
+#                               to get a POSIT-ROUNDED 1/3 (not an exact
+#                               constant like /lib/math's), an extra rounding
+#                               step /lib/math's cbrt doesn't have.
+#  This section re-executes those exact compositions using the already-
+#  validated exp_ref/log_g/pc_mul/pc_div (full simulation, not a derived
+#  bound), against the same true_pattern single-round oracle used above.
+POW_EXP_COEFFS = None                  # set by check_pow_pown_cbrt()
+
+def pow_n_ref(x_pat, p, n):
+    """mirrors +pow-n: [x=@ p=@u] -> @ (repeated posit-rounded multiply)."""
+    if x_pat == nar(n): return nar(n)
+    res = _one_p(n)
+    for _ in range(p):
+        res = pc_mul(res, x_pat, n)
+    return res
+
+def pow_ref(x_pat, y_pat, n, exp_coeffs):
+    """mirrors +pow: exp(mul(y, log(x))) -- no integer-exponent fast path."""
+    lx = log_g(x_pat, n)
+    if lx == nar(n): return nar(n)
+    my = pc_mul(y_pat, lx, n)
+    return exp_ref(my, n, exp_coeffs)
+
+def cbrt_ref(x_pat, n, exp_coeffs):
+    """mirrors +cbrt: nar/0 short-circuit, x<0 -> nar, else pow(x, div(one,sun(3)))."""
+    if x_pat == nar(n): return nar(n)
+    if x_pat == 0: return 0
+    xv = val(x_pat, n)
+    if xv is not None and xv < 0: return nar(n)
+    third = pc_div(_one_p(n), ref_value_encode(Fraction(3), n), n)
+    return pow_ref(x_pat, third, n, exp_coeffs)
+
+def check_pow_n():
+    print("# unum pow-n: repeated posit-rounded multiply -- EXACT rational ground truth (no mpmath needed)")
+    for wname, n in WIDTHS:
+        for p in (2, 3, 5, 7):
+            worst = 0; xw = None; bad = 0; tested = 0
+            for t in range(-300, 301):
+                if t == 0: continue
+                xv = Fraction(t, 30)
+                xp = ref_value_encode(xv, n)
+                x = val(xp, n)
+                if x is None: continue
+                got = pow_n_ref(xp, p, n)
+                want = ref_value_encode(x ** p, n)     # exact rational power -> exact oracle
+                tested += 1
+                d = ulp_distance(got, want, n)
+                if d > worst: worst, xw = d, x
+                if d > 1: bad += 1
+            print(f"  pow-n(x,{p}) {wname} (n={n}): max {worst} ULP at x={float(xw) if xw is not None else None}; "
+                  f"{bad} non-faithful (>1 ULP) of {tested} tested")
+
+def check_pow():
+    global POW_EXP_COEFFS, LOG_COEFFS
+    LOG_COEFFS = gen_log_coeffs(16)
+    POW_EXP_COEFFS = gen_exp_coeffs(7)
+    print("# unum pow: exp(mul(y, log(x))) -- composed; full simulation (mpmath oracle)")
+    grid_x = [Fraction(t, 10) for t in range(1, 401, 7)]
+    grid_y = [Fraction(t, 10) for t in range(-100, 101, 7)]
+    for wname, n in WIDTHS:
+        worst = 0; xw = None; bad = 0; tested = 0
+        for xv in grid_x:
+            xp = ref_value_encode(xv, n)
+            x = val(xp, n)
+            if x is None or x <= 0: continue
+            for yv in grid_y:
+                yp = ref_value_encode(yv, n)
+                y = val(yp, n)
+                if y is None: continue
+                got = pow_ref(xp, yp, n, POW_EXP_COEFFS)
+                if got == nar(n): continue
+                true_v = mp.mpf(x.numerator) / mp.mpf(x.denominator)
+                true_v = true_v ** (mp.mpf(y.numerator) / mp.mpf(y.denominator))
+                if not mp.isfinite(true_v) or true_v == 0: continue
+                want = true_pattern(true_v, n)
+                tested += 1
+                d = ulp_distance(got, want, n)
+                if d > worst: worst, xw = d, (x, y)
+                if d > 1: bad += 1
+        print(f"  pow {wname} (n={n}): max {worst} ULP at (x,y)={xw}; "
+              f"{bad} non-faithful (>1 ULP) of {tested} tested (x in (0,40], y in [-10,10])")
+
+def check_cbrt():
+    global POW_EXP_COEFFS, LOG_COEFFS
+    LOG_COEFFS = gen_log_coeffs(16)
+    POW_EXP_COEFFS = gen_exp_coeffs(7)
+    print("# unum cbrt: pow(x, div(one,sun(3))) -- posit-ROUNDED 1/3, not exact; full simulation (mpmath oracle)")
+    print("# NOTE: unlike /lib/math's cbrt (sign(x)*exp(log|x|/3), defined for all reals), /lib/unum's")
+    print("#   +cbrt explicitly returns NaR for x<0 (no sign-extraction trick) -- verified below, and the")
+    print("#   ULP sweep is restricted to x>0 accordingly (comparing NaR against a negative real cube root")
+    print("#   oracle would score a domain restriction as a bogus multi-billion-ULP 'error').")
+    xn = ref_value_encode(Fraction(-1, 8), 8)
+    print(f"  domain check: cbrt(-1/8) -> {hexn(cbrt_ref(xn, 8, POW_EXP_COEFFS), 8)}  (nar = {hexn(nar(8), 8)})")
+    grid = [Fraction(t, 100) for t in range(1, 4001, 7)]
+    for wname, n in WIDTHS:
+        worst = 0; xw = None; bad = 0; tested = 0
+        for xv in grid:
+            xp = ref_value_encode(xv, n)
+            x = val(xp, n)
+            if x is None or x <= 0: continue
+            got = cbrt_ref(xp, n, POW_EXP_COEFFS)
+            true_v = mp.cbrt(mp.mpf(x.numerator) / mp.mpf(x.denominator))
+            want = true_pattern(true_v, n)
+            tested += 1
+            d = ulp_distance(got, want, n)
+            if d > worst: worst, xw = d, x
+            if d > 1: bad += 1
+        print(f"  cbrt {wname} (n={n}): max {worst} ULP at x={float(xw) if xw is not None else None}; "
+              f"{bad} non-faithful (>1 ULP) of {tested} tested (x>0 only)")
+
 if __name__ == '__main__':
     fn = sys.argv[1] if len(sys.argv) > 1 else 'exp'
     {'exp': check_exp, 'log': check_log, 'log2log10': check_log2log10,
-     'trig': check_trig, 'atan': check_atan, 'ainv': check_ainv}[fn]()
+     'trig': check_trig, 'atan': check_atan, 'ainv': check_ainv,
+     'pow-n': check_pow_n, 'pow': check_pow, 'cbrt': check_cbrt}[fn]()

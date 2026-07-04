@@ -1,6 +1,6 @@
 #   `/lib/math` for Urbit
 
-A four-precision scalar transcendental library (`@rs`/`@rd`/`@rh`/`@rq`), jetted via SoftFloat for `@rs` and `@rd`; `@rh`/`@rq` jets in progress.
+A four-precision scalar transcendental library (`@rs`/`@rd`/`@rh`/`@rq`), jetted via SoftFloat at all four precisions.
 
 We support the following functions and special functions:
 
@@ -142,7 +142,7 @@ The `@rq*` quire auras nest under `@rq` (quad-precision float) by Hoon's prefix-
 - **integer conversion** — `++sun` (`@u`→), `++san` (`@s`→), `++toi` (→`(unit @s)`)
 - **IEEE-754 conversion** — `++to-rh` `++to-rs` `++to-rd` `++to-rq` and `++from-rh` `++from-rs` `++from-rd` `++from-rq`, value-based across *any* posit/float width pair
 - **quire** (the `16n`-bit exact accumulator) — `++p-to-q` `++q-to-p` `++q-mul-add` `++q-mul-sub` `++q-add-p` `++q-sub-p` `++q-add-q` `++q-sub-q` `++q-negate`, and `++fdp` (fused dot product, single rounding)
-- **elementary** — `++exp` `++sin` `++cos` `++tan` `++pow-n` `++log` `++log-2` `++log-10` `++pow` `++is-close` (naive Taylor series in the `/lib/math` style: reproducible, accurate near 0, not range-reduced)
+- **elementary** — `++exp` `++sin` `++cos` `++tan` `++pow-n` `++log` `++log-2` `++log-10` `++pow` `++is-close` (range-reduced Chebyshev-minimax/exact-Taylor kernels, mirroring `/lib/math`'s own rewrite: correctly rounded at posit8/16/32 for `exp`/`log`/`log-2`/`log-10`/`sin`/`cos`/`atan`, faithful for `tan`/`asin`/`acos`; posit64/128 share the same code path but are unverified against the oracle at that width)
 
 Arithmetic is verified against SoftPosit (the reference C implementation, via its Python wrapper): exhaustively over all posit8 pairs and sampled at posit16/32, with the offline harness in `tools/posit_check.py`; the on-ship suite is `tests/lib/unum-core` and `tests/lib/unum-fns`.
 
@@ -151,7 +151,7 @@ Arithmetic is verified against SoftPosit (the reference C implementation, via it
 - the standard-name alias interface (below): `++negate` `++addition` `++compare-less` `++sin-pi` `++compound` `++root-n` `++fmm` `++hypot` `++arctan2` etc., and the inverse / hyperbolic / `*-plus-1` / `*-minus-1` elementary functions
 - `++next` / `++prior` / `++nearest-int` / `++ceil` / `++floor` under their standard names (the behaviors exist as `++rnd`/`++flr`/`++cel`)
 - valids (the interval unum class, `@rv*`)
-- jets (the library is pure Hoon; SoftPosit's C is the spec for a future jet)
+- jets at posit64/128 (posit8/16/32 are jetted via SoftUnum; posit64/128 fall back to Hoon)
 
 ##  Posit Standard Compliance (planned alias layer)
 

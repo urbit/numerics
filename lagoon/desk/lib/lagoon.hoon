@@ -151,7 +151,7 @@
     =/  s2=[(unit @) (unit @)]  (need s)
     ^-  (list (list @))
     ::  read bounds from the raw units, so a present upper bound of `0`
-    ::  stays distinct from an absent bound `~` ("slice to end").  (issue #8)
+    ::  stays distinct from an absent bound `~` ("slice to end").
     ::  lower defaults to 0, upper (inclusive) defaults to the last index.
     =/  lo=@  ?~(-.s2 0 u.-.s2)
     =/  hi=@  ?~(+.s2 (dec dim) u.+.s2)

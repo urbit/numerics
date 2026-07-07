@@ -1075,7 +1075,7 @@
     :-  `meta`[~[-.shape 1] bloq kind tail]
     ^-  ndray
     %+  turn
-      `(list @)`(flop (gulf 0 (dec -.shape)))
+      `(list @)`(gulf 0 (dec -.shape))
     |=(i=@ (get-item a ~[i i]))
   ::
   ::    +trace:  ray -> ray

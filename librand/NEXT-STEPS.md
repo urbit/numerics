@@ -1,15 +1,19 @@
 # `/lib/rand` — next steps
 
-Status as of 2026-07-11. Milestone 1 (`rand-spec.md` section 13) is done:
-`++split-mix` + `++seed`, KAT-verified against Vigna's reference SplitMix64
-on-ship (`-test %/tests/lib/rand ~`, all green).
+Status as of 2026-07-11. Milestones 1-2 (`rand-spec.md` section 13) are done:
+`++split-mix`, `++philox`, `++seed`, `+step`, `+fork`, `++gen` -- KAT-verified
+against Vigna's reference SplitMix64 and the Random123 `kat_vectors` file
+on-ship (`-test %/tests/lib/rand ~`, all 23 green).
+
+Note for whoever picks up milestone 4: `+step`'s `%pcg` branch currently
+crashes (`~|  %rand-pcg-step-not-yet-implemented`) since a real draw needs
+PCG's xsl-rr output permutation, which doesn't exist yet. `+fork`'s `%pcg`
+branch is already fully implemented (forking only remixes state/inc via
+`+mix`, no draw logic needed), so only `+step` needs a fix once `++pcg` lands.
 
 Remaining milestones, in dependency order (see `rand-spec.md` section 13 for
 full detail):
 
-2. `++philox` (Philox4x32-10, the primary counter-based engine) + Random123
-   KAT vectors. `++fork` across all engines + path-sensitivity tests.
-   `++gen` door facade.
 3. `++uni` (bits/below/between/floats) + bias tests.
 4. `++pcg` (PCG64 XSL-RR) + jump.
 5. `++dist` at `@rd`: normal, expon, gamma, beta, bernoulli, geometric.

@@ -6,8 +6,9 @@
 ::  NOT be used for key material, nonces, or anything adversarial.  Entropy
 ::  acquisition is Arvo's job (`eny`); cryptographic randomness is Zuse's job.
 ::
-::  Status: milestones 1-5 of rand-spec.md -- ++philox, ++split-mix, ++seed,
-::  +step, +fork, ++gen, ++uni, ++pcg, ++dist.  ++sample lands later.
+::  Status: milestones 1-6 of rand-spec.md -- ++philox, ++split-mix, ++seed,
+::  +step, +fork, ++gen, ++uni, ++pcg, ++dist (rd+rs, all of section 6),
+::  ++sample.
 ::
 ~%  %non  ..part  ~  :: jet registration; nest non in hex (cf /lib/math, /lib/twoc)
 |%
@@ -678,13 +679,13 @@
 ::
 ::::                    ++dist                          ::  (6) distributions
 ::
-::  All arms at @rd only (the @rs routing and the poisson/binomial/
-::  categorical/dirichlet arms land in a later milestone, per rand-spec.md's
-::  milestone order).  Internally forced to round-to-nearest (%n) via +m
-::  below, matching /lib/math's own doors -- callers never see or choose a
-::  rounding mode here.  chi2/student-t aren't named in the milestone list
-::  but are one-line compositions of gamma/normal with no new machinery, so
-::  they land here too rather than waiting on an unscheduled slot.
+::  Nested ++rd / ++rs sub-cores, one per precision (see each for detail).
+::  Internally forced to round-to-nearest (%n) via +m in each, matching
+::  /lib/math's own doors -- callers never see or choose a rounding mode
+::  here.  chi2/student-t aren't named in rand-spec.md's milestone punch
+::  list but are one-line compositions of gamma/normal with no new
+::  machinery, so they land here too rather than waiting on an unscheduled
+::  slot.
 ::
 ::  Crashes (`?>` with `~|` tags) on out-of-domain parameters, per section
 ::  9's uniform error policy: domain violations are programmer error, not
@@ -692,182 +693,1015 @@
 ::
 ++  dist
   |%
-  ::  +m: the shared @rd math door, forced %n, rtol=1e-13 (the same "sane
-  ::  default" convergence tolerance Saloon's own +feps uses for @rd).
-  ::  Internal helper, mirroring /lib/fixed's +ng pattern.
-  ++  m  ~(. rd:math [%n .~1e-13 .~0])
-  ::  +mz: same door, forced %z (truncate toward zero) -- used only by
-  ::  +geometric's ceiling, since +toi respects the door's rounding mode
-  ::  and %n would round instead of truncate.
-  ++  mz  ~(. rd:math [%z .~1e-13 .~0])
-  ::    +normal:  rng -> [@rd rng]
+  ::    ++rd:  the reference distributions, at @rd (double precision)
   ::
-  ::  Standard normal N(0,1) via the Marsaglia polar method (the Box-Muller
-  ::  polar variant): draw u,v uniform on (-1,1) (via +rd:uni mapped
-  ::  2x-1), reject if s=u^2+v^2 is >=1 or =0, else return u*sqrt(-2 ln(s)/s).
-  ::  Returns ONE deviate and discards the pair-mate v*sqrt(-2 ln(s)/s) --
-  ::  caching it would make the rng state opaque (the next +normal call
-  ::  would need to "remember" a pending mate outside the plain +$rng
-  ::  noun), so v's factor is thrown away at v1.  A documented waste, not a
-  ::  bug; Ziggurat is a NEXT-STEPS optimization.  Variable-consumption
-  ::  (rejection loop): expected iterations ~1.27 (rejection probability
-  ::  1 - pi/4), astronomically bounded in practice.
+  ::  Everything rand-spec.md section 6 specifies, at the reference
+  ::  precision.  See ++rs below for the routed-through-the-same-
+  ::  algorithm single-precision mirror (rand-spec.md: "each arm exists
+  ::  at @rd (reference) and @rs").
+  ++  rd
+    |%
+    ::  +m: the shared @rd math door, forced %n, rtol=1e-13 (the same "sane
+    ::  default" convergence tolerance Saloon's own +feps uses for @rd).
+    ::  Internal helper, mirroring /lib/fixed's +ng pattern.
+    ++  m  ~(. rd:math [%n .~1e-13 .~0])
+    ::  +mz: same door, forced %z (truncate toward zero) -- used only by
+    ::  +geometric's ceiling, since +toi respects the door's rounding mode
+    ::  and %n would round instead of truncate.
+    ++  mz  ~(. rd:math [%z .~1e-13 .~0])
+    ::    +normal:  rng -> [@rd rng]
+    ::
+    ::  Standard normal N(0,1) via the Marsaglia polar method (the Box-Muller
+    ::  polar variant): draw u,v uniform on (-1,1) (via +rd:uni mapped
+    ::  2x-1), reject if s=u^2+v^2 is >=1 or =0, else return u*sqrt(-2 ln(s)/s).
+    ::  Returns ONE deviate and discards the pair-mate v*sqrt(-2 ln(s)/s) --
+    ::  caching it would make the rng state opaque (the next +normal call
+    ::  would need to "remember" a pending mate outside the plain +$rng
+    ::  noun), so v's factor is thrown away at v1.  A documented waste, not a
+    ::  bug; Ziggurat is a NEXT-STEPS optimization.  Variable-consumption
+    ::  (rejection loop): expected iterations ~1.27 (rejection probability
+    ::  1 - pi/4), astronomically bounded in practice.
+    ::    Examples
+    ::      > (normal:dist:rand (from-atom:seed:rand %sm64 0))
+    ::      [out=.~-0.9479938949723624 r=[%sm64 s=0x78dd.e6e5.fd29.f054]]
+    ::  Source
+    ++  normal
+      |=  r=rng
+      ^-  [out=@rd r=rng]
+      |-  ^-  [out=@rd r=rng]
+      =^  u1  r  (rd:uni r)
+      =^  u2  r  (rd:uni r)
+      =/  u  (sub:m (mul:m .~2 u1) .~1)
+      =/  v  (sub:m (mul:m .~2 u2) .~1)
+      =/  s  (add:m (mul:m u u) (mul:m v v))
+      ?:  |((gte:m s .~1) (equ:m s .~0))
+        $
+      =/  factor  (sqt:m (div:m (mul:m .~-2 (log:m s)) s))
+      [(mul:m u factor) r]
+    ::    +normal-mv:  [r=rng mu=@rd sigma=@rd] -> [@rd rng]
+    ::
+    ::  N(mu, sigma^2): mu + sigma*z where z ~ N(0,1).  Crashes if sigma < 0.
+    ::    Source
+    ++  normal-mv
+      |=  [r=rng mu=@rd sigma=@rd]
+      ^-  [out=@rd r=rng]
+      ~|  %rand-bad-sigma
+      ?>  !(lth:m sigma .~0)
+      =^  z  r  (normal r)
+      [(add:m mu (mul:m sigma z)) r]
+    ::    +expon:  [r=rng lambda=@rd] -> [@rd rng]
+    ::
+    ::  Exponential(lambda) via inversion: -ln(u)/lambda, u drawn from the
+    ::  OPEN (0,1) (+rd-oo, not +rd) specifically so log(0) never fires --
+    ::  this is exactly the case rand-spec.md section 5.2 built +rd-oo for.
+    ::  Crashes if lambda <= 0.
+    ::    Source
+    ++  expon
+      |=  [r=rng lambda=@rd]
+      ^-  [out=@rd r=rng]
+      ~|  %rand-bad-rate
+      ?>  (gth:m lambda .~0)
+      =^  u  r  (rd-oo:uni r)
+      [(div:m (neg:m (log:m u)) lambda) r]
+    ::    +gamma:  [r=rng alpha=@rd] -> [@rd rng]
+    ::
+    ::  Gamma(alpha, scale=1) via Marsaglia-Tsang (2000).  alpha>=1 direct
+    ::  (+gamma-ge1); alpha<1 via the standard boost gamma(alpha) =
+    ::  gamma(alpha+1) * u^(1/alpha), u drawn from the open (0,1) so the
+    ::  u=0 lattice point (probability 2^-53, not truly 0 as it would be for
+    ::  a continuous uniform) never manufactures a spurious exact-zero
+    ::  sample.  Crashes if alpha <= 0.
+    ::    Source
+    ++  gamma
+      |=  [r=rng alpha=@rd]
+      ^-  [out=@rd r=rng]
+      ~|  %rand-bad-shape
+      ?>  (gth:m alpha .~0)
+      ?:  (gte:m alpha .~1)
+        (gamma-ge1 r alpha)
+      =^  g  r  (gamma-ge1 r (add:m alpha .~1))
+      =^  u  r  (rd-oo:uni r)
+      [(mul:m g (pow:m u (div:m .~1 alpha))) r]
+    ::  +gamma-ge1: Marsaglia-Tsang squeeze for alpha>=1.  d=alpha-1/3,
+    ::  c=1/sqrt(9d); draw x~N(0,1), v=(1+cx)^3 (reject if v<=0), draw
+    ::  u~(0,1) open (so log(u) never fires on 0), accept d*v if
+    ::  ln(u) < x^2/2 + d - d*v + d*ln(v), else reject and redraw both x,u.
+    ::  Variable-consumption (rejection loop), astronomically bounded.
+    ++  gamma-ge1
+      |=  [r=rng alpha=@rd]
+      ^-  [out=@rd r=rng]
+      =/  d  (sub:m alpha (div:m .~1 .~3))
+      =/  c  (div:m .~1 (sqt:m (mul:m .~9 d)))
+      |-  ^-  [out=@rd r=rng]
+      =^  x  r  (normal r)
+      =/  t  (add:m .~1 (mul:m c x))
+      =/  v  (mul:m t (mul:m t t))
+      ?:  !(gth:m v .~0)
+        $
+      =^  u  r  (rd-oo:uni r)
+      =/  rhs
+        %+  add:m
+          (add:m (mul:m .~0.5 (mul:m x x)) d)
+        (sub:m (mul:m d (log:m v)) (mul:m d v))
+      ?:  (lth:m (log:m u) rhs)
+        [(mul:m d v) r]
+      $
+    ::    +beta:  [r=rng a=@rd b=@rd] -> [@rd rng]
+    ::
+    ::  Beta(a,b) via two independent gammas: x/(x+y), x~gamma(a), y~gamma(b).
+    ::  Crashes if a <= 0 or b <= 0 (via +gamma's own precondition).
+    ::    Source
+    ++  beta
+      |=  [r=rng a=@rd b=@rd]
+      ^-  [out=@rd r=rng]
+      =^  x  r  (gamma r a)
+      =^  y  r  (gamma r b)
+      [(div:m x (add:m x y)) r]
+    ::    +chi2:  [r=rng k=@] -> [@rd rng]
+    ::
+    ::  Chi-squared with k degrees of freedom: gamma(k/2, scale=2) ==
+    ::  2*gamma(k/2, scale=1) (+gamma is scale=1, so the factor of 2 is
+    ::  applied directly -- a standard gamma scaling property).  Crashes if
+    ::  k = 0.
+    ::    Source
+    ++  chi2
+      |=  [r=rng k=@]
+      ^-  [out=@rd r=rng]
+      ~|  %rand-bad-df
+      ?>  !=(k 0)
+      =^  x  r  (gamma r (div:m (sun:m k) .~2))
+      [(mul:m .~2 x) r]
+    ::    +student-t:  [r=rng k=@] -> [@rd rng]
+    ::
+    ::  Student's t with k degrees of freedom: z / sqrt(chi2(k)/k), z~N(0,1).
+    ::  Crashes if k = 0.
+    ::    Source
+    ++  student-t
+      |=  [r=rng k=@]
+      ^-  [out=@rd r=rng]
+      ~|  %rand-bad-df
+      ?>  !=(k 0)
+      =^  z  r  (normal r)
+      =^  c  r  (chi2 r k)
+      [(div:m z (sqt:m (div:m c (sun:m k)))) r]
+    ::    +bernoulli:  [r=rng p=@rd] -> [? rng]
+    ::
+    ::  %.y with probability p, else %.n: draw u~[0,1), return u<p.  Crashes
+    ::  unless 0 <= p <= 1.
+    ::    Source
+    ++  bernoulli
+      |=  [r=rng p=@rd]
+      ^-  [out=? r=rng]
+      ~|  %rand-bad-prob
+      ?>  &((gte:m p .~0) (lte:m p .~1))
+      =^  u  r  (rd:uni r)
+      [(lth:m u p) r]
+    ::    +geometric:  [r=rng p=@rd] -> [@ud rng]
+    ::
+    ::  Number of Bernoulli(p) trials up to and including the first success:
+    ::  ceil(ln(u)/ln(1-p)), u drawn from the open (0,1) (avoids ln(0)).
+    ::  p=1 is a special-cased edge that returns 1 directly (ln(1-p) would
+    ::  divide by ln(0) = -inf otherwise).  ceil is computed via +toi under
+    ::  a SEPARATE %z-rounding (truncate-toward-zero) door instance, +mz --
+    ::  +toi respects the door's own rounding mode, and this core's shared
+    ::  +m door is forced %n (round-to-nearest), which would round instead
+    ::  of truncate.  Crashes unless 0 < p <= 1.
+    ::    Source
+    ++  geometric
+      |=  [r=rng p=@rd]
+      ^-  [out=@ud r=rng]
+      ~|  %rand-bad-prob
+      ?>  &((gth:m p .~0) (lte:m p .~1))
+      ?:  (equ:m p .~1)
+        [1 r]
+      =^  u  r  (rd-oo:uni r)
+      =/  raw  (div:m (log:m u) (log:m (sub:m .~1 p)))
+      =/  fl   (abs:si (need (toi:mz raw)))
+      [?:(=(raw (sun:m fl)) fl +(fl)) r]
+    ::    +categorical:  [r=rng t=alias-table:sample] -> [@ud rng]
+    ::
+    ::  One draw from a pre-built alias table (rand-spec.md section 6.1's
+    ::  ++alias, in ++sample).  Deliberately takes an ALREADY-BUILT table,
+    ::  not raw weights: alias's whole point is O(n) build, O(1) per draw,
+    ::  amortized over many draws from the same distribution -- rebuilding
+    ::  the table on every single draw would defeat that.  Build once via
+    ::  `(build:alias:sample weights)`, draw many times via this arm (or
+    ::  `draw:alias:sample` directly, which this is a thin rename of).
+    ::  Lives ONLY here, not mirrored in ++rs: alias-table's .prob is fixed
+    ::  at @rd (rand-spec.md section 6.1), so this arm is precision-
+    ::  invariant -- an "@rs categorical" would be byte-for-byte identical
+    ::  code, not a real variant.
+    ::    Source
+    ++  categorical
+      |=  [r=rng t=alias-table:sample]
+      ^-  [out=@ud r=rng]
+      (draw:alias:sample t r)
+    ::    +poisson:  [r=rng lambda=@rd] -> [@ud rng]
+    ::
+    ::  Poisson(lambda): Knuth's product method for lambda<10 (simple,
+    ::  O(lambda) expected multiplications -- fine at this scale, unusable
+    ::  above it); Hörmann's PTRS (1993) transformed rejection for
+    ::  lambda>=10 (O(1) expected, needed because Knuth's method's cost
+    ::  scales linearly with lambda and would silently become the wrong
+    ::  choice above the threshold rather than crashing -- so this arm
+    ::  switches automatically rather than leaving the choice to the
+    ::  caller).  Crashes if lambda <= 0.
+    ::    Source
+    ++  poisson
+      |=  [r=rng lambda=@rd]
+      ^-  [out=@ud r=rng]
+      ~|  %rand-bad-rate
+      ?>  (gth:m lambda .~0)
+      ?:  (lth:m lambda .~10)
+        (poisson-knuth r lambda)
+      (poisson-ptrs r lambda)
+    ::  +poisson-knuth: k=0, p=1; loop: k+=1, p*=uniform(0,1); accept
+    ::  (return k-1, i.e. the count BEFORE the last increment) once
+    ::  p <= exp(-lambda).  Variable-consumption (rejection-free here, but
+    ::  a variable number of multiplications -- expected lambda of them).
+    ++  poisson-knuth
+      |=  [r=rng lambda=@rd]
+      ^-  [out=@ud r=rng]
+      =/  bigl  (exp:m (neg:m lambda))
+      =/  k  0
+      =/  p  .~1
+      |-  ^-  [out=@ud r=rng]
+      =^  u  r  (rd:uni r)
+      =/  p2  (mul:m p u)
+      ?:  (lte:m p2 bigl)
+        [k r]
+      $(k +(k), p p2)
+    ::  +poisson-ptrs: Hörmann 1993's transformed rejection with squeeze,
+    ::  verified against NumPy's random_poisson_ptrs (src/distributions/
+    ::  distributions.c) -- an independent re-implementation of the exact
+    ::  same reference this spec cites, not reconstructed from memory.
+    ::  Draws a candidate k from a scaled/shifted uniform (the "transformed"
+    ::  part), accepts immediately if a cheap squeeze test passes (avoiding
+    ::  the exact log-probability computation on the common path), and
+    ::  falls back to the exact accept/reject test (via +loggam, log(k!))
+    ::  otherwise.  Rejection loop, astronomically bounded in practice.
+    ++  poisson-ptrs
+      |=  [r=rng lambda=@rd]
+      ^-  [out=@ud r=rng]
+      =/  slam      (sqt:m lambda)
+      =/  loglam    (log:m lambda)
+      =/  b         (add:m .~0.931 (mul:m .~2.53 slam))
+      =/  a         (add:m .~-0.059 (mul:m .~0.02483 b))
+      =/  invalpha  (add:m .~1.1239 (div:m .~1.1328 (sub:m b .~3.4)))
+      =/  vr        (sub:m .~0.9277 (div:m .~3.6224 (sub:m b .~2)))
+      |-  ^-  [out=@ud r=rng]
+      =^  u1  r  (rd:uni r)
+      =^  v   r  (rd:uni r)
+      =/  u   (sub:m u1 .~0.5)
+      =/  us  (sub:m .~0.5 (abs:m u))
+      =/  kk  (dfloor (add:m (add:m (mul:m (add:m (div:m (mul:m .~2 a) us) b) u) lambda) .~0.43))
+      ?:  &((gte:m us .~0.07) (lte:m v vr))
+        [(abs:si kk) r]
+      ?:  |(=(-1 (cmp:si kk --0)) &((lth:m us .~0.013) (gth:m v us)))
+        $
+      =/  lhs  (sub:m (add:m (log:m v) (log:m invalpha)) (log:m (add:m (div:m a (mul:m us us)) b)))
+      =/  rhs  (sub:m (add:m (mul:m .~-1 lambda) (mul:m (san:m kk) loglam)) (loggam (add:m (san:m kk) .~1)))
+      ?:  (lte:m lhs rhs)
+        [(abs:si kk) r]
+      $
+    ::  +dfloor: @rd -> @s, floor (round toward -infinity, NOT toward
+    ::  zero) -- +poisson-ptrs's candidate k can be negative, where
+    ::  truncate-toward-zero (what +toi under +mz gives) would round the
+    ::  wrong way.  Positive/exact values: truncation IS the floor.
+    ::  Negative non-integers: truncation rounds up, so subtract 1.
+    ++  dfloor
+      |=  x=@rd
+      ^-  @s
+      =/  t  (need (toi:mz x))
+      ?:  |((gte:m x .~0) (equ:m x (san:m t)))
+        t
+      (dif:si t --1)
+    ::  +loggam: @rd -> @rd, natural log of the gamma function (so log(k!)
+    ::  = loggam(k+1)).  Stirling's series with a small-argument recurrence
+    ::  for x<7 (shifts x up by whole integers until >=7, where the series
+    ::  is accurate, then subtracts the shifted-away log-factors back out)
+    ::  -- transcribed from NumPy's random_loggam (src/distributions/
+    ::  distributions.c), itself from Zhang & Jin's SPECFUN algorithm, not
+    ::  derived independently: log-gamma accuracy is exactly the kind of
+    ::  detail worth matching a vetted reference bit-for-bit rather than
+    ::  reconstructing from the general shape of Stirling's series.
+    ++  loggam
+      |=  x=@rd
+      ^-  @rd
+      ?:  |((equ:m x .~1) (equ:m x .~2))
+        .~0
+      =/  a  ^-  (list @rd)
+        :~  .~0.08333333333333333  .~-0.002777777777777778  .~0.0007936507936507937
+            .~-0.0005952380952380952  .~0.0008417508417508417  .~-0.001917526917526918
+            .~0.006410256410256411  .~-0.02955065359477124  .~0.1796443723688307
+            .~-1.39243221690590
+        ==
+      =/  lg2pi  .~1.8378770664093453
+      =/  n  ?:((lth:m x .~7) (abs:si (need (toi:mz (sub:m .~7 x)))) 0)
+      =/  x0  (add:m x (sun:m n))
+      =/  x2  (div:m .~1 (mul:m x0 x0))
+      =/  gl0
+        =/  acc  (snag 9 a)
+        =/  i  0
+        |-  ^-  @rd
+        ?:  =(i 9)
+          acc
+        $(acc (add:m (mul:m acc x2) (snag (sub 8 i) a)), i +(i))
+      =/  gl
+        %+  sub:m
+          %+  add:m
+            (add:m (div:m gl0 x0) (mul:m .~0.5 lg2pi))
+          (mul:m (sub:m x0 .~0.5) (log:m x0))
+        x0
+      ?.  (lth:m x .~7)
+        gl
+      =/  fin
+        =/  gl2  gl
+        =/  x02  x0
+        =/  k  1
+        |-  ^-  @rd
+        ?:  (gth k n)
+          gl2
+        $(gl2 (sub:m gl2 (log:m (sub:m x02 .~1))), x02 (sub:m x02 .~1), k +(k))
+      fin
+    ::    +binomial:  [r=rng n=@ p=@rd] -> [@ud rng]
+    ::
+    ::  Binomial(n,p) via inversion by recurrence: P(X=0)=(1-p)^n, then
+    ::  P(X=k+1) = P(X=k) * (n-k)/(k+1) * p/(1-p), accumulating the CDF
+    ::  until it exceeds a single uniform draw.  Only valid for
+    ::  n*min(p,1-p) < 30 (Kachitvichyanukul & Schmeiser 1988) -- above
+    ::  that, inversion needs too many terms and BTPE is the right
+    ::  algorithm, deferred to NEXT-STEPS; this arm crashes rather than
+    ::  running slow (many terms) or, worse, silently truncating.
+    ::    Source
+    ++  binomial
+      |=  [r=rng n=@ p=@rd]
+      ^-  [out=@ud r=rng]
+      ~|  %rand-bad-prob
+      ?>  &((gte:m p .~0) (lte:m p .~1))
+      =/  q     (sub:m .~1 p)
+      =/  qmin  ?:((lth:m p .~0.5) p q)
+      ~|  %rand-binomial-n-too-large
+      ?>  (lth:m (mul:m (sun:m n) qmin) .~30)
+      =^  u  r  (rd:uni r)
+      =/  f    (pow:m q (sun:m n))
+      =/  cdf  f
+      =/  k    0
+      |-  ^-  [out=@ud r=rng]
+      ?:  (lth:m u cdf)
+        [k r]
+      =/  f2  %+  mul:m  f
+        (mul:m (div:m (sun:m (sub n k)) (sun:m +(k))) (div:m p q))
+      $(f f2, cdf (add:m cdf f2), k +(k))
+    ::    +dirichlet:  [r=rng alphas=(list @rd)] -> [(list @rd) rng]
+    ::
+    ::  Dirichlet(alphas): draw one gamma(alpha_i) per entry, normalize by
+    ::  their sum.  Crashes on an empty .alphas (and, via +gamma's own
+    ::  precondition, on any non-positive alpha).
+    ::    Source
+    ++  dirichlet
+      |=  [r=rng alphas=(list @rd)]
+      ^-  [out=(list @rd) r=rng]
+      ~|  %rand-empty-list
+      ?>  !=(~ alphas)
+      =/  gd
+        |-  ^-  [(list @rd) rng]
+        ?~  alphas
+          [~ r]
+        =^  x     r  (gamma r i.alphas)
+        =^  rest  r  $(alphas t.alphas)
+        [[x rest] r]
+      =/  total  (roll -.gd add:m)
+      [(turn -.gd |=(g=@rd (div:m g total))) +.gd]
+  --
+  ::    ++rs:  the same distributions, routed through @rs (single
+  ::  precision)
+  ::
+  ::  Identical algorithms to ++rd, just built on ++uni's @rs generators
+  ::  and /lib/math's @rs door instead of @rd's -- not a separate
+  ::  derivation, a mechanical re-instantiation at the other precision
+  ::  (mirroring how /lib/math itself has independent per-precision
+  ::  doors rather than one generic implementation).  +categorical has
+  ::  no @rs mirror: alias-table's .prob is fixed at @rd, so it's
+  ::  precision-invariant (see its doccord in ++rd).
+  ++  rs
+    |%
+    ::  +m: the shared @rs math door, forced %n, rtol=1e-6 (the same "sane
+    ::  default" convergence tolerance Saloon's own +feps uses for @rs).
+    ::  Internal helper, mirroring /lib/fixed's +ng pattern.
+    ++  m  ~(. rs:math [%n .1e-6 .0])
+    ::  +mz: same door, forced %z (truncate toward zero) -- used only by
+    ::  +geometric's ceiling, since +toi respects the door's rounding mode
+    ::  and %n would round instead of truncate.
+    ++  mz  ~(. rs:math [%z .1e-6 .0])
+    ::    +normal:  rng -> [@rs rng]
+    ::
+    ::  Standard normal N(0,1) via the Marsaglia polar method (the Box-Muller
+    ::  polar variant): draw u,v uniform on (-1,1) (via +rs:uni mapped
+    ::  2x-1), reject if s=u^2+v^2 is >=1 or =0, else return u*sqrt(-2 ln(s)/s).
+    ::  Returns ONE deviate and discards the pair-mate v*sqrt(-2 ln(s)/s) --
+    ::  caching it would make the rng state opaque (the next +normal call
+    ::  would need to "remember" a pending mate outside the plain +$rng
+    ::  noun), so v's factor is thrown away at v1.  A documented waste, not a
+    ::  bug; Ziggurat is a NEXT-STEPS optimization.  Variable-consumption
+    ::  (rejection loop): expected iterations ~1.27 (rejection probability
+    ::  1 - pi/4), astronomically bounded in practice.
+    ::    Examples
+    ::      > (normal:rs:dist:rand (from-atom:seed:rand %sm64 0))
+    ::      [out=.-0.5933847 r=[%sm64 s=0x3c6e.f372.fe94.f82a]]
+    ::  Source
+    ++  normal
+      |=  r=rng
+      ^-  [out=@rs r=rng]
+      |-  ^-  [out=@rs r=rng]
+      =^  u1  r  (rs:uni r)
+      =^  u2  r  (rs:uni r)
+      =/  u  (sub:m (mul:m .2 u1) .1)
+      =/  v  (sub:m (mul:m .2 u2) .1)
+      =/  s  (add:m (mul:m u u) (mul:m v v))
+      ?:  |((gte:m s .1) (equ:m s .0))
+        $
+      =/  factor  (sqt:m (div:m (mul:m .-2 (log:m s)) s))
+      [(mul:m u factor) r]
+    ::    +normal-mv:  [r=rng mu=@rs sigma=@rs] -> [@rs rng]
+    ::
+    ::  N(mu, sigma^2): mu + sigma*z where z ~ N(0,1).  Crashes if sigma < 0.
+    ::    Source
+    ++  normal-mv
+      |=  [r=rng mu=@rs sigma=@rs]
+      ^-  [out=@rs r=rng]
+      ~|  %rand-bad-sigma
+      ?>  !(lth:m sigma .0)
+      =^  z  r  (normal r)
+      [(add:m mu (mul:m sigma z)) r]
+    ::    +expon:  [r=rng lambda=@rs] -> [@rs rng]
+    ::
+    ::  Exponential(lambda) via inversion: -ln(u)/lambda, u drawn from the
+    ::  OPEN (0,1) (+rd-oo, not +rd) specifically so log(0) never fires --
+    ::  this is exactly the case rand-spec.md section 5.2 built +rd-oo for.
+    ::  Crashes if lambda <= 0.
+    ::    Source
+    ++  expon
+      |=  [r=rng lambda=@rs]
+      ^-  [out=@rs r=rng]
+      ~|  %rand-bad-rate
+      ?>  (gth:m lambda .0)
+      =^  u  r  (rs-oo:uni r)
+      [(div:m (neg:m (log:m u)) lambda) r]
+    ::    +gamma:  [r=rng alpha=@rs] -> [@rs rng]
+    ::
+    ::  Gamma(alpha, scale=1) via Marsaglia-Tsang (2000).  alpha>=1 direct
+    ::  (+gamma-ge1); alpha<1 via the standard boost gamma(alpha) =
+    ::  gamma(alpha+1) * u^(1/alpha), u drawn from the open (0,1) so the
+    ::  u=0 lattice point (probability 2^-53, not truly 0 as it would be for
+    ::  a continuous uniform) never manufactures a spurious exact-zero
+    ::  sample.  Crashes if alpha <= 0.
+    ::    Source
+    ++  gamma
+      |=  [r=rng alpha=@rs]
+      ^-  [out=@rs r=rng]
+      ~|  %rand-bad-shape
+      ?>  (gth:m alpha .0)
+      ?:  (gte:m alpha .1)
+        (gamma-ge1 r alpha)
+      =^  g  r  (gamma-ge1 r (add:m alpha .1))
+      =^  u  r  (rs-oo:uni r)
+      [(mul:m g (pow:m u (div:m .1 alpha))) r]
+    ::  +gamma-ge1: Marsaglia-Tsang squeeze for alpha>=1.  d=alpha-1/3,
+    ::  c=1/sqrt(9d); draw x~N(0,1), v=(1+cx)^3 (reject if v<=0), draw
+    ::  u~(0,1) open (so log(u) never fires on 0), accept d*v if
+    ::  ln(u) < x^2/2 + d - d*v + d*ln(v), else reject and redraw both x,u.
+    ::  Variable-consumption (rejection loop), astronomically bounded.
+    ++  gamma-ge1
+      |=  [r=rng alpha=@rs]
+      ^-  [out=@rs r=rng]
+      =/  d  (sub:m alpha (div:m .1 .3))
+      =/  c  (div:m .1 (sqt:m (mul:m .9 d)))
+      |-  ^-  [out=@rs r=rng]
+      =^  x  r  (normal r)
+      =/  t  (add:m .1 (mul:m c x))
+      =/  v  (mul:m t (mul:m t t))
+      ?:  !(gth:m v .0)
+        $
+      =^  u  r  (rs-oo:uni r)
+      =/  rhs
+        %+  add:m
+          (add:m (mul:m .0.5 (mul:m x x)) d)
+        (sub:m (mul:m d (log:m v)) (mul:m d v))
+      ?:  (lth:m (log:m u) rhs)
+        [(mul:m d v) r]
+      $
+    ::    +beta:  [r=rng a=@rs b=@rs] -> [@rs rng]
+    ::
+    ::  Beta(a,b) via two independent gammas: x/(x+y), x~gamma(a), y~gamma(b).
+    ::  Crashes if a <= 0 or b <= 0 (via +gamma's own precondition).
+    ::    Source
+    ++  beta
+      |=  [r=rng a=@rs b=@rs]
+      ^-  [out=@rs r=rng]
+      =^  x  r  (gamma r a)
+      =^  y  r  (gamma r b)
+      [(div:m x (add:m x y)) r]
+    ::    +chi2:  [r=rng k=@] -> [@rs rng]
+    ::
+    ::  Chi-squared with k degrees of freedom: gamma(k/2, scale=2) ==
+    ::  2*gamma(k/2, scale=1) (+gamma is scale=1, so the factor of 2 is
+    ::  applied directly -- a standard gamma scaling property).  Crashes if
+    ::  k = 0.
+    ::    Source
+    ++  chi2
+      |=  [r=rng k=@]
+      ^-  [out=@rs r=rng]
+      ~|  %rand-bad-df
+      ?>  !=(k 0)
+      =^  x  r  (gamma r (div:m (sun:m k) .2))
+      [(mul:m .2 x) r]
+    ::    +student-t:  [r=rng k=@] -> [@rs rng]
+    ::
+    ::  Student's t with k degrees of freedom: z / sqrt(chi2(k)/k), z~N(0,1).
+    ::  Crashes if k = 0.
+    ::    Source
+    ++  student-t
+      |=  [r=rng k=@]
+      ^-  [out=@rs r=rng]
+      ~|  %rand-bad-df
+      ?>  !=(k 0)
+      =^  z  r  (normal r)
+      =^  c  r  (chi2 r k)
+      [(div:m z (sqt:m (div:m c (sun:m k)))) r]
+    ::    +bernoulli:  [r=rng p=@rs] -> [? rng]
+    ::
+    ::  %.y with probability p, else %.n: draw u~[0,1), return u<p.  Crashes
+    ::  unless 0 <= p <= 1.
+    ::    Source
+    ++  bernoulli
+      |=  [r=rng p=@rs]
+      ^-  [out=? r=rng]
+      ~|  %rand-bad-prob
+      ?>  &((gte:m p .0) (lte:m p .1))
+      =^  u  r  (rs:uni r)
+      [(lth:m u p) r]
+    ::    +geometric:  [r=rng p=@rs] -> [@ud rng]
+    ::
+    ::  Number of Bernoulli(p) trials up to and including the first success:
+    ::  ceil(ln(u)/ln(1-p)), u drawn from the open (0,1) (avoids ln(0)).
+    ::  p=1 is a special-cased edge that returns 1 directly (ln(1-p) would
+    ::  divide by ln(0) = -inf otherwise).  ceil is computed via +toi under
+    ::  a SEPARATE %z-rounding (truncate-toward-zero) door instance, +mz --
+    ::  +toi respects the door's own rounding mode, and this core's shared
+    ::  +m door is forced %n (round-to-nearest), which would round instead
+    ::  of truncate.  Crashes unless 0 < p <= 1.
+    ::    Source
+    ++  geometric
+      |=  [r=rng p=@rs]
+      ^-  [out=@ud r=rng]
+      ~|  %rand-bad-prob
+      ?>  &((gth:m p .0) (lte:m p .1))
+      ?:  (equ:m p .1)
+        [1 r]
+      =^  u  r  (rs-oo:uni r)
+      =/  raw  (div:m (log:m u) (log:m (sub:m .1 p)))
+      =/  fl   (abs:si (need (toi:mz raw)))
+      [?:(=(raw (sun:m fl)) fl +(fl)) r]
+    ::    +poisson:  [r=rng lambda=@rs] -> [@ud rng]
+    ::
+    ::  Poisson(lambda): Knuth's product method for lambda<10 (simple,
+    ::  O(lambda) expected multiplications -- fine at this scale, unusable
+    ::  above it); Hörmann's PTRS (1993) transformed rejection for
+    ::  lambda>=10 (O(1) expected, needed because Knuth's method's cost
+    ::  scales linearly with lambda and would silently become the wrong
+    ::  choice above the threshold rather than crashing -- so this arm
+    ::  switches automatically rather than leaving the choice to the
+    ::  caller).  Crashes if lambda <= 0.
+    ::    Source
+    ++  poisson
+      |=  [r=rng lambda=@rs]
+      ^-  [out=@ud r=rng]
+      ~|  %rand-bad-rate
+      ?>  (gth:m lambda .0)
+      ?:  (lth:m lambda .10)
+        (poisson-knuth r lambda)
+      (poisson-ptrs r lambda)
+    ::  +poisson-knuth: k=0, p=1; loop: k+=1, p*=uniform(0,1); accept
+    ::  (return k-1, i.e. the count BEFORE the last increment) once
+    ::  p <= exp(-lambda).  Variable-consumption (rejection-free here, but
+    ::  a variable number of multiplications -- expected lambda of them).
+    ++  poisson-knuth
+      |=  [r=rng lambda=@rs]
+      ^-  [out=@ud r=rng]
+      =/  bigl  (exp:m (neg:m lambda))
+      =/  k  0
+      =/  p  .1
+      |-  ^-  [out=@ud r=rng]
+      =^  u  r  (rs:uni r)
+      =/  p2  (mul:m p u)
+      ?:  (lte:m p2 bigl)
+        [k r]
+      $(k +(k), p p2)
+    ::  +poisson-ptrs: Hörmann 1993's transformed rejection with squeeze,
+    ::  verified against NumPy's random_poisson_ptrs (src/distributions/
+    ::  distributions.c) -- an independent re-implementation of the exact
+    ::  same reference this spec cites, not reconstructed from memory.
+    ::  Draws a candidate k from a scaled/shifted uniform (the "transformed"
+    ::  part), accepts immediately if a cheap squeeze test passes (avoiding
+    ::  the exact log-probability computation on the common path), and
+    ::  falls back to the exact accept/reject test (via +loggam, log(k!))
+    ::  otherwise.  Rejection loop, astronomically bounded in practice.
+    ++  poisson-ptrs
+      |=  [r=rng lambda=@rs]
+      ^-  [out=@ud r=rng]
+      =/  slam      (sqt:m lambda)
+      =/  loglam    (log:m lambda)
+      =/  b         (add:m .0.931 (mul:m .2.53 slam))
+      =/  a         (add:m .-0.059 (mul:m .0.02483 b))
+      =/  invalpha  (add:m .1.1239 (div:m .1.1328 (sub:m b .3.4)))
+      =/  vr        (sub:m .0.9277 (div:m .3.6224 (sub:m b .2)))
+      |-  ^-  [out=@ud r=rng]
+      =^  u1  r  (rs:uni r)
+      =^  v   r  (rs:uni r)
+      =/  u   (sub:m u1 .0.5)
+      =/  us  (sub:m .0.5 (abs:m u))
+      =/  kk  (dfloor (add:m (add:m (mul:m (add:m (div:m (mul:m .2 a) us) b) u) lambda) .0.43))
+      ?:  &((gte:m us .0.07) (lte:m v vr))
+        [(abs:si kk) r]
+      ?:  |(=(-1 (cmp:si kk --0)) &((lth:m us .0.013) (gth:m v us)))
+        $
+      =/  lhs  (sub:m (add:m (log:m v) (log:m invalpha)) (log:m (add:m (div:m a (mul:m us us)) b)))
+      =/  rhs  (sub:m (add:m (mul:m .-1 lambda) (mul:m (san:m kk) loglam)) (loggam (add:m (san:m kk) .1)))
+      ?:  (lte:m lhs rhs)
+        [(abs:si kk) r]
+      $
+    ::  +dfloor: @rs -> @s, floor (round toward -infinity, NOT toward
+    ::  zero) -- +poisson-ptrs's candidate k can be negative, where
+    ::  truncate-toward-zero (what +toi under +mz gives) would round the
+    ::  wrong way.  Positive/exact values: truncation IS the floor.
+    ::  Negative non-integers: truncation rounds up, so subtract 1.
+    ++  dfloor
+      |=  x=@rs
+      ^-  @s
+      =/  t  (need (toi:mz x))
+      ?:  |((gte:m x .0) (equ:m x (san:m t)))
+        t
+      (dif:si t --1)
+    ::  +loggam: @rs -> @rs, natural log of the gamma function (so log(k!)
+    ::  = loggam(k+1)).  Stirling's series with a small-argument recurrence
+    ::  for x<7 (shifts x up by whole integers until >=7, where the series
+    ::  is accurate, then subtracts the shifted-away log-factors back out)
+    ::  -- transcribed from NumPy's random_loggam (src/distributions/
+    ::  distributions.c), itself from Zhang & Jin's SPECFUN algorithm, not
+    ::  derived independently: log-gamma accuracy is exactly the kind of
+    ::  detail worth matching a vetted reference bit-for-bit rather than
+    ::  reconstructing from the general shape of Stirling's series.
+    ++  loggam
+      |=  x=@rs
+      ^-  @rs
+      ?:  |((equ:m x .1) (equ:m x .2))
+        .0
+      =/  a  ^-  (list @rs)
+        :~  .0.08333333333333333  .-0.002777777777777778  .0.0007936507936507937
+            .-0.0005952380952380952  .0.0008417508417508417  .-0.001917526917526918
+            .0.006410256410256411  .-0.02955065359477124  .0.1796443723688307
+            .-1.39243221690590
+        ==
+      =/  lg2pi  .1.8378770664093453
+      =/  n  ?:((lth:m x .7) (abs:si (need (toi:mz (sub:m .7 x)))) 0)
+      =/  x0  (add:m x (sun:m n))
+      =/  x2  (div:m .1 (mul:m x0 x0))
+      =/  gl0
+        =/  acc  (snag 9 a)
+        =/  i  0
+        |-  ^-  @rs
+        ?:  =(i 9)
+          acc
+        $(acc (add:m (mul:m acc x2) (snag (sub 8 i) a)), i +(i))
+      =/  gl
+        %+  sub:m
+          %+  add:m
+            (add:m (div:m gl0 x0) (mul:m .0.5 lg2pi))
+          (mul:m (sub:m x0 .0.5) (log:m x0))
+        x0
+      ?.  (lth:m x .7)
+        gl
+      =/  fin
+        =/  gl2  gl
+        =/  x02  x0
+        =/  k  1
+        |-  ^-  @rs
+        ?:  (gth k n)
+          gl2
+        $(gl2 (sub:m gl2 (log:m (sub:m x02 .1))), x02 (sub:m x02 .1), k +(k))
+      fin
+    ::    +binomial:  [r=rng n=@ p=@rs] -> [@ud rng]
+    ::
+    ::  Binomial(n,p) via inversion by recurrence: P(X=0)=(1-p)^n, then
+    ::  P(X=k+1) = P(X=k) * (n-k)/(k+1) * p/(1-p), accumulating the CDF
+    ::  until it exceeds a single uniform draw.  Only valid for
+    ::  n*min(p,1-p) < 30 (Kachitvichyanukul & Schmeiser 1988) -- above
+    ::  that, inversion needs too many terms and BTPE is the right
+    ::  algorithm, deferred to NEXT-STEPS; this arm crashes rather than
+    ::  running slow (many terms) or, worse, silently truncating.
+    ::    Source
+    ++  binomial
+      |=  [r=rng n=@ p=@rs]
+      ^-  [out=@ud r=rng]
+      ~|  %rand-bad-prob
+      ?>  &((gte:m p .0) (lte:m p .1))
+      =/  q     (sub:m .1 p)
+      =/  qmin  ?:((lth:m p .0.5) p q)
+      ~|  %rand-binomial-n-too-large
+      ?>  (lth:m (mul:m (sun:m n) qmin) .30)
+      =^  u  r  (rs:uni r)
+      =/  f    (pow:m q (sun:m n))
+      =/  cdf  f
+      =/  k    0
+      |-  ^-  [out=@ud r=rng]
+      ?:  (lth:m u cdf)
+        [k r]
+      =/  f2  %+  mul:m  f
+        (mul:m (div:m (sun:m (sub n k)) (sun:m +(k))) (div:m p q))
+      $(f f2, cdf (add:m cdf f2), k +(k))
+    ::    +dirichlet:  [r=rng alphas=(list @rs)] -> [(list @rs) rng]
+    ::
+    ::  Dirichlet(alphas): draw one gamma(alpha_i) per entry, normalize by
+    ::  their sum.  Crashes on an empty .alphas (and, via +gamma's own
+    ::  precondition, on any non-positive alpha).
+    ::    Source
+    ++  dirichlet
+      |=  [r=rng alphas=(list @rs)]
+      ^-  [out=(list @rs) r=rng]
+      ~|  %rand-empty-list
+      ?>  !=(~ alphas)
+      =/  gd
+        |-  ^-  [(list @rs) rng]
+        ?~  alphas
+          [~ r]
+        =^  x     r  (gamma r i.alphas)
+        =^  rest  r  $(alphas t.alphas)
+        [[x rest] r]
+      =/  total  (roll -.gd add:m)
+      [(turn -.gd |=(g=@rs (div:m g total))) +.gd]
+  --
+--
+::
+::::                    ++sample                        ::  (7) sampling
+::
+::  Shuffles, permutations, choice, and the Vose alias method (section
+::  6.1).  +below:uni is the shared unbiased primitive throughout, per
+::  section 5.1's policy: never modulo-bias.
+::
+++  sample
+  |%
+  ::    +shuffle:  [r=rng l=(list)] -> [(list) rng]
+  ::
+  ::  Fisher-Yates, iterating from the end down: for i from n-1 to 1, swap
+  ::  position i with a uniform position in [0,i] (+below:uni, inclusive
+  ::  via i+1).  Implemented over a (map @ud _elem) rather than repeated
+  ::  +snag/+oust on the list itself, which would be O(n^2); the map
+  ::  round-trip is O(n log n).  Wet gate so the element type is
+  ::  preserved for the caller (a dry `(list)` would erase it to `*`).
   ::    Examples
-  ::      > (normal:dist:rand (from-atom:seed:rand %sm64 0))
-  ::      [out=.~-0.9479938949723624 r=[%sm64 s=0x78dd.e6e5.fd29.f054]]
+  ::      > (shuffle:sample (from-atom:seed:rand %sm64 0) ~[1 2 3 4 5])
+  ::      [~[4 1 3 5 2] [%sm64 s=0x1715.609f.7c74.6c69]]
   ::  Source
-  ++  normal
-    |=  r=rng
-    ^-  [out=@rd r=rng]
-    |-  ^-  [out=@rd r=rng]
-    =^  u1  r  (rd:uni r)
-    =^  u2  r  (rd:uni r)
-    =/  u  (sub:m (mul:m .~2 u1) .~1)
-    =/  v  (sub:m (mul:m .~2 u2) .~1)
-    =/  s  (add:m (mul:m u u) (mul:m v v))
-    ?:  |((gte:m s .~1) (equ:m s .~0))
-      $
-    =/  factor  (sqt:m (div:m (mul:m .~-2 (log:m s)) s))
-    [(mul:m u factor) r]
-  ::    +normal-mv:  [r=rng mu=@rd sigma=@rd] -> [@rd rng]
+  ++  shuffle
+    |*  [r=rng l=(list)]
+    ^+  [l r]
+    =/  n  (lent l)
+    ?:  (lth n 2)
+      [l r]
+    =/  elem  ?>(?=(^ l) i.l)
+    =/  m  (~(gas by *(map @ud _elem)) (turn (gulf 0 (dec n)) |=(k=@ud [k (snag k l)])))
+    =/  rr  r
+    =/  ix  (dec n)
+    |-  ^+  [l r]
+    ?:  =(ix 0)
+      [(turn (gulf 0 (dec n)) |=(k=@ud (~(got by m) k))) rr]
+    =^  j  rr  (below:uni rr +(ix))
+    =/  vi  (~(got by m) ix)
+    =/  vj  (~(got by m) j)
+    %=  $
+      m   (~(put by (~(put by m) ix vj)) j vi)
+      ix  (dec ix)
+    ==
+  ::    +permutation:  [r=rng n=@] -> [(list @ud) rng]
   ::
-  ::  N(mu, sigma^2): mu + sigma*z where z ~ N(0,1).  Crashes if sigma < 0.
+  ::  A uniform random permutation of 0..n-1: +shuffle of (gulf 0 (dec n)).
   ::    Source
-  ++  normal-mv
-    |=  [r=rng mu=@rd sigma=@rd]
-    ^-  [out=@rd r=rng]
-    ~|  %rand-bad-sigma
-    ?>  !(lth:m sigma .~0)
-    =^  z  r  (normal r)
-    [(add:m mu (mul:m sigma z)) r]
-  ::    +expon:  [r=rng lambda=@rd] -> [@rd rng]
+  ++  permutation
+    |=  [r=rng n=@]
+    ^-  [(list @ud) rng]
+    ?:  =(n 0)
+      [~ r]
+    (shuffle r (gulf 0 (dec n)))
+  ::    +choice:  [r=rng l=(list)] -> [* rng]
   ::
-  ::  Exponential(lambda) via inversion: -ln(u)/lambda, u drawn from the
-  ::  OPEN (0,1) (+rd-oo, not +rd) specifically so log(0) never fires --
-  ::  this is exactly the case rand-spec.md section 5.2 built +rd-oo for.
-  ::  Crashes if lambda <= 0.
+  ::  One uniformly-chosen element.  Wet gate (rand-spec.md section 7
+  ::  writes this arm's signature dry, `[* rng]` -- but a bare `*` return
+  ::  loses the element's type at every call site for no benefit, and a
+  ::  dry `(list)` argument runs into a real Hoon type-inference wall at
+  ::  `+snag` -- mull-grow/nest-fail trying to prove a `(list *)` is
+  ::  non-null after the `?~` guard.  `|*` sidesteps both: each call site
+  ::  gets its own precise element type, same reasoning as +shuffle.
+  ::  Crashes on an empty list.
   ::    Source
-  ++  expon
-    |=  [r=rng lambda=@rd]
-    ^-  [out=@rd r=rng]
-    ~|  %rand-bad-rate
-    ?>  (gth:m lambda .~0)
-    =^  u  r  (rd-oo:uni r)
-    [(div:m (neg:m (log:m u)) lambda) r]
-  ::    +gamma:  [r=rng alpha=@rd] -> [@rd rng]
+  ++  choice
+    |*  [r=rng l=(list)]
+    ~|  %rand-empty-list
+    ?>  !=(~ l)
+    =^  i  r  (below:uni r (lent l))
+    [(snag i l) r]
+  ::    +choices:  [r=rng n=@ l=(list)] -> [(list) rng]
   ::
-  ::  Gamma(alpha, scale=1) via Marsaglia-Tsang (2000).  alpha>=1 direct
-  ::  (+gamma-ge1); alpha<1 via the standard boost gamma(alpha) =
-  ::  gamma(alpha+1) * u^(1/alpha), u drawn from the open (0,1) so the
-  ::  u=0 lattice point (probability 2^-53, not truly 0 as it would be for
-  ::  a continuous uniform) never manufactures a spurious exact-zero
-  ::  sample.  Crashes if alpha <= 0.
+  ::  .n elements chosen uniformly WITH replacement (independent +choice
+  ::  draws).  Crashes on an empty .l if n > 0.
   ::    Source
-  ++  gamma
-    |=  [r=rng alpha=@rd]
-    ^-  [out=@rd r=rng]
-    ~|  %rand-bad-shape
-    ?>  (gth:m alpha .~0)
-    ?:  (gte:m alpha .~1)
-      (gamma-ge1 r alpha)
-    =^  g  r  (gamma-ge1 r (add:m alpha .~1))
-    =^  u  r  (rd-oo:uni r)
-    [(mul:m g (pow:m u (div:m .~1 alpha))) r]
-  ::  +gamma-ge1: Marsaglia-Tsang squeeze for alpha>=1.  d=alpha-1/3,
-  ::  c=1/sqrt(9d); draw x~N(0,1), v=(1+cx)^3 (reject if v<=0), draw
-  ::  u~(0,1) open (so log(u) never fires on 0), accept d*v if
-  ::  ln(u) < x^2/2 + d - d*v + d*ln(v), else reject and redraw both x,u.
-  ::  Variable-consumption (rejection loop), astronomically bounded.
-  ++  gamma-ge1
-    |=  [r=rng alpha=@rd]
-    ^-  [out=@rd r=rng]
-    =/  d  (sub:m alpha (div:m .~1 .~3))
-    =/  c  (div:m .~1 (sqt:m (mul:m .~9 d)))
-    |-  ^-  [out=@rd r=rng]
-    =^  x  r  (normal r)
-    =/  t  (add:m .~1 (mul:m c x))
-    =/  v  (mul:m t (mul:m t t))
-    ?:  !(gth:m v .~0)
-      $
-    =^  u  r  (rd-oo:uni r)
-    =/  rhs
-      %+  add:m
-        (add:m (mul:m .~0.5 (mul:m x x)) d)
-      (sub:m (mul:m d (log:m v)) (mul:m d v))
-    ?:  (lth:m (log:m u) rhs)
-      [(mul:m d v) r]
-    $
-  ::    +beta:  [r=rng a=@rd b=@rd] -> [@rd rng]
+  ++  choices
+    |*  [r=rng n=@ l=(list)]
+    ^+  [l r]
+    ?:  =(n 0)
+      [~ r]
+    ~|  %rand-empty-list
+    =/  elem  ?>(?=(^ l) i.l)
+    =/  i    0
+    =/  acc  *(list _elem)
+    =/  rr   r
+    |-  ^+  [l r]
+    ?:  =(i n)
+      [(flop acc) rr]
+    =^  x  rr  (choice rr l)
+    %=  $
+      i    +(i)
+      acc  [x acc]
+    ==
+  ::    +sample-n:  [r=rng k=@ l=(list)] -> [(list) rng]
   ::
-  ::  Beta(a,b) via two independent gammas: x/(x+y), x~gamma(a), y~gamma(b).
-  ::  Crashes if a <= 0 or b <= 0 (via +gamma's own precondition).
+  ::  .k elements WITHOUT replacement, via partial Fisher-Yates (the first
+  ::  -- here, for implementation convenience, the LAST -- k positions of
+  ::  a full shuffle): iterate i from n-1 down to n-k, swapping position i
+  ::  with a uniform position in [0,i], same as +shuffle but stopping
+  ::  early: this is the spec'd "first n of a permutation," just taken
+  ::  from whichever end +shuffle itself iterates from, and either end is
+  ::  equally uniform. NOT repeated-rejection sampling. Crashes if k > the
+  ::  list's length. Wet gate, same reasoning as +shuffle.
   ::    Source
-  ++  beta
-    |=  [r=rng a=@rd b=@rd]
-    ^-  [out=@rd r=rng]
-    =^  x  r  (gamma r a)
-    =^  y  r  (gamma r b)
-    [(div:m x (add:m x y)) r]
-  ::    +chi2:  [r=rng k=@] -> [@rd rng]
+  ++  sample-n
+    |*  [r=rng k=@ l=(list)]
+    ^+  [l r]
+    =/  n  (lent l)
+    ~|  %rand-bad-count
+    ?>  (lte k n)
+    ?:  =(k 0)
+      [~ r]
+    =/  elem  ?>(?=(^ l) i.l)
+    =/  m  (~(gas by *(map @ud _elem)) (turn (gulf 0 (dec n)) |=(j=@ud [j (snag j l)])))
+    =/  rr  r
+    =/  ix  (dec n)
+    =/  stop  (sub n k)
+    |-  ^+  [l r]
+    ?:  =(ix stop)
+      [(turn (gulf stop (dec n)) |=(j=@ud (~(got by m) j))) rr]
+    =^  j  rr  (below:uni rr +(ix))
+    =/  vi  (~(got by m) ix)
+    =/  vj  (~(got by m) j)
+    %=  $
+      m   (~(put by (~(put by m) ix vj)) j vi)
+      ix  (dec ix)
+    ==
+  ::    +reservoir:  [r=rng n=@ l=(list)] -> [(list) rng]
   ::
-  ::  Chi-squared with k degrees of freedom: gamma(k/2, scale=2) ==
-  ::  2*gamma(k/2, scale=1) (+gamma is scale=1, so the factor of 2 is
-  ::  applied directly -- a standard gamma scaling property).  Crashes if
-  ::  k = 0.
+  ::  Algorithm R (Vitter 1985): a uniform sample of .n items from .l,
+  ::  processed one at a time (the algorithm this library's own +below is
+  ::  built on doesn't need true streaming, but the same algorithm serves
+  ::  agents that DO stream events one at a time).  The first .n items
+  ::  seed the reservoir; each later item at index i replaces a uniformly
+  ::  chosen reservoir slot with probability n/(i+1) (drawn as "is the
+  ::  uniform draw in [0,i] less than n").  Crashes if n > the list's
+  ::  length.  Wet gate, same reasoning as +shuffle.
   ::    Source
-  ++  chi2
-    |=  [r=rng k=@]
-    ^-  [out=@rd r=rng]
-    ~|  %rand-bad-df
-    ?>  !=(k 0)
-    =^  x  r  (gamma r (div:m (sun:m k) .~2))
-    [(mul:m .~2 x) r]
-  ::    +student-t:  [r=rng k=@] -> [@rd rng]
+  ++  reservoir
+    |*  [r=rng n=@ l=(list)]
+    =/  len  (lent l)
+    ~|  %rand-bad-count
+    ?>  (lte n len)
+    ^+  [(scag n l) r]
+    ?:  =(n 0)
+      [~ r]
+    =/  elem  ?>(?=(^ l) i.l)
+    =/  m  (~(gas by *(map @ud _elem)) (turn (gulf 0 (dec n)) |=(k=@ud [k (snag k l)])))
+    =/  rr  r
+    =/  ix  n
+    |-  ^+  [(scag n l) r]
+    ?:  =(ix len)
+      [(turn (gulf 0 (dec n)) |=(k=@ud (~(got by m) k))) rr]
+    =^  j  rr  (below:uni rr +(ix))
+    ?:  (lth j n)
+      %=  $
+        m   (~(put by m) j (snag ix l))
+        ix  +(ix)
+      ==
+    $(ix +(ix))
+  ::    $alias-table:  [n=@ prob=(list @rd) alias=(list @ud)]
   ::
-  ::  Student's t with k degrees of freedom: z / sqrt(chi2(k)/k), z~N(0,1).
-  ::  Crashes if k = 0.
-  ::    Source
-  ++  student-t
-    |=  [r=rng k=@]
-    ^-  [out=@rd r=rng]
-    ~|  %rand-bad-df
-    ?>  !=(k 0)
-    =^  z  r  (normal r)
-    =^  c  r  (chi2 r k)
-    [(div:m z (sqt:m (div:m c (sun:m k)))) r]
-  ::    +bernoulli:  [r=rng p=@rd] -> [? rng]
+  ::  Vose's alias method (1991) table: O(n) to build, O(1) to draw from.
+  ::  .prob and .alias are indexed 0..n-1, parallel to the input weight
+  ::  list's own order.
+  +$  alias-table  [n=@ prob=(list @rd) alias=(list @ud)]
   ::
-  ::  %.y with probability p, else %.n: draw u~[0,1), return u<p.  Crashes
-  ::  unless 0 <= p <= 1.
-  ::    Source
-  ++  bernoulli
-    |=  [r=rng p=@rd]
-    ^-  [out=? r=rng]
-    ~|  %rand-bad-prob
-    ?>  &((gte:m p .~0) (lte:m p .~1))
-    =^  u  r  (rd:uni r)
-    [(lth:m u p) r]
-  ::    +geometric:  [r=rng p=@rd] -> [@ud rng]
-  ::
-  ::  Number of Bernoulli(p) trials up to and including the first success:
-  ::  ceil(ln(u)/ln(1-p)), u drawn from the open (0,1) (avoids ln(0)).
-  ::  p=1 is a special-cased edge that returns 1 directly (ln(1-p) would
-  ::  divide by ln(0) = -inf otherwise).  ceil is computed via +toi under
-  ::  a SEPARATE %z-rounding (truncate-toward-zero) door instance, +mz --
-  ::  +toi respects the door's own rounding mode, and this core's shared
-  ::  +m door is forced %n (round-to-nearest), which would round instead
-  ::  of truncate.  Crashes unless 0 < p <= 1.
-  ::    Source
-  ++  geometric
-    |=  [r=rng p=@rd]
-    ^-  [out=@ud r=rng]
-    ~|  %rand-bad-prob
-    ?>  &((gth:m p .~0) (lte:m p .~1))
-    ?:  (equ:m p .~1)
-      [1 r]
-    =^  u  r  (rd-oo:uni r)
-    =/  raw  (div:m (log:m u) (log:m (sub:m .~1 p)))
-    =/  fl   (abs:si (need (toi:mz raw)))
-    [?:(=(raw (sun:m fl)) fl +(fl)) r]
+  ++  alias
+    |%
+    ::  +mth: the shared @rd math door for +build's arithmetic, forced %n
+    ::  per section 6.1's "require @rd %n arithmetic only."
+    ++  mth  ~(. rd:math [%n .~1e-13 .~0])
+    ::    +build:  (list @rd) -> alias-table
+    ::
+    ::  Vose's O(n) construction.  Pure (no rng).  Weights need not sum to
+    ::  1 -- they're normalized here (scaled so their mean is 1, which is
+    ::  what Vose's small/large partition compares against).  Weights must
+    ::  be non-negative with at least one positive; crashes otherwise.
+    ::
+    ::  The small/large worklist (the classic place for off-by-one and
+    ::  float-compare bugs, per section 6.1): +build-loop pops one
+    ::  under-weight index (l, scaled prob < 1) and one over-weight index
+    ::  (g, scaled prob >= 1) each iteration. l's own probability becomes
+    ::  its final +prob entry, and l's +alias entry is set to g -- so
+    ::  drawing l falls through to g whenever the per-draw uniform check
+    ::  fails (see +draw).  g gives up exactly the mass l was short by
+    ::  (1 - wt.l), and whatever's left of g's weight goes back on
+    ::  whichever worklist it now belongs to.  When either worklist runs
+    ::  dry, everything left on the other is a floating-point leftover
+    ::  (mathematically it should be exactly weight 1, off by rounding) --
+    ::  +build-cleanup gives each remaining index probability 1 outright,
+    ::  with its own index as a harmless unused alias.
+    ::    Examples
+    ::      > (build:alias:sample ~[.~1 .~1 .~2])
+    ::      [n=3 prob=~[.~0.75 .~1 .~0.5] alias=~[2 1 2]]
+    ::  Source
+    ++  build
+      |=  weights=(list @rd)
+      ^-  alias-table
+      =/  n  (lent weights)
+      ~|  %rand-empty-list
+      ?>  (gth n 0)
+      =/  total  (roll weights add:mth)
+      ~|  %rand-bad-prob
+      ?>  (gth:mth total .~0)
+      =/  scale   (div:mth (sun:mth n) total)
+      =/  scaled  (turn weights |=(w=@rd (mul:mth w scale)))
+      =/  idxd  ^-  (list [idx=@ud wt=@rd])
+        (turn (gulf 0 (dec n)) |=(k=@ud [idx=k wt=(snag k scaled)]))
+      =/  parted  (skid idxd |=([idx=@ud wt=@rd] (lth:mth wt .~1)))
+      =/  fin  (build-loop -.parted +.parted *(map @ud @rd) *(map @ud @ud))
+      :+  n
+        (turn (gulf 0 (dec n)) |=(k=@ud (~(got by probm.fin) k)))
+      (turn (gulf 0 (dec n)) |=(k=@ud (~(got by aliasm.fin) k)))
+    ++  build-loop
+      |=  $:  small=(list [idx=@ud wt=@rd])
+              large=(list [idx=@ud wt=@rd])
+              probm=(map @ud @rd)
+              aliasm=(map @ud @ud)
+          ==
+      ^-  [probm=(map @ud @rd) aliasm=(map @ud @ud)]
+      ?:  |(?=(~ small) ?=(~ large))
+        (build-cleanup (weld small large) probm aliasm)
+      =/  l  i.small
+      =/  g  i.large
+      =.  probm   (~(put by probm) idx.l wt.l)
+      =.  aliasm  (~(put by aliasm) idx.l idx.g)
+      =/  pg  (sub:mth (add:mth wt.g wt.l) .~1)
+      ::  pg<1: g is now under-weight -> joins small.  pg>=1: g stays
+      ::  over-weight -> joins large.  (Reversing these was a real bug
+      ::  caught during on-ship verification: prob/alias came out wrong
+      ::  for a 3-element table, traced back to g landing in the opposite
+      ::  worklist from where its own weight said it belonged.)
+      ?:  (lth:mth pg .~1)
+        (build-loop [[idx=idx.g wt=pg] t.small] t.large probm aliasm)
+      (build-loop t.small [[idx=idx.g wt=pg] t.large] probm aliasm)
+    ++  build-cleanup
+      |=  $:  rest=(list [idx=@ud wt=@rd])
+              probm=(map @ud @rd)
+              aliasm=(map @ud @ud)
+          ==
+      ^-  [probm=(map @ud @rd) aliasm=(map @ud @ud)]
+      ?~  rest
+        [probm aliasm]
+      %=  $
+        rest    t.rest
+        probm   (~(put by probm) idx.i.rest .~1)
+        aliasm  (~(put by aliasm) idx.i.rest idx.i.rest)
+      ==
+    ::    +draw:  [t=alias-table r=rng] -> [out=@ud rng]
+    ::
+    ::  O(1): pick an index uniformly, then a coin flip (biased by
+    ::  .prob.t at that index) decides whether to keep it or redirect to
+    ::  its alias.
+    ::    Source
+    ++  draw
+      |=  [t=alias-table r=rng]
+      ^-  [out=@ud r=rng]
+      =^  i  r  (below:uni r n.t)
+      =^  u  r  (rd:uni r)
+      :-  ?:((lth:mth u (snag i prob.t)) i (snag i alias.t))
+      r
+    --
   --
 --

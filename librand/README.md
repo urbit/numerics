@@ -7,7 +7,7 @@ acquisition is Arvo's job (`eny`), cryptographic randomness is Zuse's job.
 Full design is in `rand-spec.md` (repo root). Hoon reference implementation
 first, jets follow (see `rand-spec.md` section 11).
 
-## Status (milestones 1-5 of 9, `rand-spec.md` section 13)
+## Status (milestones 1-6 of 9, `rand-spec.md` section 13)
 
 Done:
 
@@ -32,18 +32,26 @@ Done:
   state FIRST and outputs from the new state. The spec and this
   implementation both now follow the verified reference order.
 
-- `++dist` at `@rd` — `+normal` (Marsaglia polar method), `+normal-mv`,
-  `+expon` (inversion), `+gamma` (Marsaglia-Tsang, both alpha>=1 and the
-  alpha<1 boost path), `+beta`, `+chi2`, `+student-t` (the latter two
-  aren't in the milestone's literal arm list but are one-line compositions
-  of gamma/normal, so they landed alongside rather than waiting on an
-  unscheduled slot), `+bernoulli`, `+geometric`. Moment tests (mean/
-  variance regression at 50k draws, fixed seed) for normal/expon/gamma.
+- `++dist`, now nested `++rd` (reference) / `++rs` (single precision, a
+  mechanical re-instantiation of the same algorithms, per rand-spec.md's
+  "each arm exists at @rd (reference) and @rs") — `+normal` (Marsaglia
+  polar method), `+normal-mv`, `+expon` (inversion), `+gamma`
+  (Marsaglia-Tsang, both alpha>=1 and the alpha<1 boost path), `+beta`,
+  `+chi2`, `+student-t`, `+bernoulli`, `+geometric`, `+categorical` (rd
+  only — thin wrapper over `++sample`'s alias table, which is fixed at
+  @rd so has no meaningful rs variant), `+poisson` (Knuth for lambda<10,
+  Hörmann's PTRS for lambda>=10 — verified against NumPy's
+  `random_poisson_ptrs`), `+binomial` (inversion by CDF accumulation,
+  crashes above `n*min(p,1-p) >= 30` where BTPE would be needed),
+  `+dirichlet`. Moment tests (mean/variance regression at 50k draws,
+  fixed seed) for normal/expon/gamma.
+- `++sample` — `+shuffle`/`+permutation`/`+choice`/`+choices`/
+  `+sample-n`/`+reservoir` (Algorithm R), and Vose's alias method
+  (`++alias`: `+build` + `+draw`) per rand-spec.md section 6.1.
 
-Not yet implemented: `++sample`, the categorical/poisson/binomial/
-dirichlet distributions and the `@rs` routing for `++dist`, the Saloon
-`+rand-ray` extension. See `NEXT-STEPS.md` and `rand-spec.md` section 13
-for the full milestone order.
+Not yet implemented: non-float adapters (twoc/fixed/complex/posit), the
+Saloon `+rand-ray` extension. See `NEXT-STEPS.md` and `rand-spec.md`
+section 13 for the full milestone order.
 
 ## Layout
 

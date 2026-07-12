@@ -5,8 +5,8 @@
 ::  NOT be used for key material, nonces, or anything adversarial.  Entropy
 ::  acquisition is Arvo's job (`eny`); cryptographic randomness is Zuse's job.
 ::
-::  Status: milestones 1-3 of rand-spec.md -- ++philox, ++split-mix, ++seed,
-::  +step, +fork, ++gen, ++uni.  ++pcg, ++dist, and ++sample land later.
+::  Status: milestones 1-4 of rand-spec.md -- ++philox, ++split-mix, ++seed,
+::  +step, +fork, ++gen, ++uni, ++pcg.  ++dist and ++sample land later.
 ::
 ~%  %non  ..part  ~  :: jet registration; nest non in hex (cf /lib/math, /lib/twoc)
 |%
@@ -310,13 +310,8 @@
     [(end [0 64] blk) r]
   ::
     %pcg
-    ::  ++pcg (milestone 4) isn't implemented yet.  Unlike +fork's %pcg
-    ::  branch below (which only remixes the state/inc tuple via +mix and
-    ::  needs no engine-specific logic), a real draw needs the xsl-rr
-    ::  output permutation -- so this branch crashes rather than silently
-    ::  returning something wrong.
-    ~|  %rand-pcg-step-not-yet-implemented
-    !!
+    =^  out  p.r  (next:pcg p.r)
+    [out r]
   ==
 ::
 ::::                    +fork                          ::  (2.1c) key derivation
@@ -557,5 +552,126 @@
     ^-  [out=@rd r=rng]
     =^  b  r  (bits r 53)
     [(~(mul ^rd %n) (~(sun ^rd %n) +((mul 2 b))) `@rd`0x3c90.0000.0000.0000) r]
+  --
+::
+::::                    ++pcg                          ::  (3.3) PCG64 XSL-RR
+::
+::  Reference: O'Neill 2014, pcg-random.org; the pcg-c library
+::  (`include/pcg_variants.h`) is the reference implementation.
+::
+::  **Spec correction, verified against pcg-c's `pcg_setseq_128_xsl_rr_64_
+::  random_r` and independently against NumPy's vendored `pcg64.orig.h`
+::  (both consistent): the real reference ADVANCES the state first, THEN
+::  computes the output permutation from the NEW state** -- not "output
+::  the current state, then advance" as an earlier draft of rand-spec.md
+::  claimed. That earlier claim was backwards; see rand-spec.md section
+::  3.3 for the correction. This is the implementation of the corrected
+::  order: +next below steps first, then outputs.
+::
+++  pcg
+  |%
+  ::    +step-lcg:  pcg64 -> pcg64
+  ::
+  ::  The bare LCG advance, state' = state * MULT + inc (mod 2^128), no
+  ::  output.  MULT is PCG's fixed 128-bit default multiplier; .inc is the
+  ::  caller's odd stream increment (enforced odd at seed/fork time, not
+  ::  here).
+  ::  Source
+  ++  step-lcg
+    |=  p=pcg64
+    ^-  pcg64
+    %=  p
+      state  (end [0 128] (add (mul state.p 0x2360.ed05.1fc6.5da4.4385.df64.9fcc.f645) inc.p))
+    ==
+  ::    +rotr64:  [value=@ rot=@] -> @
+  ::
+  ::  64-bit right-rotate: (value >> rot) | (value << (64-rot)), matching
+  ::  pcg_rotr_64.  .rot is always < 64 in practice (it's the top 6 bits of
+  ::  a 128-bit state, so already in [0,63]); the formula is correct at
+  ::  rot=0 too (the left-shift-by-64 term vanishes under the 64-bit mask,
+  ::  leaving value unchanged) so no special case is needed.
+  ::  Source
+  ++  rotr64
+    |=  [value=@ rot=@]
+    ^-  @
+    (mix (rsh [0 rot] value) (end [0 64] (lsh [0 (sub 64 rot)] value)))
+  ::    +output:  @ -> @
+  ::
+  ::  The xsl-rr output permutation of a 128-bit state to a 64-bit output:
+  ::  rot = state >> 122; xored = (state >> 64) ^ (state & mask64); output
+  ::  = rotr64(xored, rot).  Matches pcg_output_xsl_rr_128_64.
+  ::  Source
+  ++  output
+    |=  state=@
+    ^-  @
+    =/  hi   (rsh [0 64] state)
+    =/  lo   (end [0 64] state)
+    =/  rot  (rsh [0 122] state)
+    (rotr64 (mix hi lo) rot)
+  ::    +next:  pcg64 -> [out=@ p=pcg64]
+  ::
+  ::  One PCG64 draw.  Per the spec correction above: advance first
+  ::  (+step-lcg), THEN compute the output from the resulting NEW state --
+  ::  matching `pcg_setseq_128_xsl_rr_64_random_r`'s actual order, not the
+  ::  order an earlier draft of this library's spec claimed.
+  ::    Examples
+  ::      > (next:pcg [state=0xde2b.ce05.be01.3be3.d3f6.c45a.41e5.4320 inc=0x6d])
+  ::      [out=0x86b1.da1d.7206.2b68 p=[state=0x10af.065f.4ea9.6e85.7bb2.a788.6ecb.d80d inc=0x6d]]
+  ::  Source
+  ++  next
+    ~/  %next
+    |=  p=pcg64
+    ^-  [out=@ p=pcg64]
+    =/  p2  (step-lcg p)
+    [(output state.p2) p2]
+  ::    +advance:  [p=pcg64 delta=@] -> pcg64
+  ::
+  ::  Advance .p by .delta LCG steps in O(log delta) via the standard PCG
+  ::  skip-ahead trick: the affine map step(s) = s*mult + inc composes
+  ::  under repeated squaring, so .delta steps can be applied as one
+  ::  affine map (acc-mult, acc-plus) built by binary exponentiation,
+  ::  rather than .delta sequential steps.  +jump is the .delta = 2^64
+  ::  case this library actually needs (for stream partitioning); +advance
+  ::  is exposed separately so the algorithm can be tested at a small,
+  ::  tractable .delta instead of only at the astronomical one +jump uses:
+  ::  `(advance p 3)` must equal three sequential `next:pcg` steps (see
+  ::  tests/lib/rand.hoon).
+  ::  Source
+  ++  advance
+    |=  [p=pcg64 delta=@]
+    ^-  pcg64
+    =/  cur-mult  0x2360.ed05.1fc6.5da4.4385.df64.9fcc.f645
+    =/  cur-plus  inc.p
+    =/  acc-mult  1
+    =/  acc-plus  0
+    |-  ^-  pcg64
+    ?:  =(delta 0)
+      %=  p
+        state  (end [0 128] (add (mul acc-mult state.p) acc-plus))
+      ==
+    ?:  =(1 (dis delta 1))
+      %=  $
+        acc-mult  (end [0 128] (mul acc-mult cur-mult))
+        acc-plus  (end [0 128] (add (mul acc-plus cur-mult) cur-plus))
+        cur-plus  (end [0 128] (mul (add cur-mult 1) cur-plus))
+        cur-mult  (end [0 128] (mul cur-mult cur-mult))
+        delta     (rsh [0 1] delta)
+      ==
+    %=  $
+      cur-plus  (end [0 128] (mul (add cur-mult 1) cur-plus))
+      cur-mult  (end [0 128] (mul cur-mult cur-mult))
+      delta     (rsh [0 1] delta)
+    ==
+  ::    +jump:  pcg64 -> pcg64
+  ::
+  ::  Advance by exactly 2^64 steps, for stream partitioning (give
+  ::  different logical streams non-overlapping windows of the same
+  ::  underlying sequence).  A thin +advance call at the one .delta this
+  ::  library needs.
+  ::  Source
+  ++  jump
+    |=  p=pcg64
+    ^-  pcg64
+    (advance p (bex 64))
   --
 --

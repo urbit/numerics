@@ -164,7 +164,9 @@ KAT: first 5 outputs from seed `0` and seed `0xDEADBEEF` against the reference C
 
 ### 3.3 PCG64 XSL-RR 128/64 (`++pcg`)
 
-Reference: O'Neill 2014, pcg-random.org. LCG multiplier `0x2360ED051FC65DA44385DF649FCCF645` (128-bit), user-chosen odd increment (stream id). Output: `xsl-rr`: `rot = state >> 122`; `xored = (state >> 64) ^ (state & mask64)`; output = rotr64(xored, rot). State update AFTER output extraction (i.e., output the *current* state's permutation, then advance — match the reference implementation's order exactly and note it in a comment; this is the classic source of off-by-one-draw divergence).
+Reference: O'Neill 2014, pcg-random.org. LCG multiplier `0x2360ED051FC65DA44385DF649FCCF645` (128-bit), user-chosen odd increment (stream id). Output: `xsl-rr`: `rot = state >> 122`; `xored = (state >> 64) ^ (state & mask64)`; output = rotr64(xored, rot).
+
+**Correction (implementation phase, verified against `pcg-c`'s `include/pcg_variants.h` — `pcg_setseq_128_xsl_rr_64_random_r` — and independently against NumPy's vendored `pcg64.orig.h`, both consistent): an earlier draft of this spec had the operation order backwards.** The real reference does `pcg_setseq_128_step_r(rng); return pcg_output_xsl_rr_128_64(rng->state);` — i.e. **advance the state FIRST, then compute the output permutation from the NEW (already-advanced) state.** (The draft text below, retained struck through for the record, claimed the opposite: "State update AFTER output extraction (i.e., output the *current* state's permutation, then advance)" — that is wrong; do not implement it that way.) Per this spec's own closing rule (section 13): the reference implementation wins over the spec text. This is exactly the classic off-by-one-draw divergence the original text worried about, just resolved in the other direction.
 
 Include `++jump` (advance by `2^64` steps via LCG skip-ahead: standard `O(log n)` modular matrix trick on `(a, c)`) for stream partitioning.
 

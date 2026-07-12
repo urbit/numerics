@@ -1,20 +1,25 @@
   ::  /tests/lib/rand
 ::::
-::    Milestones 1-3 (rand-spec.md): ++split-mix, ++philox, ++seed, +fork,
-::    ++uni.  The SplitMix64 and Philox4x32-10 KAT vectors are checked
-::    against their published reference values (Vigna's reference C for
-::    SplitMix64; the Random123 kat_vectors file -- all-zero,
+::    Milestones 1-4 (rand-spec.md): ++split-mix, ++philox, ++seed, +fork,
+::    ++uni, ++pcg.  The SplitMix64 and Philox4x32-10 KAT vectors are
+::    checked against their published reference values (Vigna's reference
+::    C for SplitMix64; the Random123 kat_vectors file -- all-zero,
 ::    all-0xffffffff, and the pi-digits vector -- for Philox), each
 ::    cross-checked against an independent Python re-implementation before
 ::    being transcribed here.  ++uni's float arms (+rs/+rd/+rh/+rq/+rs-oo/
 ::    +rd-oo) are exact bit constructions (+sun then a power-of-two
 ::    multiply), so their expected values are likewise checked against an
 ::    independent Python IEEE-754 encoder, not the Hoon float printer.
-::    +from-atom, +fold-wide, +mix, +fork, +bits, and +below have no
-::    external reference (they are this library's own design, or Lemire's
-::    algorithm applied to this library's own +step), so those are checked
-::    by direct computation of the spec'd formula and by determinism/
-::    order-sensitivity/path-sensitivity/unbiasedness properties instead.
+::    ++pcg's KAT (seed=42, seq=54, pcg-c's own demo convention) is
+::    checked against an independent Python re-implementation of pcg-c's
+::    reference C (include/pcg_variants.h) -- this also exercises the
+::    CORRECTED advance-then-output order (rand-spec.md section 3.3; an
+::    earlier spec draft had it backwards).  +from-atom, +fold-wide, +mix,
+::    +fork, +bits, and +below have no external reference (they are this
+::    library's own design, or Lemire's algorithm applied to this
+::    library's own +step), so those are checked by direct computation of
+::    the spec'd formula and by determinism/order-sensitivity/path-
+::    sensitivity/unbiasedness properties instead.
 ::
 /+  *test,
     rand
@@ -290,4 +295,57 @@
   %+  expect-eq
     !>(`@rd`0x3f95.072f.63b9.b5f0)
     !>(out:(rd-oo:uni:rand (from-atom:seed:rand %sm64 0)))
+::  PCG64 KAT: pcg-c's own seeding (pcg_setseq_128_srandom_r, seed=42,
+::  seq=54 -- the library's classic demo parameters), first 5 outputs,
+::  against an independent Python re-implementation of pcg-c's reference
+::  C (include/pcg_variants.h).  This exercises the CORRECTED operation
+::  order (advance then output -- see rand-spec.md section 3.3), not the
+::  order an earlier draft of the spec claimed.  Seeded directly with the
+::  literal state/inc here rather than via +from-atom, since this KAT
+::  checks +next:pcg's own algorithm against pcg-c's native seeding, not
+::  this library's (unrelated, SplitMix64-derived) +from-atom scheme.
+++  test-pcg-kat  ^-  tang
+  =/  p  [state=0xde2b.ce05.be01.3be3.d3f6.c45a.41e5.4320 inc=0x6d]
+  =^  o0  p  (next:pcg:rand p)
+  =^  o1  p  (next:pcg:rand p)
+  =^  o2  p  (next:pcg:rand p)
+  =^  o3  p  (next:pcg:rand p)
+  =^  o4  p  (next:pcg:rand p)
+  ;:  weld
+    %+  expect-eq  !>(`@`0x86b1.da1d.7206.2b68)  !>(o0)
+    %+  expect-eq  !>(`@`0x1304.aa46.c985.3d39)  !>(o1)
+    %+  expect-eq  !>(`@`0xa367.0e9e.0dd5.0358)  !>(o2)
+    %+  expect-eq  !>(`@`0xf909.0e52.9a7d.ae00)  !>(o3)
+    %+  expect-eq  !>(`@`0xc85b.9fd8.3799.6f2c)  !>(o4)
+  ==
+::  +advance: at a small, tractable delta (3), must equal 3 sequential
+::  +next:pcg steps -- the property that justifies the O(log delta)
+::  skip-ahead algorithm +jump relies on at the (untestable-by-brute-
+::  force) delta = 2^64 scale.
+++  test-pcg-advance  ^-  tang
+  =/  p0  [state=5 inc=0x6d]
+  =/  p1  (advance:pcg:rand p0 3)
+  =^  s1  p0  (next:pcg:rand p0)
+  =^  s2  p0  (next:pcg:rand p0)
+  =^  s3  p0  (next:pcg:rand p0)
+  %+  expect-eq  !>(state.p0)  !>(state.p1)
+::  +jump: deterministic, and actually changes the state (catches a
+::  no-op mistake).
+++  test-pcg-jump  ^-  tang
+  =/  p  [state=5 inc=0x6d]
+  ;:  weld
+    %+  expect-eq  !>((jump:pcg:rand p))  !>((jump:pcg:rand p))
+    %+  expect-eq  !>(%.n)  !>(=(p (jump:pcg:rand p)))
+  ==
+::  +step dispatches %pcg correctly (next:pcg wired in, not the earlier
+::  crash stub).
+++  test-step-pcg  ^-  tang
+  =/  r  (from-atom:seed:rand %pcg 0)
+  =^  out  r  (step:rand r)
+  ;:  weld
+    %+  expect-eq  !>(`@`0x517a.36a9.6d93.79b8)  !>(out)
+    %+  expect-eq
+      !>(`rng:rand`[%pcg p=[state=0x15ab.4f3e.beb3.372a.3aed.9a13.0cdc.0020 inc=0x6e78.9e6a.a1b9.65f5]])
+      !>(r)
+  ==
 --

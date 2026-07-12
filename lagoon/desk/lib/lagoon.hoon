@@ -10,7 +10,8 @@
 ::    +lake:  rounding-mode -> _la
 ::
 ::  A copy of the +la core with its rounding mode set to .inrnd (so subsequent
-::  ops round in that mode); the bare +la defaults to %n.
+::  ops round in that mode); the bare +la defaults to %z (the bunt of
+::  $rounding-mode).
 ::  The rounding mode is honored by `%i754` and `%cplx` operations only;
 ::  `%uint`, `%int2`, `%unum`, and `%fixp` operations use their own
 ::  standard-defined rounding and ignore this parameter.
@@ -22,7 +23,8 @@
 ::    +la:  Lagoon's array-operations core, a door on rnd=rounding-mode
 ::
 ::  Holds every +$ray operation (constructors, indexing, elementwise math,
-::  reductions, linear algebra).  Use bare for %n rounding, or +lake to pick a
+::  reductions, linear algebra).  Bare +la rounds %z (the bunt of
+::  $rounding-mode); use +lake to pick an
 ::  mode.  Operations dispatch per-scalar on the ray's kind and bloq.
 ::  The rounding mode is honored by `%i754` and `%cplx` operations only;
 ::  `%uint`, `%int2`, `%unum`, and `%fixp` operations use their own
@@ -1075,7 +1077,7 @@
     :-  `meta`[~[-.shape 1] bloq kind tail]
     ^-  ndray
     %+  turn
-      `(list @)`(flop (gulf 0 (dec -.shape)))
+      `(list @)`(gulf 0 (dec -.shape))
     |=(i=@ (get-item a ~[i i]))
   ::
   ::    +trace:  ray -> ray

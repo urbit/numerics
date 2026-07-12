@@ -29,15 +29,32 @@
 
 ## 1. Module layout
 
+**Revised during implementation (after milestone 6), superseding the
+single-file layout originally specified below.** A single `/lib/rand`
+covering sections 2-7 grew large enough, and IEEE-754-float-specific
+enough in its `++uni`/`++dist` halves, that it was split to match how
+`/lib/twoc`/`fixed`/`complex`/`unum` are already kept separate from
+`/lib/math` in this codebase — see `librand/NEXT-STEPS.md` for the
+rationale and the exact arm-by-arm split. Current layout:
+
 ```
 librand/
   README.md
   NEXT-STEPS.md
-  desk/lib/rand.hoon        :: everything below except the Saloon layer
-saloon/desk/lib/saloon.hoon :: gains a +rand-ray core (section 7)
+  desk/sur/rand.hoon          :: +$rng, +$phil, +$sm64, +$pcg64
+  desk/lib/rand.hoon          :: plumbing: ++philox/++split-mix/++pcg/
+                              :: ++seed/+step/+fork/++gen/++uni(integer
+                              :: only)/++sample(minus ++alias)
+  desk/lib/i754rand.hoon      :: porcelain: ++uni(float)/++alias/++dist
+  desk/lib/twocrand.hoon      :: non-float adapter (section 12.2)
+  desk/lib/fixedrand.hoon     :: non-float adapter (section 12.1)
+  desk/lib/complexrand.hoon   :: non-float adapter (section 12.3)
+  desk/lib/unumrand.hoon      :: non-float adapter (section 12.4)
+saloon/desk/lib/saloon.hoon   :: gains a +rand-ray core (section 7)
 ```
 
-Single library file, one top-level core, sub-cores per concern:
+Original spec (single library file, one top-level core, sub-cores per
+concern) — kept for historical context, no longer the actual layout:
 
 ```
 /lib/rand

@@ -1,12 +1,15 @@
   ::  /tests/lib/rand
 ::::
-::    Milestone 1 (rand-spec.md): ++split-mix + ++seed.  The SplitMix64 KAT
-::    vectors are checked against Vigna's reference algorithm (verified via
-::    an independent Python re-implementation, not transcribed by hand);
-::    +from-atom, +fold-eny, and +mix have no external reference (they are
-::    this library's own seeding design), so those are checked by direct
-::    computation of the spec'd formula and by determinism/order-sensitivity
-::    properties instead of KAT.
+::    Milestones 1-2 (rand-spec.md): ++split-mix, ++philox, ++seed, +fork.
+::    The SplitMix64 and Philox4x32-10 KAT vectors are checked against their
+::    published reference values (Vigna's reference C for SplitMix64; the
+::    Random123 kat_vectors file -- all-zero, all-0xffffffff, and the
+::    pi-digits vector -- for Philox), each cross-checked against an
+::    independent Python re-implementation before being transcribed here.
+::    +from-atom, +fold-wide, +mix, and +fork have no external reference
+::    (they are this library's own seeding/forking design), so those are
+::    checked by direct computation of the spec'd formula and by
+::    determinism/order-sensitivity/path-sensitivity properties instead.
 ::
 /+  *test,
     rand
@@ -84,13 +87,104 @@
 ::  +fork's path-sensitivity property once +fork lands in milestone 2.
 ++  test-mix-order-sensitive  ^-  tang
   %+  expect-eq  !>(%.n)  !>(=((mix:seed:rand 42 7) (mix:seed:rand 7 42)))
-::  +from-eny: determinism, and a +fold-eny KAT against the same reference
+::  +from-eny: determinism, and a +fold-wide KAT against the same reference
 ::  fold computed independently in Python over 8 known 64-bit words.
 ++  test-from-eny  ^-  tang
   =/  e=@uvJ
     `@uvJ`0x8888.8888.8888.8888.7777.7777.7777.7777.6666.6666.6666.6666.5555.5555.5555.5555.4444.4444.4444.4444.3333.3333.3333.3333.2222.2222.2222.2222.1111.1111.1111.1111
   ;:  weld
     %+  expect-eq  !>((from-eny:seed:rand %sm64 e))  !>((from-eny:seed:rand %sm64 e))
-    %+  expect-eq  !>(`@`0xdeb.8a1b.ec35.d57d)  !>((fold-eny:seed:rand e))
+    %+  expect-eq  !>(`@`0xdeb.8a1b.ec35.d57d)  !>((fold-wide:seed:rand e))
   ==
+::  Philox4x32-10 KAT: Random123 kat_vectors, all-zero case.
+++  test-philox-kat-zero  ^-  tang
+  %+  expect-eq
+    !>(`@`0x9b00.dbd8.bc57.ac4c.e169.c58d.6627.e8d5)
+    !>((block:philox:rand 0 0))
+::  Philox4x32-10 KAT: Random123 kat_vectors, all-0xffffffff case.
+++  test-philox-kat-ones  ^-  tang
+  %+  expect-eq
+    !>(`@`0x6d54.51fd.a20b.c7c6.41c8.3b0e.408f.276d)
+    !>((block:philox:rand 0xffff.ffff.ffff.ffff 0xffff.ffff.ffff.ffff.ffff.ffff.ffff.ffff))
+::  Philox4x32-10 KAT: Random123 kat_vectors, pi-digits case.
+++  test-philox-kat-pi  ^-  tang
+  %+  expect-eq
+    !>(`@`0x2412.6ea1.5001.e420.94fd.cceb.d16c.fe09)
+    !>((block:philox:rand 0x299f.31d0.a409.3822 0x370.7344.1319.8a2e.85a3.08d3.243f.6a88))
+::  +next:philox: out = (block key ctr), ctr advances by 1, key unchanged.
+++  test-philox-next  ^-  tang
+  %+  expect-eq
+    !>(`[out=@ p=phil:rand]`[0x9b00.dbd8.bc57.ac4c.e169.c58d.6627.e8d5 [key=0 ctr=1]])
+    !>((next:philox:rand [key=0 ctr=0]))
+::  +step dispatches to the right engine and keeps only bits [0,64) of a
+::  Philox block.
+++  test-step-phil  ^-  tang
+  =/  r  (from-atom:seed:rand %phil 0)
+  =^  out  r  (step:rand r)
+  ;:  weld
+    %+  expect-eq  !>(`@`0x24cb.d2fb.a9e3.9636)  !>(out)
+    %+  expect-eq  !>(`rng:rand`[%phil p=[key=0xe220.a839.7b1d.cdaf ctr=1]])  !>(r)
+  ==
+++  test-step-sm64  ^-  tang
+  =/  r  (from-atom:seed:rand %sm64 0)
+  =^  out  r  (step:rand r)
+  ;:  weld
+    %+  expect-eq  !>(`@`0xe220.a839.7b1d.cdaf)  !>(out)
+    %+  expect-eq  !>(`rng:rand`[%sm64 s=0x9e37.79b9.7f4a.7c15])  !>(r)
+  ==
+::  +fork: deterministic (same parent + salt -> same child).
+++  test-fork-determinism  ^-  tang
+  =/  r  (from-atom:seed:rand %phil 0)
+  %+  expect-eq
+    !>((fork:rand r 1))
+    !>((fork:rand r 1))
+::  +fork: different salts -> different children, for all three engines.
+++  test-fork-distinct-salts  ^-  tang
+  ;:  weld
+    %+  expect-eq  !>(%.n)
+      !>  =((fork:rand (from-atom:seed:rand %phil 0) 1) (fork:rand (from-atom:seed:rand %phil 0) 2))
+    %+  expect-eq  !>(%.n)
+      !>  =((fork:rand (from-atom:seed:rand %pcg 0) 1) (fork:rand (from-atom:seed:rand %pcg 0) 2))
+    %+  expect-eq  !>(%.n)
+      !>  =((fork:rand (from-atom:seed:rand %sm64 0) 1) (fork:rand (from-atom:seed:rand %sm64 0) 2))
+  ==
+::  +fork: %phil's ctr always resets to 0 in the child, regardless of the
+::  parent's ctr.
+++  test-fork-phil-ctr-reset  ^-  tang
+  =/  r  [%phil p=[key=0x2a ctr=99]]
+  =/  child  (fork:rand r 7)
+  ?>  ?=(%phil -.child)
+  %+  expect-eq  !>(0)  !>(ctr.p.child)
+::  +fork: %pcg's child increment is always forced odd.
+++  test-fork-pcg-inc-odd  ^-  tang
+  =/  r  (from-atom:seed:rand %pcg 0)
+  =/  child  (fork:rand r 5)
+  ?>  ?=(%pcg -.child)
+  %+  expect-eq  !>(1)  !>((dis 1 inc.p.child))
+::  Nesting rule (rand-spec.md section 2.1c): the mix is genuinely
+::  path-sensitive.  (fork (fork r a) b) must differ from
+::  (fork (fork r b) a) and from (fork r (cat 6 a b)).
+++  test-fork-path-sensitive  ^-  tang
+  =/  r    (from-atom:seed:rand %phil 0)
+  =/  a    11
+  =/  b    22
+  =/  fab  (fork:rand (fork:rand r a) b)
+  =/  fba  (fork:rand (fork:rand r b) a)
+  =/  fcat  (fork:rand r (cat 6 a b))
+  ;:  weld
+    %+  expect-eq  !>(%.n)  !>(=(fab fba))
+    %+  expect-eq  !>(%.n)  !>(=(fab fcat))
+    %+  expect-eq  !>(%.n)  !>(=(fba fcat))
+  ==
+::  ++gen door facade: +draw mirrors the functional +step, +fork mirrors
+::  the functional +fork.
+++  test-gen-draw  ^-  tang
+  =/  g  ~(. gen:rand (from-atom:seed:rand %sm64 0))
+  =^  x  g  draw:g
+  %+  expect-eq  !>(`@`0xe220.a839.7b1d.cdaf)  !>(x)
+++  test-gen-fork  ^-  tang
+  =/  g  ~(. gen:rand (from-atom:seed:rand %phil 0))
+  %+  expect-eq
+    !>((fork:rand (from-atom:seed:rand %phil 0) 3))
+    !>(r:(fork:g 3))
 --

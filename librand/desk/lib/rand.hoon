@@ -5,8 +5,8 @@
 ::  NOT be used for key material, nonces, or anything adversarial.  Entropy
 ::  acquisition is Arvo's job (`eny`); cryptographic randomness is Zuse's job.
 ::
-::  Status: milestone 1 of rand-spec.md -- ++split-mix and ++seed only.
-::  ++philox, ++pcg, ++uni, ++dist, and ++sample land in later milestones.
+::  Status: milestones 1-2 of rand-spec.md -- ++philox, ++split-mix, ++seed,
+::  +step, +fork, ++gen.  ++pcg, ++uni, ++dist, and ++sample land later.
 ::
 ~%  %non  ..part  ~  :: jet registration; nest non in hex (cf /lib/math, /lib/twoc)
 |%
@@ -14,7 +14,7 @@
 ::
 ::  ctr is the 128-bit counter as a single @, key is the 64-bit key as a
 ::  single @.  Both are plain atoms; width discipline is enforced by masking,
-::  never by aura tricks.  (++philox itself lands in milestone 2.)
+::  never by aura tricks.
 +$  phil  [key=@ ctr=@]
 ::    $sm64:  SplitMix64 state (64 bits)
 +$  sm64  @
@@ -29,6 +29,83 @@
       [%sm64 s=sm64]
       [%pcg p=pcg64]
   ==
+::
+::::                    ++philox                       ::  (3.1) Philox4x32-10
+::
+::  Reference: Salmon, Manuson, Jung, Shaw, "Parallel Random Numbers: As Easy
+::  as 1, 2, 3" (SC'11); the Random123 library is the reference
+::  implementation.  The primary generator: output is a pure function of
+::  (key, counter), so a Lagoon jet can fill a ray in parallel and still
+::  match this sequential Hoon loop exactly (rand-spec.md section 8).
+::
+++  philox
+  |%
+  ::    +block:  [key=@ ctr=@] -> @
+  ::
+  ::  The pure Philox4x32-10 function.  .ctr packs four 32-bit
+  ::  little-endian lanes c0/c1/c2/c3 (c0 = bits [0,32), ... c3 = bits
+  ::  [96,128)); .key packs two 32-bit lanes k0/k1 (k0 = bits [0,32), k1 =
+  ::  bits [32,64)).  Ten rounds of the Philox S-box (mulhilo32 is exact:
+  ::  a plain multiply, then hi/lo = high/low 32 bits of the product):
+  ::
+  ::    hi0,lo0 = mulhilo32(M0, c0) ;  hi1,lo1 = mulhilo32(M1, c2)
+  ::    c0' = hi1 ^ c1 ^ k0 ;  c1' = lo1
+  ::    c2' = hi0 ^ c3 ^ k1 ;  c3' = lo0
+  ::    k0 += W0 ;  k1 += W1   (mod 2^32)
+  ::
+  ::  Output is the four final lanes repacked as one 128-bit atom in the
+  ::  same little-endian lane order as .ctr (c0' lowest).  KAT vectors
+  ::  (Random123's kat_vectors file -- all-zero, all-0xffffffff, and the
+  ::  pi-digits vector -- cross-checked against an independent Python
+  ::  re-implementation of this exact algorithm) are in tests/lib/rand.hoon.
+  ::    Examples
+  ::      > (block:philox 0 0)
+  ::      0x9b00.dbd8.bc57.ac4c.e169.c58d.6627.e8d5
+  ::  Source
+  ++  block
+    ~/  %block
+    |=  [key=@ ctr=@]
+    ^-  @
+    =/  c0  (cut 0 [0 32] ctr)
+    =/  c1  (cut 0 [32 32] ctr)
+    =/  c2  (cut 0 [64 32] ctr)
+    =/  c3  (cut 0 [96 32] ctr)
+    =/  k0  (cut 0 [0 32] key)
+    =/  k1  (cut 0 [32 32] key)
+    =/  n   0
+    |-  ^-  @
+    ?:  =(n 10)
+      :(add c0 (lsh [0 32] c1) (lsh [0 64] c2) (lsh [0 96] c3))
+    =/  m0   (mul 0xd251.1f53 c0)
+    =/  hi0  (rsh [0 32] m0)
+    =/  lo0  (end [0 32] m0)
+    =/  m1   (mul 0xcd9e.8d57 c2)
+    =/  hi1  (rsh [0 32] m1)
+    =/  lo1  (end [0 32] m1)
+    %=  $
+      c0  (mix hi1 (mix c1 k0))
+      c1  lo1
+      c2  (mix hi0 (mix c3 k1))
+      c3  lo0
+      k0  (end [0 32] (add k0 0x9e37.79b9))
+      k1  (end [0 32] (add k1 0xbb67.ae85))
+      n   +(n)
+    ==
+  ::    +next:  phil -> [out=@ p=phil]
+  ::
+  ::  One Philox4x32-10 draw: out = (block key ctr), new state advances the
+  ::  counter by 1 (mod 2^128), key unchanged.  See +step (below) for how
+  ::  callers reduce the 128-bit .out to a 64-bit draw.
+  ::    Examples
+  ::      > (next:philox [key=0 ctr=0])
+  ::      [out=0x9b00.dbd8.bc57.ac4c.e169.c58d.6627.e8d5 p=[key=0 ctr=1]]
+  ::  Source
+  ++  next
+    ~/  %next
+    |=  p=phil
+    ^-  [out=@ p=phil]
+    [(block key.p ctr.p) [key.p (mod +(ctr.p) (bex 128))]]
+  --
 ::
 ::::                    ++split-mix                    ::  (3.2) SplitMix64
 ::
@@ -136,30 +213,35 @@
   ::    +from-eny:  [eng=?(%phil %sm64 %pcg) eny=@uvJ] -> rng
   ::
   ::  Same pipeline as +from-atom, over Arvo entropy.  NOT CRYPTOGRAPHIC --
-  ::  see the file-level warning.  `eny` is 512 bits; +fold-eny below
+  ::  see the file-level warning.  `eny` is 512 bits; +fold-wide below
   ::  compresses it to the 64 bits +from-atom expects.
   ::    Source
   ++  from-eny
     |=  [eng=?(%phil %sm64 %pcg) eny=@uvJ]
     ^-  rng
-    (from-atom eng (fold-eny eny))
-  ::    +fold-eny:  @uvJ -> @
+    (from-atom eng (fold-wide eny))
+  ::    +fold-wide:  @ -> @
   ::
-  ::  Compress a wide atom (512-bit .eny) to 64 bits: split into eight
-  ::  64-bit words, low word first, and fold them through +mix in order
-  ::  (acc starts at 0; acc = (mix acc word) per word).  Not itself an rng
-  ::  seed -- feeds +from-atom.  The same chunk-and-fold rule applies to any
-  ::  seed/salt wider than 64 bits (e.g. a wide +fork salt).
+  ::  Compress an atom of ANY width to 64 bits: split into 64-bit words
+  ::  (low word first, via +met bloq 6 for the word count) and fold them
+  ::  through +mix in order (acc starts at 0; acc = (mix acc word) per
+  ::  word).  Not itself an rng seed -- feeds +from-atom (for @uvJ eny,
+  ::  always 8 words) and +fork (for salts wider than 64 bits, section
+  ::  2.1c) alike, so there is exactly one fold algorithm in the library.
+  ::    Examples
+  ::      > (fold-wide:seed 0)
+  ::      0
   ::  Source
-  ++  fold-eny
-    |=  eny=@uvJ
+  ++  fold-wide
+    |=  a=@
     ^-  @
+    =/  n    (met 6 a)
     =/  i    0
     =/  acc  0
     |-  ^-  @
-    ?:  =(i 8)
+    ?:  =(i n)
       acc
-    $(acc (mix acc (cut 6 [i 1] eny)), i +(i))
+    $(acc (mix acc (cut 6 [i 1] a)), i +(i))
   ::    +mix:  [a=@ b=@] -> @
   ::
   ::  Combine two 64-bit seed words (e.g. a ship + a per-agent salt) into
@@ -201,5 +283,121 @@
     =/  w0  (end [0 64] a)
     =/  w1  (end [0 64] b)
     (finalize:split-mix (^mix (finalize:split-mix w0) w1))
+  --
+::
+::::                    +step                          ::  (2) generic draw
+::
+::  One 64-bit draw, engine-dispatched.  Lives at the top level (not nested
+::  under any one engine core) because it dispatches across the +$rng
+::  tagged union -- this is what lets ++uni/++dist/++sample (later
+::  milestones) be written once each, not once per engine.
+::
+++  step
+  |=  r=rng
+  ^-  [out=@ r=rng]
+  ?-  -.r
+    %sm64
+    =^  out  s.r  (next:split-mix s.r)
+    [out r]
+  ::
+    %phil
+    ::  +next:philox returns the full 128-bit block; +step keeps bits
+    ::  [0,64) -- lanes c0'/c1', the low two lanes of the little-endian
+    ::  repack in +block:philox.  The top 64 bits (c2'/c3') are discarded;
+    ::  wasting them is acceptable at v1 (rand-spec.md section 2), and a
+    ::  buffered variant that reuses both halves is a NEXT-STEPS item.
+    =^  blk  p.r  (next:philox p.r)
+    [(end [0 64] blk) r]
+  ::
+    %pcg
+    ::  ++pcg (milestone 4) isn't implemented yet.  Unlike +fork's %pcg
+    ::  branch below (which only remixes the state/inc tuple via +mix and
+    ::  needs no engine-specific logic), a real draw needs the xsl-rr
+    ::  output permutation -- so this branch crashes rather than silently
+    ::  returning something wrong.
+    ~|  %rand-pcg-step-not-yet-implemented
+    !!
+  ==
+::
+::::                    +fork                          ::  (2.1c) key derivation
+::
+::  Deterministic, independent child stream from a parent stream and a
+::  salt -- the JAX-style key-derivation payoff of counter-based-first
+::  (rand-spec.md section 2.1c).  Callers fork by path instead of
+::  threading one sequential state through a computation tree: draws are
+::  independent of sibling evaluation order, and a draw inserted in one
+::  branch doesn't perturb any other branch.
+::    Examples
+::      > =/  a  (fork (from-atom:seed %phil 0) 1)
+::      > =/  b  (fork (from-atom:seed %phil 0) 2)
+::      > =(a b)
+::      %.n
+::  Source
+++  fork
+  |=  [r=rng salt=@]
+  ^-  rng
+  ::  Salts up to 64 bits feed +mix directly (the common case: small
+  ::  integer salts, e.g. per-event or per-layer indices).  Wider salts
+  ::  (e.g. a caller-combined `(cat 6 a b)`, or an @uvJ) are folded to 64
+  ::  bits first via +fold-wide, so no salt bits are silently dropped --
+  ::  +mix itself only ever consumes one 64-bit word per side.
+  =/  sw  ?:((lte (met 6 salt) 1) salt (fold-wide:seed salt))
+  ?-  -.r
+    %phil  r(key.p (mix:seed key.p.r sw), ctr.p 0)
+  ::
+    ::  "child increment derived the same way [as %phil's key], forced
+    ::  odd; state re-mixed" (section 2.1c) -- read here as: both fields
+    ::  pushed through +mix with the same salt-derived word.
+    %pcg
+    r(state.p (mix:seed state.p.r sw), inc.p (con (mix:seed inc.p.r sw) 1))
+  ::
+    ::  "the SplitMix split construction" (section 2.1c) is read here as
+    ::  reusing the same +mix primitive +split's decorrelation relies on,
+    ::  salt-directed rather than sequential -- NOT a literal call to
+    ::  +split (which takes no salt and can't be path-directed).  This is
+    ::  this implementation's resolution of that spec ambiguity.
+    %sm64  r(s (mix:seed s.r sw))
+  ==
+::
+::::                    ++gen                          ::  (2.1b) door facade
+::
+::  Ergonomic sugar over the functional core, never a storage format.
+::  HARD RULE (section 2.1b): persisting this door in agent state pins a
+::  battery across library upgrades (the classic +og misuse) -- persist
+::  the +$rng noun, reconstruct the door locally.  The facade adds no
+::  capability; it is a strict wrapper over +step/+fork, so jets register
+::  on those functional arms only.
+::
+++  gen
+  |_  r=rng
+  ::    +draw:  gen -> [@ _..draw]
+  ::
+  ::  Door wrapper over +step.  `..draw` (not `+>`/`+>.$`) is the reliable
+  ::  way to reference "this door, before any local rebinding" from an
+  ::  arm's body regardless of whether the arm itself has a `|=` sample
+  ::  (`+>`/`+>.$` axis arithmetic differs depending on that, which is a
+  ::  footgun in itself -- `..<arm-name>` sidesteps it).
+  ::    Examples
+  ::      > =/  g  ~(. gen (from-atom:seed:rand %sm64 0))
+  ::      > =^  x  g  draw:g
+  ::      > x
+  ::      16.294.208.416.658.607.535
+  ::  Source
+  ++  draw
+    ^-  [@ _..draw]
+    =^  out  r  (step r)
+    [out ..draw(r r)]
+  ::    +fork:  [gen @] -> _..fork
+  ::
+  ::  Door wrapper over the functional +fork.  NAMING FOOTGUN (same class
+  ::  as ++seed's +mix, above): this arm's name shadows the top-level
+  ::  +fork gate, so calling it unqualified from inside this arm's own
+  ::  body would recurse into itself with the wrong arity -- the body
+  ::  below reaches for `^fork` to reach the top-level gate.
+  ::  Source
+  ++  fork
+    |=  salt=@
+    ^-  _..fork
+    ..fork(r (^fork r salt))
   --
 --

@@ -7,7 +7,7 @@ acquisition is Arvo's job (`eny`), cryptographic randomness is Zuse's job.
 Full design is in `rand-spec.md` (repo root). Hoon reference implementation
 first, jets follow (see `rand-spec.md` section 11).
 
-## Status (milestones 1-2 of 9, `rand-spec.md` section 13)
+## Status (milestones 1-3 of 9, `rand-spec.md` section 13)
 
 Done:
 
@@ -21,10 +21,14 @@ Done:
   milestone 4's PCG draw logic; forking `%pcg` doesn't need it).
 - `+fork` — path-sensitive key derivation across all three engine shapes.
 - `++gen` — thin door facade wrapping `+step`/`+fork`.
+- `++uni` — `+bits`, `+below` (Lemire, unbiased), `+between`, and the four
+  float auras `+rs`/`+rd`/`+rh`/`+rq` plus open-open `+rs-oo`/`+rd-oo`, all
+  exact bit constructions checked against an independent Python IEEE-754
+  encoder.
 
-Not yet implemented: `++pcg` (the engine itself), `++uni`, `++dist`,
-`++sample`, the Saloon `+rand-ray` extension. See `NEXT-STEPS.md` and
-`rand-spec.md` section 13 for the full milestone order.
+Not yet implemented: `++pcg` (the engine itself), `++dist`, `++sample`, the
+Saloon `+rand-ray` extension. See `NEXT-STEPS.md` and `rand-spec.md`
+section 13 for the full milestone order.
 
 ## Layout
 

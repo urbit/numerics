@@ -5,8 +5,8 @@
 ::  NOT be used for key material, nonces, or anything adversarial.  Entropy
 ::  acquisition is Arvo's job (`eny`); cryptographic randomness is Zuse's job.
 ::
-::  Status: milestones 1-2 of rand-spec.md -- ++philox, ++split-mix, ++seed,
-::  +step, +fork, ++gen.  ++pcg, ++uni, ++dist, and ++sample land later.
+::  Status: milestones 1-3 of rand-spec.md -- ++philox, ++split-mix, ++seed,
+::  +step, +fork, ++gen, ++uni.  ++pcg, ++dist, and ++sample land later.
 ::
 ~%  %non  ..part  ~  :: jet registration; nest non in hex (cf /lib/math, /lib/twoc)
 |%
@@ -399,5 +399,163 @@
     |=  salt=@
     ^-  _..fork
     ..fork(r (^fork r salt))
+  --
+::
+::::                    ++uni                          ::  (5) uniform deviates
+::
+::  All arms `[r=rng ...] -> [out new-rng]` unless noted, per section 5.
+::
+::  NAMING FOOTGUN (same class as ++seed's +mix and ++gen's +fork): this
+::  core defines arms named +rs/+rd/+rh/+rq, which shadow the Hoon standard
+::  library's own +rs/+rd/+rh/+rq IEEE-754 doors.  /lib/math has the exact
+::  same collision (its own +rs/+rd/+rh/+rq doors wrap the stdlib ones) and
+::  handles it the same way: any reference to the real stdlib door from
+::  inside ++uni uses ^rs/^rd/^rh/^rq, e.g. `(~(mul ^rs %n) a b)`.
+::
+++  uni
+  |%
+  ::    +bits:  [r=rng n=@] -> [@ rng]
+  ::
+  ::  .n uniform bits, assembled from ceil(n/64) +step draws, little-endian
+  ::  (the first draw is bits [0,64) of the result, the second is bits
+  ::  [64,128), and so on); the LAST draw is masked down to n's remainder
+  ::  mod 64 when that remainder is nonzero (i.e. when n isn't itself a
+  ::  multiple of 64).
+  ::    Examples
+  ::      > (bits:uni:rand (from-atom:seed:rand %sm64 0) 4)
+  ::      [out=15 r=[%sm64 s=0x9e37.79b9.7f4a.7c15]]
+  ::  Source
+  ++  bits
+    |=  [r=rng n=@]
+    ^-  [out=@ r=rng]
+    =/  full   (div n 64)
+    =/  rem    (mod n 64)
+    =/  words  ?:(=(rem 0) full +(full))
+    =/  i      0
+    =/  acc    0
+    |-  ^-  [out=@ r=rng]
+    ?:  =(i words)
+      [acc r]
+    =^  out  r  (step r)
+    =/  bc  ?:(&(=(i (dec words)) !=(rem 0)) rem 64)
+    %=  $
+      acc  (add acc (lsh [0 (mul i 64)] (end [0 bc] out)))
+      i    +(i)
+    ==
+  ::    +below:  [r=rng n=@] -> [@ rng]
+  ::
+  ::  Uniform in [0,n), UNBIASED, via Lemire's multiply-shift with
+  ::  rejection (Lemire 2019, "Fast Random Integer Generation in an
+  ::  Interval").  .t depends only on .n, so it's computed once outside the
+  ::  rejection loop, not per draw.  The primitive everything else
+  ::  (shuffle, choice, +between) uses -- never ship modulo-bias
+  ::  `(mod x n)` instead, here or anywhere else in this library.
+  ::  Crashes (`?>`) on n=0.
+  ::    Examples
+  ::      > (below:uni:rand (from-atom:seed:rand %sm64 0) 10)
+  ::      [out=8 r=[%sm64 s=0x9e37.79b9.7f4a.7c15]]
+  ::  Source
+  ++  below
+    ~/  %below
+    |=  [r=rng n=@]
+    ^-  [out=@ r=rng]
+    ~|  %rand-zero-modulus
+    ?>  !=(n 0)
+    =/  t  (mod (sub (bex 64) n) n)
+    |-  ^-  [out=@ r=rng]
+    =^  x  r  (step r)
+    =/  m  (mul x n)
+    =/  l  (end [0 64] m)
+    ?:  &((lth l n) (lth l t))
+      $
+    [(rsh [0 64] m) r]
+  ::    +between:  [r=rng a=@s b=@s] -> [@s rng]
+  ::
+  ::  Inclusive signed range [a,b], via +below on the span (b - a + 1),
+  ::  offset back by .a.  Crashes (`?>`) if a > b.
+  ::    Examples
+  ::      > (between:uni:rand (from-atom:seed:rand %sm64 0) -5 --5)
+  ::      [out=--4 r=[%sm64 s=0x9e37.79b9.7f4a.7c15]]
+  ::  Source
+  ++  between
+    |=  [r=rng a=@s b=@s]
+    ^-  [out=@s r=rng]
+    ~|  %rand-bad-range
+    ?>  !=(--1 (cmp:si a b))
+    =/  span  +((abs:si (dif:si b a)))
+    =^  off  r  (below r span)
+    [(sum:si a (sun:si off)) r]
+  ::    +rs:  rng -> [@rs rng]
+  ::
+  ::  Uniform in [0,1): draw 24 bits, multiply by the exact constant
+  ::  2^-24.  +sun of a 24-bit unsigned integer and multiplying by an
+  ::  exact power of two are BOTH exact IEEE-754 operations (no rounding,
+  ::  regardless of mode), so every representable output is a multiple of
+  ::  2^-24 -- exactly uniform over that lattice.  0 is possible; 1 is not.
+  ::    Examples
+  ::      > (rs:uni:rand (from-atom:seed:rand %sm64 0))
+  ::      [out=.0.1164197 r=[%sm64 s=0x9e37.79b9.7f4a.7c15]]
+  ::  Source
+  ++  rs
+    |=  r=rng
+    ^-  [out=@rs r=rng]
+    =^  b  r  (bits r 24)
+    [(~(mul ^rs %n) (~(sun ^rs %n) b) `@rs`0x3380.0000) r]
+  ::    +rd:  rng -> [@rd rng]
+  ::
+  ::  Same as +rs at double precision: 53 bits, times the exact constant
+  ::  2^-53.
+  ::    Source
+  ++  rd
+    |=  r=rng
+    ^-  [out=@rd r=rng]
+    =^  b  r  (bits r 53)
+    [(~(mul ^rd %n) (~(sun ^rd %n) b) `@rd`0x3ca0.0000.0000.0000) r]
+  ::    +rh:  rng -> [@rh rng]
+  ::
+  ::  Same as +rs at half precision: 11 bits, times the exact constant
+  ::  2^-11.
+  ::    Source
+  ++  rh
+    |=  r=rng
+    ^-  [out=@rh r=rng]
+    =^  b  r  (bits r 11)
+    [(~(mul ^rh %n) (~(sun ^rh %n) b) `@rh`0x1000) r]
+  ::    +rq:  rng -> [@rq rng]
+  ::
+  ::  Same as +rs at quad precision: 113 bits, times the exact constant
+  ::  2^-113.
+  ::    Source
+  ++  rq
+    |=  r=rng
+    ^-  [out=@rq r=rng]
+    =^  b  r  (bits r 113)
+    [(~(mul ^rq %n) (~(sun ^rq %n) b) `@rq`0x3f8e.0000.0000.0000.0000.0000.0000.0000) r]
+  ::    +rs-oo:  rng -> [@rs rng]
+  ::
+  ::  Uniform in the OPEN interval (0,1): draw the same 24 bits as +rs, but
+  ::  construct (2*bits+1) * 2^-25 instead of bits * 2^-24.  With bits
+  ::  ranging over [0,2^24), (2*bits+1) ranges over the odd integers in
+  ::  [1,2^25), so the result spans (0,1) on a lattice of spacing 2^-24,
+  ::  symmetric about 0.5, never touching either endpoint.  Needed by
+  ::  Box-Muller/log-based transforms (milestone 5) so log(0) never fires.
+  ::  (2*bits+1) is exact @ arithmetic; the multiply by 2^-25 is exact for
+  ::  the same reason it is in +rs.
+  ::    Source
+  ++  rs-oo
+    |=  r=rng
+    ^-  [out=@rs r=rng]
+    =^  b  r  (bits r 24)
+    [(~(mul ^rs %n) (~(sun ^rs %n) +((mul 2 b))) `@rs`0x3300.0000) r]
+  ::    +rd-oo:  rng -> [@rd rng]
+  ::
+  ::  Same construction as +rs-oo at double precision: 53 bits, (2*bits+1)
+  ::  * 2^-54.
+  ::    Source
+  ++  rd-oo
+    |=  r=rng
+    ^-  [out=@rd r=rng]
+    =^  b  r  (bits r 53)
+    [(~(mul ^rd %n) (~(sun ^rd %n) +((mul 2 b))) `@rd`0x3c90.0000.0000.0000) r]
   --
 --

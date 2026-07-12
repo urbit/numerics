@@ -1,15 +1,20 @@
   ::  /tests/lib/rand
 ::::
-::    Milestones 1-2 (rand-spec.md): ++split-mix, ++philox, ++seed, +fork.
-::    The SplitMix64 and Philox4x32-10 KAT vectors are checked against their
-::    published reference values (Vigna's reference C for SplitMix64; the
-::    Random123 kat_vectors file -- all-zero, all-0xffffffff, and the
-::    pi-digits vector -- for Philox), each cross-checked against an
-::    independent Python re-implementation before being transcribed here.
-::    +from-atom, +fold-wide, +mix, and +fork have no external reference
-::    (they are this library's own seeding/forking design), so those are
-::    checked by direct computation of the spec'd formula and by
-::    determinism/order-sensitivity/path-sensitivity properties instead.
+::    Milestones 1-3 (rand-spec.md): ++split-mix, ++philox, ++seed, +fork,
+::    ++uni.  The SplitMix64 and Philox4x32-10 KAT vectors are checked
+::    against their published reference values (Vigna's reference C for
+::    SplitMix64; the Random123 kat_vectors file -- all-zero,
+::    all-0xffffffff, and the pi-digits vector -- for Philox), each
+::    cross-checked against an independent Python re-implementation before
+::    being transcribed here.  ++uni's float arms (+rs/+rd/+rh/+rq/+rs-oo/
+::    +rd-oo) are exact bit constructions (+sun then a power-of-two
+::    multiply), so their expected values are likewise checked against an
+::    independent Python IEEE-754 encoder, not the Hoon float printer.
+::    +from-atom, +fold-wide, +mix, +fork, +bits, and +below have no
+::    external reference (they are this library's own design, or Lemire's
+::    algorithm applied to this library's own +step), so those are checked
+::    by direct computation of the spec'd formula and by determinism/
+::    order-sensitivity/path-sensitivity/unbiasedness properties instead.
 ::
 /+  *test,
     rand
@@ -187,4 +192,102 @@
   %+  expect-eq
     !>((fork:rand (from-atom:seed:rand %phil 0) 3))
     !>(r:(fork:g 3))
+::  +bits: n=4 -> low 4 bits of the first +step draw (0xe220a8397b1dcdaf).
+++  test-bits  ^-  tang
+  =/  r  (from-atom:seed:rand %sm64 0)
+  =^  out  r  (bits:uni:rand r 4)
+  ;:  weld
+    %+  expect-eq  !>(`@`15)  !>(out)
+    %+  expect-eq  !>(`rng:rand`[%sm64 s=0x9e37.79b9.7f4a.7c15])  !>(r)
+  ==
+::  +bits: n=130 (>64, spans 3 draws: two full 64-bit words, one 2-bit
+::  remainder) round-trips against a manual reconstruction from the same
+::  three +step draws taken independently.
+++  test-bits-wide  ^-  tang
+  =/  r0      (from-atom:seed:rand %sm64 0)
+  =/  result  (bits:uni:rand r0 130)
+  =^  w0  r0  (step:rand r0)
+  =^  w1  r0  (step:rand r0)
+  =^  w2  r0  (step:rand r0)
+  =/  expected  :(add w0 (lsh [0 64] w1) (lsh [0 128] (end [0 2] w2)))
+  ;:  weld
+    %+  expect-eq  !>(expected)  !>(out.result)
+    %+  expect-eq  !>(r0)  !>(r.result)
+  ==
+::  +below: Lemire, n=10, against an independently-computed reference
+::  (same algorithm, computed in Python before transcription here).
+++  test-below  ^-  tang
+  =/  r  (from-atom:seed:rand %sm64 0)
+  =^  out  r  (below:uni:rand r 10)
+  ;:  weld
+    %+  expect-eq  !>(`@`8)  !>(out)
+    %+  expect-eq  !>(`rng:rand`[%sm64 s=0x9e37.79b9.7f4a.7c15])  !>(r)
+  ==
+::  +below: unbiasedness smoke test, n=6, 1200 draws, chi-square below a
+::  fixed threshold (section 10 item 3: a smoke test, not TestU01).  Uses
+::  ++fork to get 1200 independent draws without threading one rng
+::  sequentially (each fork is its own single-draw +below call).  Chi-
+::  square is computed as an exact integer comparison (sum-sq < k*expected)
+::  rather than a division, so this needs no float/math import.
+++  test-below-unbiased  ^-  tang
+  =/  base      (from-atom:seed:rand %phil 0)
+  =/  n         6
+  =/  reps      1.200
+  =/  expected  (div reps n)
+  =/  counts
+    %+  roll  (gulf 0 (dec reps))
+    |=  [i=@ counts=(map @ @)]
+    =/  child  (fork:rand base i)
+    =^  draw   child  (below:uni:rand child n)
+    (~(put by counts) draw +((fall (~(get by counts) draw) 0)))
+  =/  sum-sq
+    %+  roll  (gulf 0 (dec n))
+    |=  [k=@ acc=@]
+    =/  obs   (fall (~(get by counts) k) 0)
+    =/  diff  (abs:si (dif:si (sun:si obs) (sun:si expected)))
+    (add acc (mul diff diff))
+  ::  chi-square = sum-sq / expected; threshold chosen generously (df=5,
+  ::  p~0.001 critical value is ~20.5) since this is a smoke test, not a
+  ::  rigorous statistical test -- compared as sum-sq < 30*expected to
+  ::  avoid a division.
+  %+  expect-eq  !>(%.y)  !>((lth sum-sq (mul 30 expected)))
+::  +between: span=11 (a=-5,b=--5), same underlying draw as +test-below.
+++  test-between  ^-  tang
+  =/  r  (from-atom:seed:rand %sm64 0)
+  =^  out  r  (between:uni:rand r -5 --5)
+  %+  expect-eq  !>(`@s`--4)  !>(out)
+::  +between: crashes if a > b.
+++  test-between-bad-range  ^-  tang
+  %-  expect-fail
+  |.((between:uni:rand (from-atom:seed:rand %sm64 0) --5 -5))
+::  +below: crashes on n=0.
+++  test-below-zero  ^-  tang
+  %-  expect-fail
+  |.((below:uni:rand (from-atom:seed:rand %sm64 0) 0))
+::  +rs/+rd/+rh/+rq: exact bit constructions, checked against an
+::  independent Python IEEE-754 encoder (not the Hoon float printer).
+++  test-float-rs  ^-  tang
+  %+  expect-eq
+    !>(`@rs`0x3dee.6d78)
+    !>(out:(rs:uni:rand (from-atom:seed:rand %sm64 0)))
+++  test-float-rd  ^-  tang
+  %+  expect-eq
+    !>(`@rd`0x3f95.072f.63b9.b5e0)
+    !>(out:(rd:uni:rand (from-atom:seed:rand %sm64 0)))
+++  test-float-rh  ^-  tang
+  %+  expect-eq
+    !>(`@rh`0x39af)
+    !>(out:(rh:uni:rand (from-atom:seed:rand %sm64 0)))
+++  test-float-rq  ^-  tang
+  %+  expect-eq
+    !>(`@rq`0x3ffd.3cd5.4372.cbe9.c441.5072.f63b.9b5e)
+    !>(out:(rq:uni:rand (from-atom:seed:rand %sm64 0)))
+++  test-float-rs-oo  ^-  tang
+  %+  expect-eq
+    !>(`@rs`0x3dee.6d7c)
+    !>(out:(rs-oo:uni:rand (from-atom:seed:rand %sm64 0)))
+++  test-float-rd-oo  ^-  tang
+  %+  expect-eq
+    !>(`@rd`0x3f95.072f.63b9.b5f0)
+    !>(out:(rd-oo:uni:rand (from-atom:seed:rand %sm64 0)))
 --

@@ -1,3 +1,4 @@
+/+  math
 ::::  /lib/rand -- deterministic pseudo-random number generation
 ::
 ::  NOT CRYPTOGRAPHIC.  This library produces deterministic pseudo-randomness
@@ -5,8 +6,8 @@
 ::  NOT be used for key material, nonces, or anything adversarial.  Entropy
 ::  acquisition is Arvo's job (`eny`); cryptographic randomness is Zuse's job.
 ::
-::  Status: milestones 1-4 of rand-spec.md -- ++philox, ++split-mix, ++seed,
-::  +step, +fork, ++gen, ++uni, ++pcg.  ++dist and ++sample land later.
+::  Status: milestones 1-5 of rand-spec.md -- ++philox, ++split-mix, ++seed,
+::  +step, +fork, ++gen, ++uni, ++pcg, ++dist.  ++sample lands later.
 ::
 ~%  %non  ..part  ~  :: jet registration; nest non in hex (cf /lib/math, /lib/twoc)
 |%
@@ -673,5 +674,200 @@
     |=  p=pcg64
     ^-  pcg64
     (advance p (bex 64))
+  --
+::
+::::                    ++dist                          ::  (6) distributions
+::
+::  All arms at @rd only (the @rs routing and the poisson/binomial/
+::  categorical/dirichlet arms land in a later milestone, per rand-spec.md's
+::  milestone order).  Internally forced to round-to-nearest (%n) via +m
+::  below, matching /lib/math's own doors -- callers never see or choose a
+::  rounding mode here.  chi2/student-t aren't named in the milestone list
+::  but are one-line compositions of gamma/normal with no new machinery, so
+::  they land here too rather than waiting on an unscheduled slot.
+::
+::  Crashes (`?>` with `~|` tags) on out-of-domain parameters, per section
+::  9's uniform error policy: domain violations are programmer error, not
+::  data, so no NaN-returning "soft" errors.
+::
+++  dist
+  |%
+  ::  +m: the shared @rd math door, forced %n, rtol=1e-13 (the same "sane
+  ::  default" convergence tolerance Saloon's own +feps uses for @rd).
+  ::  Internal helper, mirroring /lib/fixed's +ng pattern.
+  ++  m  ~(. rd:math [%n .~1e-13 .~0])
+  ::  +mz: same door, forced %z (truncate toward zero) -- used only by
+  ::  +geometric's ceiling, since +toi respects the door's rounding mode
+  ::  and %n would round instead of truncate.
+  ++  mz  ~(. rd:math [%z .~1e-13 .~0])
+  ::    +normal:  rng -> [@rd rng]
+  ::
+  ::  Standard normal N(0,1) via the Marsaglia polar method (the Box-Muller
+  ::  polar variant): draw u,v uniform on (-1,1) (via +rd:uni mapped
+  ::  2x-1), reject if s=u^2+v^2 is >=1 or =0, else return u*sqrt(-2 ln(s)/s).
+  ::  Returns ONE deviate and discards the pair-mate v*sqrt(-2 ln(s)/s) --
+  ::  caching it would make the rng state opaque (the next +normal call
+  ::  would need to "remember" a pending mate outside the plain +$rng
+  ::  noun), so v's factor is thrown away at v1.  A documented waste, not a
+  ::  bug; Ziggurat is a NEXT-STEPS optimization.  Variable-consumption
+  ::  (rejection loop): expected iterations ~1.27 (rejection probability
+  ::  1 - pi/4), astronomically bounded in practice.
+  ::    Examples
+  ::      > (normal:dist:rand (from-atom:seed:rand %sm64 0))
+  ::      [out=.~-0.9479938949723624 r=[%sm64 s=0x78dd.e6e5.fd29.f054]]
+  ::  Source
+  ++  normal
+    |=  r=rng
+    ^-  [out=@rd r=rng]
+    |-  ^-  [out=@rd r=rng]
+    =^  u1  r  (rd:uni r)
+    =^  u2  r  (rd:uni r)
+    =/  u  (sub:m (mul:m .~2 u1) .~1)
+    =/  v  (sub:m (mul:m .~2 u2) .~1)
+    =/  s  (add:m (mul:m u u) (mul:m v v))
+    ?:  |((gte:m s .~1) (equ:m s .~0))
+      $
+    =/  factor  (sqt:m (div:m (mul:m .~-2 (log:m s)) s))
+    [(mul:m u factor) r]
+  ::    +normal-mv:  [r=rng mu=@rd sigma=@rd] -> [@rd rng]
+  ::
+  ::  N(mu, sigma^2): mu + sigma*z where z ~ N(0,1).  Crashes if sigma < 0.
+  ::    Source
+  ++  normal-mv
+    |=  [r=rng mu=@rd sigma=@rd]
+    ^-  [out=@rd r=rng]
+    ~|  %rand-bad-sigma
+    ?>  !(lth:m sigma .~0)
+    =^  z  r  (normal r)
+    [(add:m mu (mul:m sigma z)) r]
+  ::    +expon:  [r=rng lambda=@rd] -> [@rd rng]
+  ::
+  ::  Exponential(lambda) via inversion: -ln(u)/lambda, u drawn from the
+  ::  OPEN (0,1) (+rd-oo, not +rd) specifically so log(0) never fires --
+  ::  this is exactly the case rand-spec.md section 5.2 built +rd-oo for.
+  ::  Crashes if lambda <= 0.
+  ::    Source
+  ++  expon
+    |=  [r=rng lambda=@rd]
+    ^-  [out=@rd r=rng]
+    ~|  %rand-bad-rate
+    ?>  (gth:m lambda .~0)
+    =^  u  r  (rd-oo:uni r)
+    [(div:m (neg:m (log:m u)) lambda) r]
+  ::    +gamma:  [r=rng alpha=@rd] -> [@rd rng]
+  ::
+  ::  Gamma(alpha, scale=1) via Marsaglia-Tsang (2000).  alpha>=1 direct
+  ::  (+gamma-ge1); alpha<1 via the standard boost gamma(alpha) =
+  ::  gamma(alpha+1) * u^(1/alpha), u drawn from the open (0,1) so the
+  ::  u=0 lattice point (probability 2^-53, not truly 0 as it would be for
+  ::  a continuous uniform) never manufactures a spurious exact-zero
+  ::  sample.  Crashes if alpha <= 0.
+  ::    Source
+  ++  gamma
+    |=  [r=rng alpha=@rd]
+    ^-  [out=@rd r=rng]
+    ~|  %rand-bad-shape
+    ?>  (gth:m alpha .~0)
+    ?:  (gte:m alpha .~1)
+      (gamma-ge1 r alpha)
+    =^  g  r  (gamma-ge1 r (add:m alpha .~1))
+    =^  u  r  (rd-oo:uni r)
+    [(mul:m g (pow:m u (div:m .~1 alpha))) r]
+  ::  +gamma-ge1: Marsaglia-Tsang squeeze for alpha>=1.  d=alpha-1/3,
+  ::  c=1/sqrt(9d); draw x~N(0,1), v=(1+cx)^3 (reject if v<=0), draw
+  ::  u~(0,1) open (so log(u) never fires on 0), accept d*v if
+  ::  ln(u) < x^2/2 + d - d*v + d*ln(v), else reject and redraw both x,u.
+  ::  Variable-consumption (rejection loop), astronomically bounded.
+  ++  gamma-ge1
+    |=  [r=rng alpha=@rd]
+    ^-  [out=@rd r=rng]
+    =/  d  (sub:m alpha (div:m .~1 .~3))
+    =/  c  (div:m .~1 (sqt:m (mul:m .~9 d)))
+    |-  ^-  [out=@rd r=rng]
+    =^  x  r  (normal r)
+    =/  t  (add:m .~1 (mul:m c x))
+    =/  v  (mul:m t (mul:m t t))
+    ?:  !(gth:m v .~0)
+      $
+    =^  u  r  (rd-oo:uni r)
+    =/  rhs
+      %+  add:m
+        (add:m (mul:m .~0.5 (mul:m x x)) d)
+      (sub:m (mul:m d (log:m v)) (mul:m d v))
+    ?:  (lth:m (log:m u) rhs)
+      [(mul:m d v) r]
+    $
+  ::    +beta:  [r=rng a=@rd b=@rd] -> [@rd rng]
+  ::
+  ::  Beta(a,b) via two independent gammas: x/(x+y), x~gamma(a), y~gamma(b).
+  ::  Crashes if a <= 0 or b <= 0 (via +gamma's own precondition).
+  ::    Source
+  ++  beta
+    |=  [r=rng a=@rd b=@rd]
+    ^-  [out=@rd r=rng]
+    =^  x  r  (gamma r a)
+    =^  y  r  (gamma r b)
+    [(div:m x (add:m x y)) r]
+  ::    +chi2:  [r=rng k=@] -> [@rd rng]
+  ::
+  ::  Chi-squared with k degrees of freedom: gamma(k/2, scale=2) ==
+  ::  2*gamma(k/2, scale=1) (+gamma is scale=1, so the factor of 2 is
+  ::  applied directly -- a standard gamma scaling property).  Crashes if
+  ::  k = 0.
+  ::    Source
+  ++  chi2
+    |=  [r=rng k=@]
+    ^-  [out=@rd r=rng]
+    ~|  %rand-bad-df
+    ?>  !=(k 0)
+    =^  x  r  (gamma r (div:m (sun:m k) .~2))
+    [(mul:m .~2 x) r]
+  ::    +student-t:  [r=rng k=@] -> [@rd rng]
+  ::
+  ::  Student's t with k degrees of freedom: z / sqrt(chi2(k)/k), z~N(0,1).
+  ::  Crashes if k = 0.
+  ::    Source
+  ++  student-t
+    |=  [r=rng k=@]
+    ^-  [out=@rd r=rng]
+    ~|  %rand-bad-df
+    ?>  !=(k 0)
+    =^  z  r  (normal r)
+    =^  c  r  (chi2 r k)
+    [(div:m z (sqt:m (div:m c (sun:m k)))) r]
+  ::    +bernoulli:  [r=rng p=@rd] -> [? rng]
+  ::
+  ::  %.y with probability p, else %.n: draw u~[0,1), return u<p.  Crashes
+  ::  unless 0 <= p <= 1.
+  ::    Source
+  ++  bernoulli
+    |=  [r=rng p=@rd]
+    ^-  [out=? r=rng]
+    ~|  %rand-bad-prob
+    ?>  &((gte:m p .~0) (lte:m p .~1))
+    =^  u  r  (rd:uni r)
+    [(lth:m u p) r]
+  ::    +geometric:  [r=rng p=@rd] -> [@ud rng]
+  ::
+  ::  Number of Bernoulli(p) trials up to and including the first success:
+  ::  ceil(ln(u)/ln(1-p)), u drawn from the open (0,1) (avoids ln(0)).
+  ::  p=1 is a special-cased edge that returns 1 directly (ln(1-p) would
+  ::  divide by ln(0) = -inf otherwise).  ceil is computed via +toi under
+  ::  a SEPARATE %z-rounding (truncate-toward-zero) door instance, +mz --
+  ::  +toi respects the door's own rounding mode, and this core's shared
+  ::  +m door is forced %n (round-to-nearest), which would round instead
+  ::  of truncate.  Crashes unless 0 < p <= 1.
+  ::    Source
+  ++  geometric
+    |=  [r=rng p=@rd]
+    ^-  [out=@ud r=rng]
+    ~|  %rand-bad-prob
+    ?>  &((gth:m p .~0) (lte:m p .~1))
+    ?:  (equ:m p .~1)
+      [1 r]
+    =^  u  r  (rd-oo:uni r)
+    =/  raw  (div:m (log:m u) (log:m (sub:m .~1 p)))
+    =/  fl   (abs:si (need (toi:mz raw)))
+    [?:(=(raw (sun:m fl)) fl +(fl)) r]
   --
 --

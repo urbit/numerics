@@ -1,28 +1,38 @@
   ::  /tests/lib/rand
 ::::
-::    Milestones 1-4 (rand-spec.md): ++split-mix, ++philox, ++seed, +fork,
-::    ++uni, ++pcg.  The SplitMix64 and Philox4x32-10 KAT vectors are
-::    checked against their published reference values (Vigna's reference
-::    C for SplitMix64; the Random123 kat_vectors file -- all-zero,
-::    all-0xffffffff, and the pi-digits vector -- for Philox), each
-::    cross-checked against an independent Python re-implementation before
-::    being transcribed here.  ++uni's float arms (+rs/+rd/+rh/+rq/+rs-oo/
-::    +rd-oo) are exact bit constructions (+sun then a power-of-two
+::    Milestones 1-5 (rand-spec.md): ++split-mix, ++philox, ++seed, +fork,
+::    ++uni, ++pcg, ++dist.  The SplitMix64 and Philox4x32-10 KAT vectors
+::    are checked against their published reference values (Vigna's
+::    reference C for SplitMix64; the Random123 kat_vectors file --
+::    all-zero, all-0xffffffff, and the pi-digits vector -- for Philox),
+::    each cross-checked against an independent Python re-implementation
+::    before being transcribed here.  ++uni's float arms (+rs/+rd/+rh/+rq/
+::    +rs-oo/+rd-oo) are exact bit constructions (+sun then a power-of-two
 ::    multiply), so their expected values are likewise checked against an
 ::    independent Python IEEE-754 encoder, not the Hoon float printer.
 ::    ++pcg's KAT (seed=42, seq=54, pcg-c's own demo convention) is
 ::    checked against an independent Python re-implementation of pcg-c's
 ::    reference C (include/pcg_variants.h) -- this also exercises the
 ::    CORRECTED advance-then-output order (rand-spec.md section 3.3; an
-::    earlier spec draft had it backwards).  +from-atom, +fold-wide, +mix,
-::    +fork, +bits, and +below have no external reference (they are this
-::    library's own design, or Lemire's algorithm applied to this
-::    library's own +step), so those are checked by direct computation of
-::    the spec'd formula and by determinism/order-sensitivity/path-
-::    sensitivity/unbiasedness properties instead.
+::    earlier spec draft had it backwards).  ++dist's value spot-checks
+::    involve /lib/math transcendentals (log/sqrt), so their expected
+::    values are read off this same ship's actual output (sanity-checked
+::    by hand against the closed-form algorithm first) rather than
+::    independently rederived in Python, which isn't guaranteed to match
+::    this codebase's correctly-rounded kernels to the last bit; ++dist's
+::    moment tests are regression checks against the THEORETICAL targets
+::    (mean/variance) at a fixed seed, with tolerances wide enough to
+::    absorb real sampling noise at n=50000 but tight enough to catch an
+::    actual algorithm bug.  +from-atom, +fold-wide, +mix, +fork, +bits,
+::    and +below have no external reference (they are this library's own
+::    design, or Lemire's algorithm applied to this library's own +step),
+::    so those are checked by direct computation of the spec'd formula and
+::    by determinism/order-sensitivity/path-sensitivity/unbiasedness
+::    properties instead.
 ::
 /+  *test,
-    rand
+    rand,
+    math
 |%
 ::  SplitMix64 KAT: first 5 outputs from seed 0, against Vigna's reference C.
 ++  test-splitmix-kat-seed-0  ^-  tang
@@ -347,5 +357,142 @@
     %+  expect-eq
       !>(`rng:rand`[%pcg p=[state=0x15ab.4f3e.beb3.372a.3aed.9a13.0cdc.0020 inc=0x6e78.9e6a.a1b9.65f5]])
       !>(r)
+  ==
+::  ++dist: value spot-checks against actual on-ship computation (these
+::  involve /lib/math transcendentals -- log/sqrt -- so the expected
+::  values below are read off this same ship's output, not independently
+::  rederived in Python, which isn't guaranteed to match this codebase's
+::  correctly-rounded kernels to the last bit).  Each is sanity-checked
+::  against the closed-form algorithm by hand (e.g. -ln(u)/lambda for
+::  +expon) before being trusted as a regression constant.
+++  test-normal  ^-  tang
+  %+  expect-eq
+    !>(`@rd`.~-0.9479938949723624)
+    !>(out:(normal:dist:rand (from-atom:seed:rand %sm64 0)))
+::  determinism: same seed -> same output (spot check; +normal's rejection
+::  loop is the one arm in ++dist where a threading bug would most likely
+::  show up as nondeterminism).
+++  test-normal-determinism  ^-  tang
+  %+  expect-eq
+    !>((normal:dist:rand (from-atom:seed:rand %phil 7)))
+    !>((normal:dist:rand (from-atom:seed:rand %phil 7)))
+++  test-normal-mv  ^-  tang
+  %+  expect-eq
+    !>(`@rd`.~8.104012210055275)
+    !>(out:(normal-mv:dist:rand (from-atom:seed:rand %sm64 0) .~10 .~2))
+++  test-normal-mv-bad-sigma  ^-  tang
+  %-  expect-fail
+  |.((normal-mv:dist:rand (from-atom:seed:rand %sm64 0) .~0 .~-1))
+::  -ln(u)/lambda, u = +rd-oo of the first SplitMix64 output (0.0205...):
+::  -ln(0.0205352...)/2 ~ 1.9428 -- matches to displayed precision.
+++  test-expon  ^-  tang
+  %+  expect-eq
+    !>(`@rd`.~1.942806871605541)
+    !>(out:(expon:dist:rand (from-atom:seed:rand %sm64 0) .~2))
+++  test-expon-bad-rate  ^-  tang
+  %-  expect-fail
+  |.((expon:dist:rand (from-atom:seed:rand %sm64 0) .~0))
+::  alpha=2 (>=1, direct Marsaglia-Tsang path).
+++  test-gamma-ge1  ^-  tang
+  %+  expect-eq
+    !>(`@rd`.~0.7179344171650754)
+    !>(out:(gamma:dist:rand (from-atom:seed:rand %sm64 0) .~2))
+::  alpha=0.5 (<1, boost path: gamma(1.5) * u^(1/0.5)).
+++  test-gamma-lt1  ^-  tang
+  %+  expect-eq
+    !>(`@rd`.~0.05447897345403265)
+    !>(out:(gamma:dist:rand (from-atom:seed:rand %sm64 0) .~0.5))
+++  test-gamma-bad-shape  ^-  tang
+  %-  expect-fail
+  |.((gamma:dist:rand (from-atom:seed:rand %sm64 0) .~0))
+++  test-beta  ^-  tang
+  %+  expect-eq
+    !>(`@rd`.~0.23622515961139348)
+    !>(out:(beta:dist:rand (from-atom:seed:rand %sm64 0) .~2 .~3))
+++  test-chi2  ^-  tang
+  %+  expect-eq
+    !>(`@rd`.~0.8261342997997718)
+    !>(out:(chi2:dist:rand (from-atom:seed:rand %sm64 0) 3))
+++  test-chi2-bad-df  ^-  tang
+  %-  expect-fail
+  |.((chi2:dist:rand (from-atom:seed:rand %sm64 0) 0))
+++  test-student-t  ^-  tang
+  %+  expect-eq
+    !>(`@rd`.~-0.7137613421937223)
+    !>(out:(student-t:dist:rand (from-atom:seed:rand %sm64 0) 5))
+++  test-student-t-bad-df  ^-  tang
+  %-  expect-fail
+  |.((student-t:dist:rand (from-atom:seed:rand %sm64 0) 0))
+::  u ~ 0.0205 < 0.5 -> %.y.
+++  test-bernoulli  ^-  tang
+  %+  expect-eq
+    !>(`?`%.y)
+    !>(out:(bernoulli:dist:rand (from-atom:seed:rand %sm64 0) .~0.5))
+++  test-bernoulli-bad-prob  ^-  tang
+  %-  expect-fail
+  |.((bernoulli:dist:rand (from-atom:seed:rand %sm64 0) .~1.5))
+++  test-geometric  ^-  tang
+  %+  expect-eq
+    !>(`@ud`11)
+    !>(out:(geometric:dist:rand (from-atom:seed:rand %sm64 0) .~0.3))
+::  p=1 edge case: returns 1 without consuming a draw (rng unchanged).
+++  test-geometric-p1  ^-  tang
+  =/  r  (from-atom:seed:rand %sm64 0)
+  =^  out  r  (geometric:dist:rand r .~1)
+  ;:  weld
+    %+  expect-eq  !>(`@ud`1)  !>(out)
+    %+  expect-eq  !>((from-atom:seed:rand %sm64 0))  !>(r)
+  ==
+++  test-geometric-bad-prob  ^-  tang
+  %-  expect-fail
+  |.((geometric:dist:rand (from-atom:seed:rand %sm64 0) .~0))
+::  Moment tests (rand-spec.md section 10 item 4): sample mean/variance at
+::  50k draws, FIXED seed -- deterministic, so this is a regression test
+::  against the theoretical constants, not a flaky statistical one.
+::  Tolerances are generous relative to the actual sampling error at
+::  n=50000 (stderr(mean) ~ sigma/sqrt(n), stderr(var) ~ sigma^2*sqrt(2/n))
+::  so a real algorithm bug (wrong constant, sign error, wrong formula)
+::  fails loudly while ordinary run-to-run noise from a fixed seed does not
+::  (there being only one fixed seed, "run-to-run" here really means
+::  "robust to this exact computation shifting by a few ULP if the
+::  underlying math kernels ever change").
+++  test-moments-normal  ^-  tang
+  =/  mv  (moments (from-atom:seed:rand %phil 0) normal:dist:rand 50.000)
+  ;:  weld
+    %+  expect-eq  !>(%.y)  !>((~(is-close rd:math [%n .~0 .~0.02]) -.mv .~0))
+    %+  expect-eq  !>(%.y)  !>((~(is-close rd:math [%n .~0 .~0.05]) +.mv .~1))
+  ==
+++  test-moments-expon  ^-  tang
+  =/  mv  (moments (from-atom:seed:rand %phil 0) |=(r=rng:rand (expon:dist:rand r .~1)) 50.000)
+  ;:  weld
+    %+  expect-eq  !>(%.y)  !>((~(is-close rd:math [%n .~0 .~0.05]) -.mv .~1))
+    %+  expect-eq  !>(%.y)  !>((~(is-close rd:math [%n .~0 .~0.05]) +.mv .~1))
+  ==
+++  test-moments-gamma  ^-  tang
+  =/  mv  (moments (from-atom:seed:rand %phil 0) |=(r=rng:rand (gamma:dist:rand r .~2)) 50.000)
+  ;:  weld
+    %+  expect-eq  !>(%.y)  !>((~(is-close rd:math [%n .~0 .~0.05]) -.mv .~2))
+    %+  expect-eq  !>(%.y)  !>((~(is-close rd:math [%n .~0 .~0.05]) +.mv .~2))
+  ==
+::  +moments: draw .n samples via .f from .r0, return [mean=@rd var=@rd]
+::  (population variance).  Shared by the three moment tests above.
+++  moments
+  |=  [r0=rng:rand f=$-(rng:rand [@rd rng:rand]) n=@]
+  ^-  [mean=@rd var=@rd]
+  =/  mth  ~(. rd:math [%n .~1e-13 .~0])
+  =/  r    r0
+  =/  i    0
+  =/  sum  .~0
+  =/  ssq  .~0
+  |-  ^-  [@rd @rd]
+  ?:  =(i n)
+    =/  ct    (sun:mth n)
+    =/  mean  (div:mth sum ct)
+    [mean (sub:mth (div:mth ssq ct) (mul:mth mean mean))]
+  =^  x  r  (f r)
+  %=  $
+    i    +(i)
+    sum  (add:mth sum x)
+    ssq  (add:mth ssq (mul:mth x x))
   ==
 --

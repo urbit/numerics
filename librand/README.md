@@ -7,7 +7,7 @@ acquisition is Arvo's job (`eny`), cryptographic randomness is Zuse's job.
 Full design is in `rand-spec.md` (repo root). Hoon reference implementation
 first, jets follow (see `rand-spec.md` section 11).
 
-## Status (milestones 1-4 of 9, `rand-spec.md` section 13)
+## Status (milestones 1-5 of 9, `rand-spec.md` section 13)
 
 Done:
 
@@ -32,9 +32,18 @@ Done:
   state FIRST and outputs from the new state. The spec and this
   implementation both now follow the verified reference order.
 
-Not yet implemented: `++dist`, `++sample`, the Saloon `+rand-ray`
-extension. See `NEXT-STEPS.md` and `rand-spec.md` section 13 for the full
-milestone order.
+- `++dist` at `@rd` — `+normal` (Marsaglia polar method), `+normal-mv`,
+  `+expon` (inversion), `+gamma` (Marsaglia-Tsang, both alpha>=1 and the
+  alpha<1 boost path), `+beta`, `+chi2`, `+student-t` (the latter two
+  aren't in the milestone's literal arm list but are one-line compositions
+  of gamma/normal, so they landed alongside rather than waiting on an
+  unscheduled slot), `+bernoulli`, `+geometric`. Moment tests (mean/
+  variance regression at 50k draws, fixed seed) for normal/expon/gamma.
+
+Not yet implemented: `++sample`, the categorical/poisson/binomial/
+dirichlet distributions and the `@rs` routing for `++dist`, the Saloon
+`+rand-ray` extension. See `NEXT-STEPS.md` and `rand-spec.md` section 13
+for the full milestone order.
 
 ## Layout
 

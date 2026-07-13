@@ -70,9 +70,9 @@
     ::  Returns the value 1/sqrt(2) (OEIS A010503).
     ::    Examples
     ::      > invsqt2
-    ::      .70710677
+    ::      .0.70710677
     ::  Source
-    ++  invsqt2  .70710677
+    ++  invsqt2  .0.70710677
     ::    +log2:  @rs
     ::
     ::  Returns the value log(2) (OEIS A002162).

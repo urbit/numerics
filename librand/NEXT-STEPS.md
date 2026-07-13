@@ -75,12 +75,18 @@ full detail):
 7. Non-float adapters, as four SEPARATE libraries (not nested in `/lib/rand`
    or `/lib/i754rand`), each importing `/lib/rand` for the engine/uni/sample
    primitives:
-   - `/lib/twocrand` -- `+twoc-full`, `+twoc-between`. Needs only `/lib/rand`
-     + `/lib/twoc`; no floats at all.
-   - `/lib/fixedrand` -- `+fixed`, `+fixed-unit`, `+fixed-between`
+   - DONE: `/lib/twocrand` -- `+twoc-full`, `+twoc-between`. Needs only
+     `/lib/rand` + `/lib/twoc`; no floats at all.
+   - DONE: `/lib/fixedrand` -- `+fixed`, `+fixed-unit`, `+fixed-between`
      (delegates to `twocrand`'s `+twoc-between`). Needs `/lib/rand` +
-     `twocrand` + `/lib/fixed` (which needs a `+from-rd` added, mirroring
-     its existing `+from-rs` -- currently absent).
+     `twocrand` + `/lib/fixed` (needed a `+from-rd` added, mirroring its
+     existing `+from-rs` -- done). Footgun hit and documented: `+fixed`
+     (the arm, matching rand-spec.md's public API) collides with `fixed`
+     (the imported library face), since a same-named battery arm shadows
+     an imported face throughout its own core -- same class of bug
+     `/lib/fixed` itself hit renaming `+twoc` to `+neg`. Fixed here by
+     aliasing the import (`/+ fx=fixed`) instead of renaming the arm,
+     since the arm name is spec-mandated and the import name isn't.
    - `/lib/complexrand` -- `+cuniform`, `+normal-parts`, `+cnormal`,
      `+on-circle`, `+in-disk`. Every arm here draws floats directly, so
      this one DOES depend on `/lib/i754rand` (for `+rd:uni`/`+rd-oo:uni`),
@@ -99,8 +105,9 @@ full detail):
      `+from-rd` once it's added to `/lib/fixed`). Revisit if real callers
      end up wanting the same composition in more than one or two places.
    - Split into two passes: twocrand + fixedrand + complexrand first
-     (mechanical, same ship-verification rhythm as prior milestones); then
-     unumrand alone, since `++posit-unit`'s value-uniformity claim needs a
+     (mechanical, same ship-verification rhythm as prior milestones --
+     twocrand and fixedrand are DONE, complexrand remains); then unumrand
+     alone, since `++posit-unit`'s value-uniformity claim needs a
      NEW mpmath oracle script (`librand/tools/posit_unit_check.py`,
      alongside `unum_cheb_check.py`) before it can be trusted, unlike
      everything shipped so far which either had a real external KAT or was

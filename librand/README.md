@@ -32,7 +32,7 @@ their own core uniform-generation arms, only optionally for a "sample at
 `@rd`, then quantize/convert" pattern (documented, not shipped as
 dedicated wrapper arms — see `NEXT-STEPS.md`).
 
-## Status (milestones 1-6 of 9, `rand-spec.md` section 13)
+## Status (milestones 1-7 pass 1 (partial) of 9, `rand-spec.md` section 13)
 
 Done, in `/lib/rand`:
 
@@ -77,9 +77,22 @@ Done, in `/lib/i754rand`:
   `+dirichlet`. Moment tests (mean/variance regression at 50k draws,
   fixed seed) for normal/expon/gamma.
 
-Not yet implemented: non-float adapters (twocrand/fixedrand/complexrand/
-unumrand), the Saloon `+rand-ray` extension. See `NEXT-STEPS.md` and
-`rand-spec.md` section 13 for the full milestone order.
+Done, non-float output adapters (rand-spec.md section 12):
+
+- `/lib/twocrand` — `+twoc-full` (raw-bit passthrough), `+twoc-between`
+  (Lemire-unbiased inclusive range in two's-complement order, via
+  `/lib/twoc`'s width-keyed `+twid` door).
+- `/lib/fixedrand` — `+fixed`, `+fixed-unit` (both raw-bit passthroughs —
+  a fixed-point lattice is uniform by construction), `+fixed-between`
+  (delegates to `twocrand`'s `+twoc-between`). The "sample at `@rd`,
+  quantize" distribution pattern is documented, not shipped as dedicated
+  wrapper arms; `tests/lib/fixedrand.hoon` proves the composition
+  end to end via `/lib/fixed`'s `+from-rd` (added alongside this adapter).
+
+Not yet implemented: `/lib/complexrand` (rest of milestone 7 pass 1),
+`/lib/unumrand` (milestone 7 pass 2), the Saloon `+rand-ray` extension.
+See `NEXT-STEPS.md` and `rand-spec.md` section 13 for the full milestone
+order.
 
 ## Layout
 
@@ -90,6 +103,10 @@ librand/
   desk/sur/rand.hoon              :: +$rng, +$phil, +$sm64, +$pcg64
   desk/lib/rand.hoon              :: the plumbing
   desk/lib/i754rand.hoon          :: the IEEE-754 porcelain
+  desk/lib/twocrand.hoon          :: two's-complement integer adapter
+  desk/lib/fixedrand.hoon         :: fixed-point adapter
   desk/tests/lib/rand.hoon        :: -test %/tests/lib/rand ~
   desk/tests/lib/i754rand.hoon    :: -test %/tests/lib/i754rand ~
+  desk/tests/lib/twocrand.hoon    :: -test %/tests/lib/twocrand ~
+  desk/tests/lib/fixedrand.hoon   :: -test %/tests/lib/fixedrand ~
 ```

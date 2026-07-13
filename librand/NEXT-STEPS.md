@@ -178,7 +178,25 @@ full detail):
      individually exceed 1/32 of the mass, so `--bins 32` yields fewer
      than 32 actual bins -- expected, see the script's own comment),
      chi-square = 26.86 on 19 dof, p = 0.108 -- consistent with the exact
-     expected distribution at any standard significance level. posit16's
+     expected distribution at any standard significance level.
+   - DONE (added post-milestone-9, for a paper on this construction --
+     see `~/Documents/journal-posit-prng/`): exhaustive input-space
+     verification at posit8. `librand/tools/posit8_exhaustive.c` is a
+     from-scratch C re-derivation of the encode logic (not a
+     transliteration of `posit_unit_check.py`'s own `encode()` --
+     deliberately independent, so a translation bug in one isn't
+     invisible to the other), enumerating all 2^32 possible numerators u
+     and tallying per-pattern counts exactly. Cross-validated against the
+     Python `encode()` on 2,000,000 random u plus the domain edges before
+     being trusted (zero mismatches), then run to completion (~6s at
+     `-O3`) and compared against `expected_probabilities('posit8')`'s
+     numerators EXACTLY -- 65/65 patterns match, all 2^32 draws
+     accounted for. This eliminates sampling error entirely at posit8;
+     the chi-square result above is now a corroborating footnote, not
+     the load-bearing evidence. Run via
+     `python3 librand/tools/posit_unit_check.py exhaustive8` (compiles
+     and runs the C harness, then does the comparison, all in one
+     command). posit16's
      command is documented and ready to run the same way but wasn't
      executed in this pass (extracting a large enough on-ship sample is
      more awkward at that width, and its 65,536-entry histogram would be

@@ -241,6 +241,51 @@ def cmd_chi2(args):
             print(f"  bin {i:3d}: patterns={len(pats):5d} observed={observed:6d} "
                   f"expected={float(expected):9.2f} term={float(term):.4f}")
 
+def cmd_exhaustive8(args):
+    """Compile and run posit8_exhaustive.c (an independent, from-scratch C
+    re-derivation of the encode logic, not a transliteration of this
+    file's own encode()), then compare its full 2**32-numerator tally
+    against expected_probabilities('posit8') EXACTLY -- eliminates
+    sampling error entirely, since it's a complete enumeration of the
+    construction's domain, not a statistical sample."""
+    import subprocess, os, tempfile
+    here = os.path.dirname(os.path.abspath(__file__))
+    src = os.path.join(here, 'posit8_exhaustive.c')
+    with tempfile.TemporaryDirectory() as td:
+        binf = os.path.join(td, 'posit8_exhaustive')
+        countsf = os.path.join(td, 'counts.txt')
+        print(f"compiling {src}...")
+        subprocess.run(['cc', '-O3', '-o', binf, src], check=True)
+        print("running (full 2^32 enumeration)...")
+        with open(countsf, 'w') as f:
+            subprocess.run([binf], stdout=f, check=True)
+        exhaustive = {}
+        total = 0
+        with open(countsf) as f:
+            for line in f:
+                p, c = line.split()
+                exhaustive[int(p)] = int(c)
+                total += int(c)
+        assert total == 1 << 32, f"expected 2**32 total, got {total}"
+
+    probs, entries = expected_probabilities('posit8')
+    mismatches = 0
+    for pattern, frac in probs.items():
+        assert (1 << 32) % frac.denominator == 0, (pattern, frac)
+        expected_count = frac.numerator * ((1 << 32) // frac.denominator)
+        got = exhaustive.get(pattern, 0)
+        if got != expected_count:
+            print(f"  MISMATCH pattern=0x{pattern:02x} expected={expected_count} got={got}")
+            mismatches += 1
+    for pattern, count in exhaustive.items():
+        if pattern not in probs:
+            print(f"  UNEXPECTED pattern=0x{pattern:02x} count={count}")
+            mismatches += 1
+    print(f"patterns checked: {len(probs)}, total enumerated: {total} (== 2**32: {total == 1<<32})")
+    print("EXACT MATCH -- zero sampling error at posit8" if mismatches == 0
+          else f"FAILED -- {mismatches} mismatches")
+    return mismatches
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -256,6 +301,10 @@ def main():
     c.add_argument('--bins', type=int, default=32)
     c.add_argument('--verbose', action='store_true')
     c.set_defaults(func=cmd_chi2)
+
+    x = sub.add_parser('exhaustive8',
+                        help='compile+run posit8_exhaustive.c, compare against the oracle exactly')
+    x.set_defaults(func=cmd_exhaustive8)
 
     args = ap.parse_args()
     args.func(args)

@@ -65,12 +65,14 @@
   |%
   ::    +posit-lattice:  rng -> [@ rng]
   ::    Examples
-  ::      > (posit-lattice:rpb:unumrand (from-atom:seed:rand %sm64 0))
+  ::      > `@ux`out:(posit-lattice:rpb:unumrand (from-atom:seed:rand %sm64 0))
+  ::      0xaf
   ::  Source
   ++  posit-lattice  |=(r=rng:rand (pl r 3))
   ::    +posit-unit:  rng -> [@ rng]
   ::    Examples
-  ::      > (posit-unit:rpb:unumrand (from-atom:seed:rand %sm64 0))
+  ::      > `@ux`out:(posit-unit:rpb:unumrand (from-atom:seed:rand %sm64 0))
+  ::      0x37
   ::  Source
   ++  posit-unit     |=(r=rng:rand (pu r 3 32))
   --
@@ -78,26 +80,56 @@
 ::  Source
 ++  rph
   |%
+  ::    +posit-lattice:  rng -> [@ rng]
+  ::    Examples
+  ::      > `@ux`out:(posit-lattice:rph:unumrand (from-atom:seed:rand %sm64 0))
+  ::      0xcdaf
+  ::  Source
   ++  posit-lattice  |=(r=rng:rand (pl r 4))
+  ::    +posit-unit:  rng -> [@ rng]
+  ::    Examples
+  ::      > `@ux`out:(posit-unit:rph:unumrand (from-atom:seed:rand %sm64 0))
+  ::      0x3e22
+  ::  Source
   ++  posit-unit     |=(r=rng:rand (pu r 4 64))
   --
 ::    +rps:  posit32 (n=32) adapters.
 ::  Source
 ++  rps
   |%
+  ::    +posit-lattice:  rng -> [@ rng]
+  ::    Examples
+  ::      > `@ux`out:(posit-lattice:rps:unumrand (from-atom:seed:rand %sm64 0))
+  ::      0x7b1d.cdaf
+  ::  Source
   ++  posit-lattice  |=(r=rng:rand (pl r 5))
+  ::    +posit-unit:  rng -> [@ rng]
+  ::    Examples
+  ::      > `@ux`out:(posit-unit:rps:unumrand (from-atom:seed:rand %sm64 0))
+  ::      0x35cf.13cd
+  ::  Source
   ++  posit-unit     |=(r=rng:rand (pu r 5 128))
   --
 ::    +rpd:  posit64 (n=64) adapter -- +posit-lattice only (see header).
 ::  Source
 ++  rpd
   |%
+  ::    +posit-lattice:  rng -> [@ rng]
+  ::    Examples
+  ::      > `@ux`out:(posit-lattice:rpd:unumrand (from-atom:seed:rand %sm64 0))
+  ::      0xe220.a839.7b1d.cdaf
+  ::  Source
   ++  posit-lattice  |=(r=rng:rand (pl r 6))
   --
 ::    +rpq:  posit128 (n=128) adapter -- +posit-lattice only (see header).
 ::  Source
 ++  rpq
   |%
+  ::    +posit-lattice:  rng -> [@ rng]
+  ::    Examples
+  ::      > `@ux`out:(posit-lattice:rpq:unumrand (from-atom:seed:rand %sm64 0))
+  ::      0x6e78.9e6a.a1b9.65f4.e220.a839.7b1d.cdaf
+  ::  Source
   ++  posit-lattice  |=(r=rng:rand (pl r 7))
   --
 --

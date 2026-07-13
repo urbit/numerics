@@ -146,7 +146,7 @@
   ::  with its own index as a harmless unused alias.
   ::    Examples
   ::      > (build:alias:i754rand ~[.~1 .~1 .~2])
-  ::      [n=3 prob=~[.~0.75 .~1 .~0.5] alias=~[2 1 2]]
+  ::      [n=3 prob=~[.~0.75 .~0.75 .~1] alias=~[2 2 2]]
   ::  Source
   ++  build
     |=  weights=(list @rd)

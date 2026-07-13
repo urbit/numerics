@@ -1,7 +1,7 @@
 # SPEC: `/lib/rand` — Deterministic Random Number Generation for Urbit Numerics
 
 **Target repo:** `urbit/numerics`, new directory `librand/` (structured like `libmath/`), with a Saloon extension for ray-filling.
-**Status:** Draft for implementation. Hoon reference implementation first; jets follow.
+**Status:** Implemented. All nine milestones (section 13) are done — see `librand/README.md` and `librand/NEXT-STEPS.md` (including its "Deferred to v2" section for what's intentionally out of scope) for the current state. Jetting (section 11) remains a follow-up milestone.
 **Dependencies:** `/lib/math` (float transcendentals), `/lib/twoc` (width-keyed modular integers), optionally `/lib/unum` and `/lib/fixed` for output adapters. Saloon layer depends on `/lib/lagoon`.
 
 ---

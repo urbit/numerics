@@ -2,8 +2,11 @@
 ::::  /lib/complexrand -- complex-number output adapter (rand-spec.md
 ::::  section 12.3)
 ::
-::  One arm set per component-width door, matching /lib/complex's own
-::  ship order: `++cd` (double, @cd) first, `++cs` (single, @cs) second.
+::  One arm set per component-width door: `++cd` (double, @cd, the
+::  reference precision) first, `++cs` (single, @cs, a mechanical
+::  re-instantiation of the same arms) second -- matching /lib/i754rand's
+::  own `++rd`-then-`++rs` convention, NOT /lib/complex's file order
+::  (which actually defines `++cs` before `++cd`).
 ::  Every arm here draws floats directly (there is no raw-bit passthrough
 ::  the way twocrand/fixedrand have), so -- unlike those two -- this
 ::  adapter DOES depend on /lib/i754rand (for +rd:uni/+rd-oo:uni and

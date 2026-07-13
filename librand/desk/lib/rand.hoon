@@ -627,7 +627,7 @@
   ::  preserved for the caller (a dry `(list)` would erase it to `*`).
   ::    Examples
   ::      > (shuffle:sample (from-atom:seed:rand %sm64 0) ~[1 2 3 4 5])
-  ::      [~[4 1 3 5 2] [%sm64 s=0x1715.609f.7c74.6c69]]
+  ::      [~[3 4 1 2 5] [%sm64 s=0x78dd.e6e5.fd29.f054]]
   ::  Source
   ++  shuffle
     |*  [r=rng l=(list)]

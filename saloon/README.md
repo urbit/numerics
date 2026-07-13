@@ -47,6 +47,22 @@ Linear algebra (over Lagoon arrays):
 Set rounding mode and tolerance with `++sake` before calling `++eig` (the bare
 `++sa` default `rtol` is unusable); `rtol`'s width must match the component.
 
+Random array filling (`rand-spec.md` section 8, in `/Users/neal/urbit/numerics/librand/`):
+
+- `++fill-uniform`, `++fill-normal`, `++fill-expon` — fill an `%i754` ray
+  (bloq 5/6, `@rs`/`@rd` only) element-by-element in row-major order from
+  an `/lib/rand` engine. Philox elements get per-element counter
+  treatment so a future jet can parallelize across elements and land
+  identical bits regardless of thread scheduling: `++fill-uniform`'s
+  single non-rejecting draw assigns element `i` counter `ctr0+i`
+  directly; the rejection-based `++fill-normal`/`++fill-expon` instead
+  give each element a `ctr0 + i*2^32` counter *window* to walk freely
+  within, with an explicit crash if one element's rejection loop ever
+  exhausts its own window.
+- `++fill-below` — fill a `%uint` ray via Lemire's unbiased method, same
+  per-element windowing.
+- Posit (`%unum`) rays are deferred (see librand's `NEXT-STEPS.md`).
+
 ##  References
 
 - Milton Abramowitz & Irene Stegun, _Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables_.  1964–2010.

@@ -73,6 +73,29 @@
       !>(out:(expon:rd:dist:i754rand [%phil p=[key0 0]] .~2))
       !>((end [0 64] data.ray.res))
   ==
+::  +fill-normal, %sm64 (sequential): same cross-check style as
+::  +fill-uniform's %sm64 test.
+++  test-fill-normal-sm64  ^-  tang
+  =/  res  (fill-normal:sa [~[2] 6 %i754 ~] (from-atom:seed:rand %sm64 0))
+  =/  a0  (from-atom:seed:rand %sm64 0)
+  =^  e0  a0  (normal:rd:dist:i754rand a0)
+  =^  e1  a0  (normal:rd:dist:i754rand a0)
+  ;:  weld
+    %+  expect-eq  !>(e0)  !>((end [0 64] data.ray.res))
+    %+  expect-eq  !>(e1)  !>((cut 0 [64 64] data.ray.res))
+    %+  expect-eq  !>(a0)  !>(r.res)
+  ==
+::  +fill-expon, %sm64 (sequential).
+++  test-fill-expon-sm64  ^-  tang
+  =/  res  (fill-expon:sa [~[2] 6 %i754 ~] (from-atom:seed:rand %sm64 0) .~2)
+  =/  a0  (from-atom:seed:rand %sm64 0)
+  =^  e0  a0  (expon:rd:dist:i754rand a0 .~2)
+  =^  e1  a0  (expon:rd:dist:i754rand a0 .~2)
+  ;:  weld
+    %+  expect-eq  !>(e0)  !>((end [0 64] data.ray.res))
+    %+  expect-eq  !>(e1)  !>((cut 0 [64 64] data.ray.res))
+    %+  expect-eq  !>(a0)  !>(r.res)
+  ==
 ::  +fill-below, %sm64: elements are plain sequential Lemire draws.
 ++  test-fill-below-sm64  ^-  tang
   =/  res  (fill-below:sa [~[1] 5 %uint ~] 100 (from-atom:seed:rand %sm64 0))
@@ -86,7 +109,33 @@
 ++  test-fill-uniform-bad-bloq-crashes  ^-  tang
   %-  expect-fail
   |.((fill-uniform:sa [~[2] 7 %i754 ~] (from-atom:seed:rand %sm64 0)))
+++  test-fill-normal-bad-kind-crashes  ^-  tang
+  %-  expect-fail
+  |.((fill-normal:sa [~[2] 5 %uint ~] (from-atom:seed:rand %sm64 0)))
+++  test-fill-normal-bad-bloq-crashes  ^-  tang
+  %-  expect-fail
+  |.((fill-normal:sa [~[2] 7 %i754 ~] (from-atom:seed:rand %sm64 0)))
+++  test-fill-expon-bad-kind-crashes  ^-  tang
+  %-  expect-fail
+  |.((fill-expon:sa [~[2] 5 %uint ~] (from-atom:seed:rand %sm64 0) .~2))
+++  test-fill-expon-bad-bloq-crashes  ^-  tang
+  %-  expect-fail
+  |.((fill-expon:sa [~[2] 7 %i754 ~] (from-atom:seed:rand %sm64 0) .~2))
 ++  test-fill-below-bad-kind-crashes  ^-  tang
   %-  expect-fail
   |.((fill-below:sa [~[2] 5 %i754 ~] 100 (from-atom:seed:rand %sm64 0)))
+::  +fill-windowed's own window-exhaustion crash (rand-spec.md section 8:
+::  "window exhaustion... crash if it happens"), exercised directly since
+::  no real /lib/i754rand rejection loop will ever plausibly walk past a
+::  2^32-draw window -- a hand-built .draw gate that always claims to
+::  have consumed 2^40 sub-draws stands in for that astronomically
+::  improbable case.
+++  test-fill-window-exhausted-crashes  ^-  tang
+  %-  expect-fail
+  |.
+  %^  fill-windowed:sa  [~[1] 6 %i754 ~]  (from-atom:seed:rand %phil 0)
+  |=  rr=rng:rand
+  ^-  [@ rng:rand]
+  ?>  ?=(%phil -.rr)
+  [0 rr(ctr.p (add ctr.p.rr (bex 40)))]
 --

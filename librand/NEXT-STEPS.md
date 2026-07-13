@@ -1,6 +1,11 @@
 # `/lib/rand` — next steps
 
-Status as of 2026-07-12. Milestones 1-6 (`rand-spec.md` section 13) are done:
+Status as of 2026-07-13: **all nine milestones of `rand-spec.md` section 13
+are done.** This file is a development log (decisions, footguns, bugs
+found and fixed) kept in full rather than rewritten, per this project's own
+convention of not silently erasing history — see "Deferred to v2" at the
+bottom for what's actually left to do. Milestones 1-6 (`rand-spec.md`
+section 13) landed first:
 `++split-mix`, `++philox`, `++seed`, `+step`, `+fork`, `++gen`, `++uni`,
 `++pcg`, `++dist` (both `++rd` and `++rs`), `++sample` -- KAT-verified
 against Vigna's reference SplitMix64, the Random123 `kat_vectors` file, an
@@ -246,6 +251,59 @@ full detail):
      counter (not just "doesn't crash") -- see `tests/lib/saloon-rand-
      ray.hoon` in the `saloon` desk (not `librand`, since the code lives
      in Saloon).
-9. Full README rewrite + this file's final pass (ziggurat, BTPE, buffered
-   Philox, posit rays, quire Monte Carlo note, `@rh`/`@rq` distributions —
-   all deliberately deferred out of v1, per `rand-spec.md`).
+9. DONE: full README rewrite + this file's final pass (this section).
+
+## Deferred to v2
+
+Six items, all deliberately out of v1 scope per `rand-spec.md`. None of
+these are bugs or gaps in what's shipped — they're follow-on work a future
+session can pick up independently, in no particular order:
+
+- **Ziggurat.** `+normal`/`+expon` use Marsaglia polar / inversion, which
+  are simple and correctly rounded but do a `+sqt`/`+log` call per
+  accepted sample (Marsaglia's rejection rate is ~21.5%, so ~1.27 draws
+  and one transcendental call per deviate on average). Ziggurat avoids
+  the transcendental call entirely in the common case via precomputed
+  layer tables, at the cost of real implementation complexity (building
+  and validating the tables) for a speedup that mostly matters once these
+  arms are jetted. Not worth it before then.
+- **BTPE for `+binomial`.** The current inversion-by-CDF-accumulation
+  method crashes above `n*min(p,1-p) >= 30` (the recurrence gets slow and
+  numerically risky past that point). Kachitvichyanukul & Schmeiser's
+  BTPE algorithm (Binomial, Triangle, Parallelogram, Exponential regions)
+  handles the large-n regime in O(1) expected time, but it's a
+  substantially more involved algorithm than anything else in `++dist` —
+  a real follow-on project, not a quick add.
+- **Buffered Philox.** `+step`'s `%phil` branch keeps only the low 64
+  bits of each 128-bit Philox4x32-10 block and discards the high 64 bits
+  (`/lib/rand`'s own `+step` doc comment: "wasting them is acceptable at
+  v1... a buffered variant that reuses both halves is a NEXT-STEPS
+  item"). A buffered variant would cache the unused half and serve it on
+  the *next* `+step` call instead of computing a fresh block, roughly
+  doubling sequential throughput with zero extra Philox rounds. Doesn't
+  change any output bit-for-bit; purely a performance follow-up, and one
+  that interacts with jetting (the cache would need to live in the `rng`
+  noun itself, changing `+$phil`'s shape) so it's more natural to do
+  alongside milestone 11's jetting work than before it.
+- **Posit rays.** Saloon's `+rand-ray` (milestone 8) only fills `%i754`
+  rays. Extending `+fill-uniform`/`+fill-normal`/etc. to `%unum`-kind rays
+  (posit-valued Lagoon arrays), using `/lib/unumrand`'s `+posit-unit`/
+  `+posit-lattice` as the per-element generator, is mechanically similar
+  to the existing `%i754` path but was out of scope for the milestone
+  that shipped it.
+- **Quire Monte Carlo.** Noted when `/lib/unumrand` shipped: `/lib/unum`'s
+  quire (`+fdp`, Type III unums' exact fixed-point accumulator) makes
+  sample *sums* singly-rounded — a capability hardware IEEE floats simply
+  don't have (every float addition in an accumulation loop rounds; a
+  quire-based reduction rounds exactly once, at the very end). This is a
+  genuinely novel capability worth designing a Monte-Carlo-reduction API
+  around, but it's a design project in its own right, not a small
+  addition to an existing arm.
+- **`@rh`/`@rq` distributions.** `/lib/i754rand`'s `++dist` only has
+  `++rd` (reference, double)/`++rs` (single) mirrors, matching
+  rand-spec.md's own scoping ("each arm exists at @rd (reference) and
+  @rs"). Half (`@rh`) and quad (`@rq`) precision distributions were never
+  in v1 scope; adding them is a mechanical re-instantiation of the same
+  algorithms (matching how `++rs` itself was built as a mirror of
+  `++rd`), gated only by whether a real caller needs sub-single or
+  above-double precision sampling.

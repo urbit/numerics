@@ -399,59 +399,59 @@
       ?+    bloq  !!
           %7
         ?-  fun
-          %neg        ~(neg rq:math [rnd rtol])
-          %factorial  ~(factorial rq:math [rnd rtol])
-          %exp        ~(exp rq:math [rnd rtol])
-          %sin        ~(sin rq:math [rnd rtol])
-          %cos        ~(cos rq:math [rnd rtol])
-          %tan        ~(tan rq:math [rnd rtol])
-          %log        ~(log rq:math [rnd rtol])
-          %log-10     ~(log-10 rq:math [rnd rtol])
-          %log-2      ~(log-2 rq:math [rnd rtol])
-          %sqrt       ~(sqrt rq:math [rnd rtol])
-          %cbrt       ~(cbrt rq:math [rnd rtol])
+          %neg        ~(neg rq:math [rnd rtol `@rq`0])
+          %factorial  ~(factorial rq:math [rnd rtol `@rq`0])
+          %exp        ~(exp rq:math [rnd rtol `@rq`0])
+          %sin        ~(sin rq:math [rnd rtol `@rq`0])
+          %cos        ~(cos rq:math [rnd rtol `@rq`0])
+          %tan        ~(tan rq:math [rnd rtol `@rq`0])
+          %log        ~(log rq:math [rnd rtol `@rq`0])
+          %log-10     ~(log-10 rq:math [rnd rtol `@rq`0])
+          %log-2      ~(log-2 rq:math [rnd rtol `@rq`0])
+          %sqrt       ~(sqrt rq:math [rnd rtol `@rq`0])
+          %cbrt       ~(cbrt rq:math [rnd rtol `@rq`0])
         ==  ::  fun
           %6
         ?-  fun
-          %neg        ~(neg rd:math [rnd rtol])
-          %factorial  ~(factorial rd:math [rnd rtol])
-          %exp        ~(exp rd:math [rnd rtol])
-          %sin        ~(sin rd:math [rnd rtol])
-          %cos        ~(cos rd:math [rnd rtol])
-          %tan        ~(tan rd:math [rnd rtol])
-          %log        ~(log rd:math [rnd rtol])
-          %log-10     ~(log-10 rd:math [rnd rtol])
-          %log-2      ~(log-2 rd:math [rnd rtol])
-          %sqrt       ~(sqrt rd:math [rnd rtol])
-          %cbrt       ~(cbrt rd:math [rnd rtol])
+          %neg        ~(neg rd:math [rnd rtol `@rd`0])
+          %factorial  ~(factorial rd:math [rnd rtol `@rd`0])
+          %exp        ~(exp rd:math [rnd rtol `@rd`0])
+          %sin        ~(sin rd:math [rnd rtol `@rd`0])
+          %cos        ~(cos rd:math [rnd rtol `@rd`0])
+          %tan        ~(tan rd:math [rnd rtol `@rd`0])
+          %log        ~(log rd:math [rnd rtol `@rd`0])
+          %log-10     ~(log-10 rd:math [rnd rtol `@rd`0])
+          %log-2      ~(log-2 rd:math [rnd rtol `@rd`0])
+          %sqrt       ~(sqrt rd:math [rnd rtol `@rd`0])
+          %cbrt       ~(cbrt rd:math [rnd rtol `@rd`0])
         ==  ::  fun
           %5
         ?-  fun
-          %neg        ~(neg rs:math [rnd rtol])
-          %factorial  ~(factorial rs:math [rnd rtol])
-          %exp        ~(exp rs:math [rnd rtol])
-          %sin        ~(sin rs:math [rnd rtol])
-          %cos        ~(cos rs:math [rnd rtol])
-          %tan        ~(tan rs:math [rnd rtol])
-          %log        ~(log rs:math [rnd rtol])
-          %log-10     ~(log-10 rs:math [rnd rtol])
-          %log-2      ~(log-2 rs:math [rnd rtol])
-          %sqrt       ~(sqrt rs:math [rnd rtol])
-          %cbrt       ~(cbrt rs:math [rnd rtol])
+          %neg        ~(neg rs:math [rnd rtol `@rs`0])
+          %factorial  ~(factorial rs:math [rnd rtol `@rs`0])
+          %exp        ~(exp rs:math [rnd rtol `@rs`0])
+          %sin        ~(sin rs:math [rnd rtol `@rs`0])
+          %cos        ~(cos rs:math [rnd rtol `@rs`0])
+          %tan        ~(tan rs:math [rnd rtol `@rs`0])
+          %log        ~(log rs:math [rnd rtol `@rs`0])
+          %log-10     ~(log-10 rs:math [rnd rtol `@rs`0])
+          %log-2      ~(log-2 rs:math [rnd rtol `@rs`0])
+          %sqrt       ~(sqrt rs:math [rnd rtol `@rs`0])
+          %cbrt       ~(cbrt rs:math [rnd rtol `@rs`0])
         ==  ::  fun
           %4
         ?-  fun
-          %neg        ~(neg rh:math [rnd rtol])
-          %factorial  ~(factorial rh:math [rnd rtol])
-          %exp        ~(exp rh:math [rnd rtol])
-          %sin        ~(sin rh:math [rnd rtol])
-          %cos        ~(cos rh:math [rnd rtol])
-          %tan        ~(tan rh:math [rnd rtol])
-          %log        ~(log rh:math [rnd rtol])
-          %log-10     ~(log-10 rh:math [rnd rtol])
-          %log-2      ~(log-2 rh:math [rnd rtol])
-          %sqrt       ~(sqrt rh:math [rnd rtol])
-          %cbrt       ~(cbrt rh:math [rnd rtol])
+          %neg        ~(neg rh:math [rnd rtol `@rh`0])
+          %factorial  ~(factorial rh:math [rnd rtol `@rh`0])
+          %exp        ~(exp rh:math [rnd rtol `@rh`0])
+          %sin        ~(sin rh:math [rnd rtol `@rh`0])
+          %cos        ~(cos rh:math [rnd rtol `@rh`0])
+          %tan        ~(tan rh:math [rnd rtol `@rh`0])
+          %log        ~(log rh:math [rnd rtol `@rh`0])
+          %log-10     ~(log-10 rh:math [rnd rtol `@rh`0])
+          %log-2      ~(log-2 rh:math [rnd rtol `@rh`0])
+          %sqrt       ~(sqrt rh:math [rnd rtol `@rh`0])
+          %cbrt       ~(cbrt rh:math [rnd rtol `@rh`0])
         ==  ::  fun
       ==  ::  bloq
       ::
@@ -496,23 +496,23 @@
       ?+    bloq.meta  !!
           %7
         ?-  fun
-          %pow-n      ~(pow-n rq:math [rnd rtol])
-          %pow        ~(pow rq:math [rnd rtol])
+          %pow-n      ~(pow-n rq:math [rnd rtol `@rq`0])
+          %pow        ~(pow rq:math [rnd rtol `@rq`0])
         ==  ::  fun
           %6
         ?-  fun
-          %pow-n      ~(pow-n rd:math [rnd rtol])
-          %pow        ~(pow rd:math [rnd rtol])
+          %pow-n      ~(pow-n rd:math [rnd rtol `@rd`0])
+          %pow        ~(pow rd:math [rnd rtol `@rd`0])
         ==  ::  fun
           %5
         ?-  fun
-          %pow-n      ~(pow-n rs:math [rnd rtol])
-          %pow        ~(pow rs:math [rnd rtol])
+          %pow-n      ~(pow-n rs:math [rnd rtol `@rs`0])
+          %pow        ~(pow rs:math [rnd rtol `@rs`0])
         ==  ::  fun
           %4
         ?-  fun
-          %pow-n      ~(pow-n rh:math [rnd rtol])
-          %pow        ~(pow rh:math [rnd rtol])
+          %pow-n      ~(pow-n rh:math [rnd rtol `@rh`0])
+          %pow        ~(pow rh:math [rnd rtol `@rh`0])
         ==  ::  fun
       ==  ::  bloq
       ::  posits (/lib/unum): bloq 3/4/5/6.
@@ -544,13 +544,13 @@
   ::    6=@rd, 7=@rq).  Each takes the bloq as its first argument and operates on
   ::    raw component atoms.
   ::
-  ++  fadd  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(add rh:math [rnd rtol]) x y) ?:(=(5 b) (~(add rs:math [rnd rtol]) x y) ?:(=(6 b) (~(add rd:math [rnd rtol]) x y) (~(add rq:math [rnd rtol]) x y))))))
-  ++  fsub  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(sub rh:math [rnd rtol]) x y) ?:(=(5 b) (~(sub rs:math [rnd rtol]) x y) ?:(=(6 b) (~(sub rd:math [rnd rtol]) x y) (~(sub rq:math [rnd rtol]) x y))))))
-  ++  fmul  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(mul rh:math [rnd rtol]) x y) ?:(=(5 b) (~(mul rs:math [rnd rtol]) x y) ?:(=(6 b) (~(mul rd:math [rnd rtol]) x y) (~(mul rq:math [rnd rtol]) x y))))))
-  ++  fdiv  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(div rh:math [rnd rtol]) x y) ?:(=(5 b) (~(div rs:math [rnd rtol]) x y) ?:(=(6 b) (~(div rd:math [rnd rtol]) x y) (~(div rq:math [rnd rtol]) x y))))))
-  ++  fabs  |=([b=@ x=@] ^-(@ ?:(=(4 b) (~(abs rh:math [rnd rtol]) x) ?:(=(5 b) (~(abs rs:math [rnd rtol]) x) ?:(=(6 b) (~(abs rd:math [rnd rtol]) x) (~(abs rq:math [rnd rtol]) x))))))
-  ++  fgte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(gte rh:math [rnd rtol]) x y) ?:(=(5 b) (~(gte rs:math [rnd rtol]) x y) ?:(=(6 b) (~(gte rd:math [rnd rtol]) x y) (~(gte rq:math [rnd rtol]) x y))))))
-  ++  flte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(lte rh:math [rnd rtol]) x y) ?:(=(5 b) (~(lte rs:math [rnd rtol]) x y) ?:(=(6 b) (~(lte rd:math [rnd rtol]) x y) (~(lte rq:math [rnd rtol]) x y))))))
+  ++  fadd  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(add rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(add rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(add rd:math [rnd rtol `@rd`0]) x y) (~(add rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  fsub  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(sub rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(sub rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(sub rd:math [rnd rtol `@rd`0]) x y) (~(sub rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  fmul  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(mul rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(mul rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(mul rd:math [rnd rtol `@rd`0]) x y) (~(mul rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  fdiv  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(div rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(div rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(div rd:math [rnd rtol `@rd`0]) x y) (~(div rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  fabs  |=([b=@ x=@] ^-(@ ?:(=(4 b) (~(abs rh:math [rnd rtol `@rh`0]) x) ?:(=(5 b) (~(abs rs:math [rnd rtol `@rs`0]) x) ?:(=(6 b) (~(abs rd:math [rnd rtol `@rd`0]) x) (~(abs rq:math [rnd rtol `@rq`0]) x))))))
+  ++  fgte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(gte rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(gte rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(gte rd:math [rnd rtol `@rd`0]) x y) (~(gte rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  flte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(lte rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(lte rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(lte rd:math [rnd rtol `@rd`0]) x y) (~(lte rq:math [rnd rtol `@rq`0]) x y))))))
   ++  f0    |=(b=@ ^-(@ ?:(=(4 b) .~~0 ?:(=(5 b) .0 ?:(=(6 b) .~0 .~~~0)))))
   ++  f1    |=(b=@ ^-(@ ?:(=(4 b) .~~1 ?:(=(5 b) .1 ?:(=(6 b) .~1 .~~~1)))))
   ++  f2    |=(b=@ ^-(@ ?:(=(4 b) .~~2 ?:(=(5 b) .2 ?:(=(6 b) .~2 .~~~2)))))

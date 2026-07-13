@@ -87,10 +87,19 @@ full detail):
      `/lib/fixed` itself hit renaming `+twoc` to `+neg`. Fixed here by
      aliasing the import (`/+ fx=fixed`) instead of renaming the arm,
      since the arm name is spec-mandated and the import name isn't.
-   - `/lib/complexrand` -- `+cuniform`, `+normal-parts`, `+cnormal`,
+   - DONE: `/lib/complexrand` -- `+cuniform`, `+normal-parts`, `+cnormal`,
      `+on-circle`, `+in-disk`. Every arm here draws floats directly, so
      this one DOES depend on `/lib/i754rand` (for `+rd:uni`/`+rd-oo:uni`),
-     plus `/lib/complex` and `/lib/math` (cos/sin).
+     plus `/lib/complex` and `/lib/math` (cos/sin). One arm set per
+     component-width door (`+cd` first, `+cs` mirror second, matching
+     `/lib/complex`'s own ship order). Caught a real, previously-
+     uncovered bug while building `+cnormal:cs`: `/lib/math`'s `@rs`
+     `+invsqt2` was written `.70710677` (missing the leading `.0.`),
+     which Hoon parses as the integer 70,710,677.0, not 0.70710677 --
+     every other precision (`@rd`/`@rh`/`@rq`) had the correct form.
+     Fixed, with a new regression suite (`tests/lib/math-constants.hoon`
+     in `libmath`) covering `tau`/`pi`/`phi`/`sqt2`/`invsqt2` at all four
+     precisions, since nothing previously exercised any of them.
    - `/lib/unumrand` -- `+posit-lattice`, `+posit-unit`. Needs only
      `/lib/rand` + `/lib/unum`; no floats (`+posit-unit`'s construction is
      explicitly float-free per rand-spec.md section 12.4).
@@ -106,8 +115,8 @@ full detail):
      end up wanting the same composition in more than one or two places.
    - Split into two passes: twocrand + fixedrand + complexrand first
      (mechanical, same ship-verification rhythm as prior milestones --
-     twocrand and fixedrand are DONE, complexrand remains); then unumrand
-     alone, since `++posit-unit`'s value-uniformity claim needs a
+     ALL THREE ARE DONE); then unumrand alone, since `++posit-unit`'s
+     value-uniformity claim needs a
      NEW mpmath oracle script (`librand/tools/posit_unit_check.py`,
      alongside `unum_cheb_check.py`) before it can be trusted, unlike
      everything shipped so far which either had a real external KAT or was

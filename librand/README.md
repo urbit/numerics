@@ -32,7 +32,7 @@ their own core uniform-generation arms, only optionally for a "sample at
 `@rd`, then quantize/convert" pattern (documented, not shipped as
 dedicated wrapper arms — see `NEXT-STEPS.md`).
 
-## Status (milestones 1-7 pass 1 (partial) of 9, `rand-spec.md` section 13)
+## Status (milestones 1-7 pass 1 of 9, `rand-spec.md` section 13)
 
 Done, in `/lib/rand`:
 
@@ -88,10 +88,16 @@ Done, non-float output adapters (rand-spec.md section 12):
   quantize" distribution pattern is documented, not shipped as dedicated
   wrapper arms; `tests/lib/fixedrand.hoon` proves the composition
   end to end via `/lib/fixed`'s `+from-rd` (added alongside this adapter).
+- `/lib/complexrand` — `+cuniform`, `+normal-parts`, `+cnormal`,
+  `+on-circle`, `+in-disk`, one arm set per component-width door
+  (`+cd` reference precision, `+cs` mirror). Every arm draws floats
+  directly, so this adapter depends on `/lib/i754rand` and `/lib/math`
+  as well as `/lib/complex`. Building `+cnormal:cs` caught a real bug in
+  `/lib/math`'s `@rs` `+invsqt2` constant (fixed, see `NEXT-STEPS.md`).
 
-Not yet implemented: `/lib/complexrand` (rest of milestone 7 pass 1),
-`/lib/unumrand` (milestone 7 pass 2), the Saloon `+rand-ray` extension.
-See `NEXT-STEPS.md` and `rand-spec.md` section 13 for the full milestone
+This completes milestone 7 pass 1. Not yet implemented: `/lib/unumrand`
+(milestone 7 pass 2), the Saloon `+rand-ray` extension. See
+`NEXT-STEPS.md` and `rand-spec.md` section 13 for the full milestone
 order.
 
 ## Layout
@@ -105,8 +111,10 @@ librand/
   desk/lib/i754rand.hoon          :: the IEEE-754 porcelain
   desk/lib/twocrand.hoon          :: two's-complement integer adapter
   desk/lib/fixedrand.hoon         :: fixed-point adapter
+  desk/lib/complexrand.hoon       :: complex-number adapter
   desk/tests/lib/rand.hoon        :: -test %/tests/lib/rand ~
   desk/tests/lib/i754rand.hoon    :: -test %/tests/lib/i754rand ~
   desk/tests/lib/twocrand.hoon    :: -test %/tests/lib/twocrand ~
   desk/tests/lib/fixedrand.hoon   :: -test %/tests/lib/fixedrand ~
+  desk/tests/lib/complexrand.hoon :: -test %/tests/lib/complexrand ~
 ```

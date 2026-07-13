@@ -9,7 +9,9 @@
 /-  ls=lagoon
 /+  *lagoon,
     math,
-    complex
+    complex,
+    rand,
+    i754rand
 ::                                                    ::
 ::::                    ++sa                          ::  (2v) vector/matrix ops
 ~%  %saloon  ..part  ~
@@ -399,59 +401,59 @@
       ?+    bloq  !!
           %7
         ?-  fun
-          %neg        ~(neg rq:math [rnd rtol])
-          %factorial  ~(factorial rq:math [rnd rtol])
-          %exp        ~(exp rq:math [rnd rtol])
-          %sin        ~(sin rq:math [rnd rtol])
-          %cos        ~(cos rq:math [rnd rtol])
-          %tan        ~(tan rq:math [rnd rtol])
-          %log        ~(log rq:math [rnd rtol])
-          %log-10     ~(log-10 rq:math [rnd rtol])
-          %log-2      ~(log-2 rq:math [rnd rtol])
-          %sqrt       ~(sqrt rq:math [rnd rtol])
-          %cbrt       ~(cbrt rq:math [rnd rtol])
+          %neg        ~(neg rq:math [rnd rtol `@rq`0])
+          %factorial  ~(factorial rq:math [rnd rtol `@rq`0])
+          %exp        ~(exp rq:math [rnd rtol `@rq`0])
+          %sin        ~(sin rq:math [rnd rtol `@rq`0])
+          %cos        ~(cos rq:math [rnd rtol `@rq`0])
+          %tan        ~(tan rq:math [rnd rtol `@rq`0])
+          %log        ~(log rq:math [rnd rtol `@rq`0])
+          %log-10     ~(log-10 rq:math [rnd rtol `@rq`0])
+          %log-2      ~(log-2 rq:math [rnd rtol `@rq`0])
+          %sqrt       ~(sqrt rq:math [rnd rtol `@rq`0])
+          %cbrt       ~(cbrt rq:math [rnd rtol `@rq`0])
         ==  ::  fun
           %6
         ?-  fun
-          %neg        ~(neg rd:math [rnd rtol])
-          %factorial  ~(factorial rd:math [rnd rtol])
-          %exp        ~(exp rd:math [rnd rtol])
-          %sin        ~(sin rd:math [rnd rtol])
-          %cos        ~(cos rd:math [rnd rtol])
-          %tan        ~(tan rd:math [rnd rtol])
-          %log        ~(log rd:math [rnd rtol])
-          %log-10     ~(log-10 rd:math [rnd rtol])
-          %log-2      ~(log-2 rd:math [rnd rtol])
-          %sqrt       ~(sqrt rd:math [rnd rtol])
-          %cbrt       ~(cbrt rd:math [rnd rtol])
+          %neg        ~(neg rd:math [rnd rtol `@rd`0])
+          %factorial  ~(factorial rd:math [rnd rtol `@rd`0])
+          %exp        ~(exp rd:math [rnd rtol `@rd`0])
+          %sin        ~(sin rd:math [rnd rtol `@rd`0])
+          %cos        ~(cos rd:math [rnd rtol `@rd`0])
+          %tan        ~(tan rd:math [rnd rtol `@rd`0])
+          %log        ~(log rd:math [rnd rtol `@rd`0])
+          %log-10     ~(log-10 rd:math [rnd rtol `@rd`0])
+          %log-2      ~(log-2 rd:math [rnd rtol `@rd`0])
+          %sqrt       ~(sqrt rd:math [rnd rtol `@rd`0])
+          %cbrt       ~(cbrt rd:math [rnd rtol `@rd`0])
         ==  ::  fun
           %5
         ?-  fun
-          %neg        ~(neg rs:math [rnd rtol])
-          %factorial  ~(factorial rs:math [rnd rtol])
-          %exp        ~(exp rs:math [rnd rtol])
-          %sin        ~(sin rs:math [rnd rtol])
-          %cos        ~(cos rs:math [rnd rtol])
-          %tan        ~(tan rs:math [rnd rtol])
-          %log        ~(log rs:math [rnd rtol])
-          %log-10     ~(log-10 rs:math [rnd rtol])
-          %log-2      ~(log-2 rs:math [rnd rtol])
-          %sqrt       ~(sqrt rs:math [rnd rtol])
-          %cbrt       ~(cbrt rs:math [rnd rtol])
+          %neg        ~(neg rs:math [rnd rtol `@rs`0])
+          %factorial  ~(factorial rs:math [rnd rtol `@rs`0])
+          %exp        ~(exp rs:math [rnd rtol `@rs`0])
+          %sin        ~(sin rs:math [rnd rtol `@rs`0])
+          %cos        ~(cos rs:math [rnd rtol `@rs`0])
+          %tan        ~(tan rs:math [rnd rtol `@rs`0])
+          %log        ~(log rs:math [rnd rtol `@rs`0])
+          %log-10     ~(log-10 rs:math [rnd rtol `@rs`0])
+          %log-2      ~(log-2 rs:math [rnd rtol `@rs`0])
+          %sqrt       ~(sqrt rs:math [rnd rtol `@rs`0])
+          %cbrt       ~(cbrt rs:math [rnd rtol `@rs`0])
         ==  ::  fun
           %4
         ?-  fun
-          %neg        ~(neg rh:math [rnd rtol])
-          %factorial  ~(factorial rh:math [rnd rtol])
-          %exp        ~(exp rh:math [rnd rtol])
-          %sin        ~(sin rh:math [rnd rtol])
-          %cos        ~(cos rh:math [rnd rtol])
-          %tan        ~(tan rh:math [rnd rtol])
-          %log        ~(log rh:math [rnd rtol])
-          %log-10     ~(log-10 rh:math [rnd rtol])
-          %log-2      ~(log-2 rh:math [rnd rtol])
-          %sqrt       ~(sqrt rh:math [rnd rtol])
-          %cbrt       ~(cbrt rh:math [rnd rtol])
+          %neg        ~(neg rh:math [rnd rtol `@rh`0])
+          %factorial  ~(factorial rh:math [rnd rtol `@rh`0])
+          %exp        ~(exp rh:math [rnd rtol `@rh`0])
+          %sin        ~(sin rh:math [rnd rtol `@rh`0])
+          %cos        ~(cos rh:math [rnd rtol `@rh`0])
+          %tan        ~(tan rh:math [rnd rtol `@rh`0])
+          %log        ~(log rh:math [rnd rtol `@rh`0])
+          %log-10     ~(log-10 rh:math [rnd rtol `@rh`0])
+          %log-2      ~(log-2 rh:math [rnd rtol `@rh`0])
+          %sqrt       ~(sqrt rh:math [rnd rtol `@rh`0])
+          %cbrt       ~(cbrt rh:math [rnd rtol `@rh`0])
         ==  ::  fun
       ==  ::  bloq
       ::
@@ -496,23 +498,23 @@
       ?+    bloq.meta  !!
           %7
         ?-  fun
-          %pow-n      ~(pow-n rq:math [rnd rtol])
-          %pow        ~(pow rq:math [rnd rtol])
+          %pow-n      ~(pow-n rq:math [rnd rtol `@rq`0])
+          %pow        ~(pow rq:math [rnd rtol `@rq`0])
         ==  ::  fun
           %6
         ?-  fun
-          %pow-n      ~(pow-n rd:math [rnd rtol])
-          %pow        ~(pow rd:math [rnd rtol])
+          %pow-n      ~(pow-n rd:math [rnd rtol `@rd`0])
+          %pow        ~(pow rd:math [rnd rtol `@rd`0])
         ==  ::  fun
           %5
         ?-  fun
-          %pow-n      ~(pow-n rs:math [rnd rtol])
-          %pow        ~(pow rs:math [rnd rtol])
+          %pow-n      ~(pow-n rs:math [rnd rtol `@rs`0])
+          %pow        ~(pow rs:math [rnd rtol `@rs`0])
         ==  ::  fun
           %4
         ?-  fun
-          %pow-n      ~(pow-n rh:math [rnd rtol])
-          %pow        ~(pow rh:math [rnd rtol])
+          %pow-n      ~(pow-n rh:math [rnd rtol `@rh`0])
+          %pow        ~(pow rh:math [rnd rtol `@rh`0])
         ==  ::  fun
       ==  ::  bloq
       ::  posits (/lib/unum): bloq 3/4/5/6.
@@ -544,13 +546,13 @@
   ::    6=@rd, 7=@rq).  Each takes the bloq as its first argument and operates on
   ::    raw component atoms.
   ::
-  ++  fadd  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(add rh:math [rnd rtol]) x y) ?:(=(5 b) (~(add rs:math [rnd rtol]) x y) ?:(=(6 b) (~(add rd:math [rnd rtol]) x y) (~(add rq:math [rnd rtol]) x y))))))
-  ++  fsub  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(sub rh:math [rnd rtol]) x y) ?:(=(5 b) (~(sub rs:math [rnd rtol]) x y) ?:(=(6 b) (~(sub rd:math [rnd rtol]) x y) (~(sub rq:math [rnd rtol]) x y))))))
-  ++  fmul  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(mul rh:math [rnd rtol]) x y) ?:(=(5 b) (~(mul rs:math [rnd rtol]) x y) ?:(=(6 b) (~(mul rd:math [rnd rtol]) x y) (~(mul rq:math [rnd rtol]) x y))))))
-  ++  fdiv  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(div rh:math [rnd rtol]) x y) ?:(=(5 b) (~(div rs:math [rnd rtol]) x y) ?:(=(6 b) (~(div rd:math [rnd rtol]) x y) (~(div rq:math [rnd rtol]) x y))))))
-  ++  fabs  |=([b=@ x=@] ^-(@ ?:(=(4 b) (~(abs rh:math [rnd rtol]) x) ?:(=(5 b) (~(abs rs:math [rnd rtol]) x) ?:(=(6 b) (~(abs rd:math [rnd rtol]) x) (~(abs rq:math [rnd rtol]) x))))))
-  ++  fgte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(gte rh:math [rnd rtol]) x y) ?:(=(5 b) (~(gte rs:math [rnd rtol]) x y) ?:(=(6 b) (~(gte rd:math [rnd rtol]) x y) (~(gte rq:math [rnd rtol]) x y))))))
-  ++  flte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(lte rh:math [rnd rtol]) x y) ?:(=(5 b) (~(lte rs:math [rnd rtol]) x y) ?:(=(6 b) (~(lte rd:math [rnd rtol]) x y) (~(lte rq:math [rnd rtol]) x y))))))
+  ++  fadd  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(add rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(add rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(add rd:math [rnd rtol `@rd`0]) x y) (~(add rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  fsub  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(sub rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(sub rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(sub rd:math [rnd rtol `@rd`0]) x y) (~(sub rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  fmul  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(mul rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(mul rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(mul rd:math [rnd rtol `@rd`0]) x y) (~(mul rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  fdiv  |=([b=@ x=@ y=@] ^-(@ ?:(=(4 b) (~(div rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(div rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(div rd:math [rnd rtol `@rd`0]) x y) (~(div rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  fabs  |=([b=@ x=@] ^-(@ ?:(=(4 b) (~(abs rh:math [rnd rtol `@rh`0]) x) ?:(=(5 b) (~(abs rs:math [rnd rtol `@rs`0]) x) ?:(=(6 b) (~(abs rd:math [rnd rtol `@rd`0]) x) (~(abs rq:math [rnd rtol `@rq`0]) x))))))
+  ++  fgte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(gte rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(gte rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(gte rd:math [rnd rtol `@rd`0]) x y) (~(gte rq:math [rnd rtol `@rq`0]) x y))))))
+  ++  flte  |=([b=@ x=@ y=@] ^-(? ?:(=(4 b) (~(lte rh:math [rnd rtol `@rh`0]) x y) ?:(=(5 b) (~(lte rs:math [rnd rtol `@rs`0]) x y) ?:(=(6 b) (~(lte rd:math [rnd rtol `@rd`0]) x y) (~(lte rq:math [rnd rtol `@rq`0]) x y))))))
   ++  f0    |=(b=@ ^-(@ ?:(=(4 b) .~~0 ?:(=(5 b) .0 ?:(=(6 b) .~0 .~~~0)))))
   ++  f1    |=(b=@ ^-(@ ?:(=(4 b) .~~1 ?:(=(5 b) .1 ?:(=(6 b) .~1 .~~~1)))))
   ++  f2    |=(b=@ ^-(@ ?:(=(4 b) .~~2 ?:(=(5 b) .2 ?:(=(6 b) .~2 .~~~2)))))
@@ -949,5 +951,200 @@
   ::      ~[2 2]
   ::  Source
   ++  eigvecs  |=(a=ray:ls ^-(ray:ls +:(eig a)))
+  ::
+  +|  %rand
+  ::
+  ::  +rand-ray (rand-spec.md section 8): fills a Lagoon $ray with random
+  ::  values from /lib/rand's engines.  Element order is ROW-MAJOR (C
+  ::  order) -- fixed so a future jet parallelizing across elements lands
+  ::  identical bits regardless of thread scheduling.
+  ::
+  ::  NAMING FOOTGUN: this core (+sa) already shadows the stdlib
+  ::  add/sub/mul/div/lth/lte/gth/gte (see the +|  %uno arms above, e.g.
+  ::  +lth wraps ray comparison), so every arithmetic/compare op below
+  ::  uses the ^-escaped stdlib form -- a bare `lth`/`add`/`mul` here
+  ::  would silently call the RAY-valued version instead of the integer
+  ::  one. `con`/`lsh`/`bex`/`roll` are stdlib and safe bare. `+zeros` is
+  ::  NOT one of `*lagoon`'s star-imported top-level arms -- it lives
+  ::  inside `+la`'s own inner door -- so it needs `zeros:la` (matching
+  ::  how the rest of this file already reaches it, e.g. `zeros:(lake
+  ::  rnd)` above), not a bare call.
+  ::
+  ::  %phil (Philox4x32-10) gets special per-element counter treatment,
+  ::  since it's the engine meant to be jet-parallelized (rand-spec.md
+  ::  section 3.1): +fill-uniform (a single, non-rejecting draw per
+  ::  element) assigns element i counter ctr0+i directly, so the whole
+  ::  fill decomposes into n independent, order-free draws. +fill-normal/
+  ::  +fill-expon/+fill-below are rejection-based (variable-consumption)
+  ::  transforms, so they get a WIDER per-element counter WINDOW instead
+  ::  (ctr0 + i*2^32): the rejection loop walks freely within its own
+  ::  window, and the returned rng's counter is forced to ctr0+n*2^32
+  ::  regardless of how many sub-draws each element actually used -- so
+  ::  the post-state is a pure function of n, not of how lucky/unlucky
+  ::  each element's rejection loop was (needed for replay and for
+  ::  composing a following +fill-* call cleanly). Window exhaustion
+  ::  (walking past 2^32 sub-draws for one element) is astronomically
+  ::  improbable but crashes rather than silently overflowing into the
+  ::  next element's window.
+  ::
+  ::  Non-%phil engines (%sm64, %pcg) have no cheap "jump to counter N"
+  ::  operation generic enough to reuse here, and aren't the ones a jet
+  ::  would parallelize anyway, so they just thread the rng sequentially
+  ::  through each element in row-major order -- no window, no per-
+  ::  element counter surgery, ordinary sequential composition.
+  ::
+  ::  +fill-simple: the +fill-uniform case (no window; ctr0+i per
+  ::  element for %phil).  Shared so the packing loop exists once, not
+  ::  once per draw kind -- `draw` closes over anything the specific
+  ::  distribution needs (e.g. +fill-expon's lambda) before being passed
+  ::  in.
+  ++  fill-simple
+    |=  [meta=meta:ls r=rng:rand draw=$-(rng:rand [@ rng:rand])]
+    ^-  [ray=ray:ls r=rng:rand]
+    =/  n  (roll shape.meta ^mul)
+    =/  acc  +:(zeros:la meta)
+    ?:  ?=(%phil -.r)
+      ::  Fresh [%phil key0 ctrN] literals throughout, rather than
+      ::  mutating .r (`r(ctr.p ...)`), so nothing inside the recursive
+      ::  trap depends on this ?= narrowing persisting across $ calls --
+      ::  a known Hoon footgun class (mint-vain/nest-fail from narrowing
+      ::  not surviving a recursive rebind).
+      =/  key0  key.p.r
+      =/  ctr0  ctr.p.r
+      =/  i  0
+      |-  ^-  [ray=ray:ls r=rng:rand]
+      ?:  =(i n)
+        [[meta acc] [%phil key0 (^add ctr0 n)]]
+      =/  v  -:(draw [%phil key0 (^add ctr0 i)])
+      $(i +(i), acc (con acc (lsh [bloq.meta i] v)))
+    ::  Explicit widen: the ?:  ?=(%phil -.r) above narrows .r to exclude
+    ::  %phil for this fall-through, but +draw's OWN return type is the
+    ::  full rng:rand union (any engine can come back out) -- so the
+    ::  trap's first entry (narrow) and its recursive re-entries (wide,
+    ::  after the first =^ v r (draw r)) would otherwise disagree on .r's
+    ::  type. Widening up front once makes every entry consistent.
+    =/  r0  `rng:rand`r
+    =/  i  0
+    |-  ^-  [ray=ray:ls r=rng:rand]
+    ?:  =(i n)
+      [[meta acc] r0]
+    =^  v  r0  (draw r0)
+    $(i +(i), acc (con acc (lsh [bloq.meta i] v)))
+  ::  +fill-windowed: the +fill-normal/+fill-expon/+fill-below case --
+  ::  rejection-based, so %phil elements get the ctr0+i*2^32 window
+  ::  instead of a bare ctr0+i, with an explicit crash if a single
+  ::  element's rejection loop ever walks past its own window.
+  ++  fill-windowed
+    |=  [meta=meta:ls r=rng:rand draw=$-(rng:rand [@ rng:rand])]
+    ^-  [ray=ray:ls r=rng:rand]
+    =/  n  (roll shape.meta ^mul)
+    =/  acc  +:(zeros:la meta)
+    ?:  ?=(%phil -.r)
+      ::  Same fresh-literal approach as +fill-simple, see its comment.
+      =/  key0  key.p.r
+      =/  ctr0  ctr.p.r
+      =/  win  (bex 32)
+      =/  i  0
+      |-  ^-  [ray=ray:ls r=rng:rand]
+      ?:  =(i n)
+        [[meta acc] [%phil key0 (^add ctr0 (^mul n win))]]
+      =/  ri  `rng:rand`[%phil key0 (^add ctr0 (^mul i win))]
+      =^  v  ri  (draw ri)
+      ~|  %rand-ray-window-exhausted
+      ?>  ?=(%phil -.ri)
+      ?>  (^lth ctr.p.ri (^add ctr0 (^mul +(i) win)))
+      $(i +(i), acc (con acc (lsh [bloq.meta i] v)))
+    ::  Explicit widen: the ?:  ?=(%phil -.r) above narrows .r to exclude
+    ::  %phil for this fall-through, but +draw's OWN return type is the
+    ::  full rng:rand union (any engine can come back out) -- so the
+    ::  trap's first entry (narrow) and its recursive re-entries (wide,
+    ::  after the first =^ v r (draw r)) would otherwise disagree on .r's
+    ::  type. Widening up front once makes every entry consistent.
+    =/  r0  `rng:rand`r
+    =/  i  0
+    |-  ^-  [ray=ray:ls r=rng:rand]
+    ?:  =(i n)
+      [[meta acc] r0]
+    =^  v  r0  (draw r0)
+    $(i +(i), acc (con acc (lsh [bloq.meta i] v)))
+  ::    +fill-uniform:  [meta:ls rng:rand] -> [ray:ls rng:rand]
+  ::
+  ::  Uniform [0,1) at the meta's float bloq (5=@rs, 6=@rd only -- v1
+  ::  scope per rand-spec.md section 8).
+  ::    Examples
+  ::      > (fill-uniform:sa [~[2 2] 5 %i754 ~] (from-atom:seed:rand %sm64 0))
+  ::      [ [meta=[shape=~[2 2] bloq=5 kind=%i754 tail=0]
+  ::         data=0x1.3e99.03d8.3d14.54f0.3f39.65f4.3dee.6d78]
+  ::        r=[%sm64 s=0x78dd.e6e5.fd29.f054] ]
+  ::  Source
+  ++  fill-uniform
+    |=  [meta=meta:ls r=rng:rand]
+    ^-  [ray=ray:ls r=rng:rand]
+    ~|  %rand-ray-bad-kind  ?>  =(%i754 kind.meta)
+    ~|  %rand-ray-bad-bloq  ?>  |(=(5 bloq.meta) =(6 bloq.meta))
+    %^  fill-simple  meta  r
+    ?:  =(5 bloq.meta)
+      |=(rr=rng:rand (rs:uni:i754rand rr))
+    |=(rr=rng:rand (rd:uni:i754rand rr))
+  ::    +fill-normal:  [meta:ls rng:rand] -> [ray:ls rng:rand]
+  ::
+  ::  Standard normal N(0,1) at the meta's float bloq (5/6 only).
+  ::  Rejection-based (Marsaglia polar, via /lib/i754rand's +normal), so
+  ::  %phil elements use the counter-window scheme (see header).
+  ::    Examples
+  ::      > (fill-normal:sa [~[2 2] 5 %i754 ~] (from-atom:seed:rand %sm64 0))
+  ::      [ [meta=[shape=~[2 2] bloq=5 kind=%i754 tail=0]
+  ::         data=0x1.3fb9.4bba.be73.0e84.4009.430e.bf17.e80f]
+  ::        r=[%sm64 s=0x2e2a.c13e.f8e8.d8d2] ]
+  ::  Source
+  ++  fill-normal
+    |=  [meta=meta:ls r=rng:rand]
+    ^-  [ray=ray:ls r=rng:rand]
+    ~|  %rand-ray-bad-kind  ?>  =(%i754 kind.meta)
+    ~|  %rand-ray-bad-bloq  ?>  |(=(5 bloq.meta) =(6 bloq.meta))
+    %^  fill-windowed  meta  r
+    ?:  =(5 bloq.meta)
+      |=(rr=rng:rand (normal:rs:dist:i754rand rr))
+    |=(rr=rng:rand (normal:rd:dist:i754rand rr))
+  ::    +fill-expon:  [meta:ls rng:rand lambda=@] -> [ray:ls rng:rand]
+  ::
+  ::  Exponential(lambda) at the meta's float bloq (5/6 only); .lambda is
+  ::  a raw @ reinterpreted at that bloq's aura.  Rejection-based (inverse
+  ::  CDF via an open-open uniform draw), so %phil elements use the
+  ::  counter-window scheme (see header).
+  ::    Examples
+  ::      > (fill-expon:sa [~[2 2] 6 %i754 ~] (from-atom:seed:rand %sm64 0) .~1)
+  ::      [ [meta=[shape=~[2 2] bloq=6 kind=%i754 tail=0]
+  ::         data=0x1.3ff0.11b8.a292.424b.3fff.e0f9.f3ad.2c6a.3fd0.c84b.1505
+  ::             .9506.400f.15bc.a87f.d682]
+  ::        r=[%sm64 s=0x78dd.e6e5.fd29.f054] ]
+  ::  Source
+  ++  fill-expon
+    |=  [meta=meta:ls r=rng:rand lambda=@]
+    ^-  [ray=ray:ls r=rng:rand]
+    ~|  %rand-ray-bad-kind  ?>  =(%i754 kind.meta)
+    ~|  %rand-ray-bad-bloq  ?>  |(=(5 bloq.meta) =(6 bloq.meta))
+    %^  fill-windowed  meta  r
+    ?:  =(5 bloq.meta)
+      |=(rr=rng:rand (expon:rs:dist:i754rand rr `@rs`lambda))
+    |=(rr=rng:rand (expon:rd:dist:i754rand rr `@rd`lambda))
+  ::    +fill-below:  [meta:ls n=@ rng:rand] -> [ray:ls rng:rand]
+  ::
+  ::  Uniform in [0,n) via Lemire (/lib/rand's +below), for %uint rays at
+  ::  any bloq -- caller's responsibility that .n fits the meta's bloq
+  ::  width.  Rejection-based, so %phil elements use the counter-window
+  ::  scheme (see header).
+  ::    Examples
+  ::      > (fill-below:sa [~[2 2] 5 %uint ~] 100 (from-atom:seed:rand %sm64 0))
+  ::      [ [meta=[shape=~[2 2] bloq=5 kind=%uint tail=0]
+  ::         data=0x1.0000.0061.0000.0002.0000.002b.0000.0058]
+  ::        r=[%sm64 s=0x78dd.e6e5.fd29.f054] ]
+  ::  Source
+  ++  fill-below
+    |=  [meta=meta:ls n=@ r=rng:rand]
+    ^-  [ray=ray:ls r=rng:rand]
+    ~|  %rand-ray-bad-kind  ?>  =(%uint kind.meta)
+    %^  fill-windowed  meta  r
+    |=(rr=rng:rand (below:uni:rand rr n))
   --
 --

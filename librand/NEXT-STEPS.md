@@ -207,7 +207,45 @@ full detail):
      alongside `unum_cheb_check.py`) before it can be trusted, unlike
      everything shipped so far which either had a real external KAT or was
      ship-verified against a hand/Python-traced computation.
-8. Saloon `+rand-ray` (counter-window design) + replay-equality tests.
+8. DONE: Saloon `+rand-ray` (counter-window design) + replay-equality tests.
+   Lands directly in `/lib/saloon`'s `+sa` core (a new `+|  %rand` section),
+   not a separate librand file -- the spec's own framing ("In /lib/saloon,
+   a core taking a Lagoon meta and an rng") describes per-arm shape, not a
+   literal nested sub-core; Saloon's existing convention is one flat `+sa`
+   door with `+|` section markers, so `+rand-ray` follows that rather than
+   introducing complexrand/unumrand-style nesting.
+   - `+fill-uniform` (single non-rejecting draw/element, %phil gets
+     ctr0+i directly), `+fill-normal`/`+fill-expon` (rejection-based,
+     %phil gets the ctr0+i*2^32 window with an explicit crash on
+     exhaustion), `+fill-below` (%uint rays via Lemire, also windowed).
+     `%i754` only, bloq 5/6 (`@rs`/`@rd`) -- matches rand-spec.md's stated
+     v1 scope ("posit rays deferred").
+   - Blocked on a pre-existing, unrelated bug: `+sa`'s scalar transcendental
+     dispatch (`+trans-scalar`, `+fadd`/etc) called `/lib/math`'s doors as
+     `[rnd rtol]` (2-tuple) where they need `[r rtol atol]` (3-tuple) --
+     `saloon.hoon` didn't `-build-file` AT ALL before this, on ANY branch,
+     confirmed by testing the unmodified file directly. Fixed and shipped
+     as its OWN PR (#77, `sigilante/saloon-scalar-rtol-fix` off `main`),
+     since it's also needed upstream in `urbit/urbit` independent of
+     librand. That fix is ALSO carried on this branch (duplicated, not
+     rebased) so `+rand-ray` has something to build against; reconcile via
+     rebase once #77 merges to main.
+   - Two Hoon footguns hit writing `+rand-ray` itself, both the "narrowing
+     doesn't survive a recursive `$(...)` rebind" class already known in
+     this codebase: (a) mutating `.r` (`r(ctr.p ...)`) inside a `?=(%phil
+     -.r)`-narrowed recursive trap lost the narrowing on recursive re-
+     entry -- fixed by building FRESH `[%phil key0 ctrN]` literals instead
+     of mutating; (b) the non-%phil ("sequential engine") branch's `.r`
+     is narrowed to EXCLUDE %phil by the same `?:`, but `+draw`'s return
+     type is the full `rng` union, so the trap's first entry (narrow) and
+     recursive re-entries (widened by `=^ v r (draw r)`) disagreed --
+     fixed by explicitly widening `` `rng:rand`r `` once before the trap
+     so every entry matches.
+   - Every arm bit-exact cross-checked against a DIRECT call to the
+     underlying `/lib/rand`/`/lib/i754rand` primitive at the expected
+     counter (not just "doesn't crash") -- see `tests/lib/saloon-rand-
+     ray.hoon` in the `saloon` desk (not `librand`, since the code lives
+     in Saloon).
 9. Full README rewrite + this file's final pass (ziggurat, BTPE, buffered
    Philox, posit rays, quire Monte Carlo note, `@rh`/`@rq` distributions —
    all deliberately deferred out of v1, per `rand-spec.md`).

@@ -33,7 +33,7 @@ only optionally need `i754rand` for a "sample at `@rd`, then
 quantize/convert" pattern (documented, not shipped as dedicated wrapper
 arms — see `NEXT-STEPS.md`).
 
-## Status (milestones 1-7 of 9, `rand-spec.md` section 13)
+## Status (milestones 1-8 of 9, `rand-spec.md` section 13)
 
 Done, in `/lib/rand`:
 
@@ -107,8 +107,25 @@ Done, non-float output adapters (rand-spec.md section 12):
   (100,000 ship-drawn draws, p=0.108) plus bit-exact cross-checks at
   every in-scope width.
 
-This completes milestone 7 (all four non-float adapters). Not yet
-implemented: the Saloon `+rand-ray` extension (milestone 8). See
+This completes milestone 7 (all four non-float adapters).
+
+Milestone 8 — Saloon `+rand-ray` (rand-spec.md section 8) — is also done,
+but lives in `/lib/saloon` (the `saloon` desk), not here: a new `+|  %rand`
+section in the `+sa` core adds `+fill-uniform`, `+fill-normal`,
+`+fill-expon`, `+fill-below`, filling a Lagoon `$ray` element-by-element in
+row-major order. `%phil` (Philox) elements get per-element counter
+treatment (`ctr0+i` for `+fill-uniform`'s single non-rejecting draw;
+`ctr0+i*2^32` windows for the rejection-based `+fill-normal`/`+fill-expon`/
+`+fill-below`, with an explicit crash on window exhaustion) — the whole
+point being that a future jet can parallelize across elements and land
+identical bits regardless of thread scheduling. `%i754` only, bloq 5/6
+(`@rs`/`@rd`); posit rays are deferred. See `saloon/desk/tests/lib/
+saloon-rand-ray.hoon` and `NEXT-STEPS.md` for the two Hoon narrowing
+footguns hit along the way, and the pre-existing, unrelated `+sa` scalar-
+dispatch bug this needed fixed first (shipped as its own PR, #77, since
+it's also needed upstream in `urbit/urbit`).
+
+Not yet done: milestone 9 (final README/NEXT-STEPS pass). See
 `NEXT-STEPS.md` and `rand-spec.md` section 13 for the full milestone
 order.
 

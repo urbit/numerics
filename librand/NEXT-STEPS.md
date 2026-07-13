@@ -100,7 +100,7 @@ full detail):
      Fixed, with a new regression suite (`tests/lib/math-constants.hoon`
      in `libmath`) covering `tau`/`pi`/`phi`/`sqt2`/`invsqt2` at all four
      precisions, since nothing previously exercised any of them.
-   - `/lib/unumrand` -- `+posit-lattice`, `+posit-unit`. Needs only
+   - DONE: `/lib/unumrand` -- `+posit-lattice`, `+posit-unit`. Needs only
      `/lib/rand` + `/lib/unum`; no floats (`+posit-unit`'s construction is
      explicitly float-free per rand-spec.md section 12.4). Distributions
      ("sample at @rd, convert") need NO new /lib/unum plumbing, unlike
@@ -141,13 +141,54 @@ full detail):
      enumerate exactly) against the mpmath oracle; posit32 (2^32 patterns,
      exact enumeration infeasible) gets ship-verified value-regression
      tests only, relying on the same proven k=4n margin argument rather
-     than independent re-verification. The chi-square check should be a
-     real Hoon regression test (large fixed-seed draw count, tally into a
-     256/65536-bin histogram, hardcoded expected statistic/threshold),
-     mirroring the existing moment-test pattern (50k-draw mean/variance
-     checks for i754rand's normal/expon/gamma), not a one-off offline
-     script -- the Python oracle's job is deriving the exact expected
-     probability table once, not re-running per test invocation.
+     than independent re-verification.
+   - Plan revised during implementation: originally planned as a real Hoon
+     `-test` regression (hardcoded expected statistic/threshold). Dropped
+     in favor of `librand/tools/posit_unit_check.py` staying a standalone
+     oracle (no mpmath needed -- everything here is already exactly dyadic,
+     so plain `Fraction` arithmetic is exact throughout): embedding a
+     256- or 65536-row expected-probability table as Hoon literals isn't
+     practical, and unlike the moment tests (which check a couple of
+     summary statistics), this needs the FULL per-pattern distribution to
+     mean anything. `posit_unit_check.py table <width>` prints the exact
+     table; `posit_unit_check.py chi2 <width> <counts-file> --bins N`
+     chi-squares ship-drawn raw patterns (one per line) against it,
+     quantile-binned so N stays modest. The oracle script's OWN
+     correctness is validated in-repo (a simulated correct-distribution
+     sample passes with a sane p-value; a deliberately-wrong one is
+     rejected with p~0 -- proving the test has real power, not just
+     rubber-stamping). Actually run once at posit8 with N=100,000 ship-
+     drawn draws (fixed seed 12345), tallied on-ship into a histogram (at
+     most 65 possible patterns for posit8, so the histogram itself is
+     small/printable) via a throwaway `.hoon` file (NOT a raw dojo one-
+     liner -- a long single-line multi-`=/`/`|-` dojo command got silently
+     truncated in transmission mid-session and left the dojo edit buffer
+     stuck with an unclosed expression; recovered with Ctrl-E then Ctrl-U,
+     not Ctrl-U alone, since the cursor was stuck at the line's start;
+     lesson: bulk/long computations belong in a deployed `.hoon` file run
+     via `-build-file`, not a giant single dojo line). Result: 61/65
+     patterns hit (the 4 misses are the lowest-probability patterns near
+     zero, expected counts well under 1 at this N), binned into 20
+     quantile bins (some of the highest-probability patterns near 1.0
+     individually exceed 1/32 of the mass, so `--bins 32` yields fewer
+     than 32 actual bins -- expected, see the script's own comment),
+     chi-square = 26.86 on 19 dof, p = 0.108 -- consistent with the exact
+     expected distribution at any standard significance level. posit16's
+     command is documented and ready to run the same way but wasn't
+     executed in this pass (extracting a large enough on-ship sample is
+     more awkward at that width, and its 65,536-entry histogram would be
+     unwieldy to print/parse from dojo); the bit-exact cross-check against
+     `posit_unit_check.py`'s `encode()` at posit16/32 (done for several
+     seeds, in `+test-posit-unit`) is a stronger per-draw guarantee than
+     the statistical test anyway, since it's the same deterministic code
+     path at every width. To rerun or extend: deploy a `.hoon` file like
+     `=/  count  N  =/  r  (from-atom:seed:rand %sm64 SEED)  =/  m
+     *(map @ @)  =/  i  0  |-  ^-  (map @ @)  ?:  =(i count)  m  =^  v  r
+     (posit-unit:rpb:unumrand r)  =/  c  (fall (~(get by m) v) 0)
+     $(i +(i), m (~(put by m) v +(c)))`, `-build-file` it, `~(tap by
+     <face>)` to print, paste the pairs into a Python dict, and feed to
+     `expected_probabilities`/`quantile_bins`/`chi_square_stat` in
+     `posit_unit_check.py` directly.
    - Decided: the "sample at @rd, quantize/convert" pattern mentioned in
      rand-spec.md 12.1/12.4 (fixed-point and posit *distributions*) is
      NOT shipped as dedicated per-distribution wrapper arms (that would be

@@ -26,13 +26,14 @@ the rest of `++sample` is), and the distributions built on both
 (`++dist`). This mirrors how `/lib/twoc`/`fixed`/`complex`/`unum` are
 already kept separate from `/lib/math` in this codebase — `i754rand` is
 `/lib/rand`'s own "math.hoon". Non-float output adapters (`twocrand`,
-`fixedrand`, `complexrand`, `unumrand` — see `NEXT-STEPS.md`) are
-`i754rand`'s siblings, not its dependents: none of them need floats for
-their own core uniform-generation arms, only optionally for a "sample at
-`@rd`, then quantize/convert" pattern (documented, not shipped as
-dedicated wrapper arms — see `NEXT-STEPS.md`).
+`fixedrand`, `complexrand`, `unumrand`) are `i754rand`'s siblings, not its
+dependents: only `complexrand` needs floats for its own core
+uniform-generation arms (every arm draws floats directly); the others
+only optionally need `i754rand` for a "sample at `@rd`, then
+quantize/convert" pattern (documented, not shipped as dedicated wrapper
+arms — see `NEXT-STEPS.md`).
 
-## Status (milestones 1-7 pass 1 of 9, `rand-spec.md` section 13)
+## Status (milestones 1-7 of 9, `rand-spec.md` section 13)
 
 Done, in `/lib/rand`:
 
@@ -94,9 +95,20 @@ Done, non-float output adapters (rand-spec.md section 12):
   directly, so this adapter depends on `/lib/i754rand` and `/lib/math`
   as well as `/lib/complex`. Building `+cnormal:cs` caught a real bug in
   `/lib/math`'s `@rs` `+invsqt2` constant (fixed, see `NEXT-STEPS.md`).
+- `/lib/unumrand` — `+posit-lattice` (uniform bit pattern, minus NaR —
+  all five width doors `rpb`/`rph`/`rps`/`rpd`/`rpq`) and `+posit-unit`
+  (uniform *value* on `[0,1)`, exact — posit8/16/32 only). Posits are
+  tapered, so these two are fundamentally different distributions, named
+  so they can't be confused; see `NEXT-STEPS.md` for the k=4n bit-count
+  derivation behind `+posit-unit`'s exactness claim. Needs no new
+  `/lib/unum` plumbing (`+from-rh/rs/rd/rq` already exist at every width
+  door). Verified against a new exact-rational oracle
+  (`librand/tools/posit_unit_check.py`) via chi-square at posit8
+  (100,000 ship-drawn draws, p=0.108) plus bit-exact cross-checks at
+  every in-scope width.
 
-This completes milestone 7 pass 1. Not yet implemented: `/lib/unumrand`
-(milestone 7 pass 2), the Saloon `+rand-ray` extension. See
+This completes milestone 7 (all four non-float adapters). Not yet
+implemented: the Saloon `+rand-ray` extension (milestone 8). See
 `NEXT-STEPS.md` and `rand-spec.md` section 13 for the full milestone
 order.
 
@@ -112,9 +124,12 @@ librand/
   desk/lib/twocrand.hoon          :: two's-complement integer adapter
   desk/lib/fixedrand.hoon         :: fixed-point adapter
   desk/lib/complexrand.hoon       :: complex-number adapter
+  desk/lib/unumrand.hoon          :: posit adapter
   desk/tests/lib/rand.hoon        :: -test %/tests/lib/rand ~
   desk/tests/lib/i754rand.hoon    :: -test %/tests/lib/i754rand ~
   desk/tests/lib/twocrand.hoon    :: -test %/tests/lib/twocrand ~
   desk/tests/lib/fixedrand.hoon   :: -test %/tests/lib/fixedrand ~
   desk/tests/lib/complexrand.hoon :: -test %/tests/lib/complexrand ~
+  desk/tests/lib/unumrand.hoon    :: -test %/tests/lib/unumrand ~
+  tools/posit_unit_check.py       :: +posit-unit's exact-rational oracle
 ```

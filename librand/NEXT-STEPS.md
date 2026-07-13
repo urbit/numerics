@@ -102,7 +102,52 @@ full detail):
      precisions, since nothing previously exercised any of them.
    - `/lib/unumrand` -- `+posit-lattice`, `+posit-unit`. Needs only
      `/lib/rand` + `/lib/unum`; no floats (`+posit-unit`'s construction is
-     explicitly float-free per rand-spec.md section 12.4).
+     explicitly float-free per rand-spec.md section 12.4). Distributions
+     ("sample at @rd, convert") need NO new /lib/unum plumbing, unlike
+     fixedrand's `+from-rd` -- `/lib/unum` already ships `+from-rh/rs/rd/rq`
+     at every width door.
+   - Range subtlety (worked through with the user before implementation):
+     `+posit-lattice` (uniform over bit patterns, minus NaR) and
+     `+posit-unit` (uniform over VALUES on [0,1), exact) are fundamentally
+     different because posits are tapered -- consecutive bit patterns are
+     NOT evenly spaced in value. `+posit-lattice` ships at all FIVE width
+     doors (rpb/rph/rps/rpd/rpq); it has no bit-count subtlety (simple
+     NaR-rejection, exact at any width).
+   - `+posit-unit`'s bit-count k is the dangerous part: draw k raw bits u,
+     encode the dyadic u*2^-k via /lib/unum's existing +bit (RNE,
+     saturating -- confirmed no rounding-mode parameter needed). For this
+     to be EXACTLY the round-to-nearest image of continuous uniform (not
+     approximately), k must exceed the finest rounding-cell width anywhere
+     in [0,1) -- which, because of the taper, is NEAR ZERO and shrinks fast
+     with width. Hand-traced /lib/unum's own `+sea` decode of posit8's
+     pattern `1` (minpos) and confirmed minpos = 2^-4(n-2) exactly (2^-24
+     for n=8), so the rounding boundary nearest zero sits at 2^-(4(n-2)+1).
+     The spec's k values (32/64/128 for posit8/16/32) are exactly k=4n,
+     which gives a CONSTANT 7-bit safety margin at any width
+     (4n - (4(n-2)+1) = 7 always) -- naive choices like k=n or k=n+8 would
+     be silently wrong (they'd truncate resolution near zero and bias the
+     distribution with no obvious symptom). u=0 must produce `[%z ~]`
+     explicitly per spec (not a degenerate `[%p ...]` with a=0). Scoped to
+     `[0,1)` only -- a general bounded-range posit uniform is out of scope.
+   - Decided with the user: `+posit-unit` stays scoped to posit8/16/32
+     (matching /lib/unum's existing "unverified until oracle sweep extends"
+     caveat for posit64/128 -- even though the k=4n margin argument would
+     work mathematically at any width, since +bit's encoding logic isn't a
+     convergence-based transcendental, staying scoped avoids a false sense
+     of rigor where the rest of the library hasn't independently verified
+     those widths either).
+   - Decided with the user on oracle rigor: chi-square posit8 (256 patterns,
+     exactly enumerable) AND posit16 (65,536 patterns, still cheap to
+     enumerate exactly) against the mpmath oracle; posit32 (2^32 patterns,
+     exact enumeration infeasible) gets ship-verified value-regression
+     tests only, relying on the same proven k=4n margin argument rather
+     than independent re-verification. The chi-square check should be a
+     real Hoon regression test (large fixed-seed draw count, tally into a
+     256/65536-bin histogram, hardcoded expected statistic/threshold),
+     mirroring the existing moment-test pattern (50k-draw mean/variance
+     checks for i754rand's normal/expon/gamma), not a one-off offline
+     script -- the Python oracle's job is deriving the exact expected
+     probability table once, not re-running per test invocation.
    - Decided: the "sample at @rd, quantize/convert" pattern mentioned in
      rand-spec.md 12.1/12.4 (fixed-point and posit *distributions*) is
      NOT shipped as dedicated per-distribution wrapper arms (that would be

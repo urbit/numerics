@@ -117,11 +117,14 @@ codebase:
   `/lib/unum` plumbing — `+from-rh/rs/rd/rq` already exist at every width
   door. Verified against a new exact-rational oracle
   (`tools/posit_unit_check.py`) via chi-square at posit8 (100,000
-  ship-drawn draws, p=0.108), an exhaustive input-space check at posit8
-  (all 2^32 possible draws, via an independent C harness,
-  `tools/posit8_exhaustive.c` — every one of the 65 reachable patterns'
-  counts matches the oracle's numerators exactly, eliminating sampling
-  error entirely), plus bit-exact cross-checks at every in-scope width.
+  ship-drawn draws, p=0.108) and posit16 (1,000,000 draws quantile-binned
+  on-ship into 64 groups — posit16 has 16,385 reachable patterns, too many
+  to safely extract a raw histogram from dojo — χ²=71.78 on 63 dof,
+  p=0.210), an exhaustive input-space check at posit8 (all 2^32 possible
+  draws, via an independent C harness, `tools/posit8_exhaustive.c` —
+  every one of the 65 reachable patterns' counts matches the oracle's
+  numerators exactly, eliminating sampling error entirely), plus
+  bit-exact cross-checks at every in-scope width.
 
 None of the four ship dedicated per-distribution wrapper arms for the
 "sample at `@rd`, quantize/convert" pattern (fixed-point and posit

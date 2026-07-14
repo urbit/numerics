@@ -211,6 +211,142 @@ def parse_counts(path):
             counts[p] = counts.get(p, 0) + 1
     return counts
 
+# ---- large-width (posit16+) binned harness ----
+#
+# posit16 has 16,385 reachable patterns -- far too many to safely dump a
+# raw per-pattern histogram out of a live dojo session (tried it: the
+# terminal scrollback truncates silently, and even RAISING tmux's
+# history-limit didn't help reliably; ship-crashed twice trying to embed
+# a 16,385-entry pattern->bin lookup table as a single big Hoon literal).
+#
+# Fix: have the SHIP do the binning itself, using the SAME quantile bins
+# this script already computes, so it only ever needs to print `--bins`
+# (e.g. 64) numbers, not thousands. Two Hoon lessons paid for finding
+# this the hard way, baked into gen_binned_hoon() below so they don't
+# recur:
+#   1. `~[a b c ...]` list literals infer a FIXED-SHAPE tuple type, not
+#      the general recursive (list @) mold -- using one as a `|-` trap's
+#      loop variable across recursive $(...) calls fails with a
+#      confusing "mint-vain" (the shape genuinely differs each
+#      iteration as the tuple gets shorter). Always `^-  (list @)` cast
+#      list literals before using them this way.
+#   2. Decimal literals over 3 digits NEED Hoon's dot-thousands-
+#      separator (`50.000`, not `50000`) -- a hard parse error otherwise.
+# The bin-of gate below was verified against known boundary values
+# (0,10,20,30 -> bin-of should give 0,0,0,1,1,1,2,2,2,3,3 for
+# 0,5,9,10,15,19,20,25,29,30,100) before trusting a real run.
+
+def hoon_dec(n):
+    """Format a decimal integer with Hoon's required dot-thousands-separators."""
+    s = str(n)
+    if len(s) <= 3:
+        return s
+    parts = []
+    while len(s) > 3:
+        parts.insert(0, s[-3:])
+        s = s[:-3]
+    parts.insert(0, s)
+    return '.'.join(parts)
+
+def bin_boundaries(entries, bins):
+    """The lowest pattern in each bin. Relies on +posit-unit's reachable
+    patterns (all nonneg-valued) sorting identically by raw integer and
+    by decoded value, so quantile_bins' value-sorted contiguous groups
+    are ALSO contiguous ranges of raw pattern integers -- confirmed for
+    this construction elsewhere in this project's own verification work."""
+    boundaries = [min(pats) for pats, _ in bins]
+    assert boundaries == sorted(boundaries)
+    return boundaries
+
+def gen_binned_hoon(width_name, num_bins, count, seed):
+    n = WIDTHS[width_name]
+    door = {'posit8': 'rpb', 'posit16': 'rph', 'posit32': 'rps'}[width_name]
+    probs, entries = expected_probabilities(width_name)
+    bins = quantile_bins(entries, probs, num_bins)
+    boundaries = bin_boundaries(entries, bins)
+    lit = ' '.join(hoon_dec(b) for b in boundaries)
+    src = f"""\
+/+  rand, unumrand
+=/  boundaries  ^-  (list @)  ~[{lit}]
+=/  bin-of
+  |=  v=@
+  ^-  @
+  =/  bs  boundaries
+  =/  i  0
+  |-  ^-  @
+  ?~  bs  (dec i)
+  ?:  (gth i.bs v)
+    (dec i)
+  $(bs t.bs, i +(i))
+=/  count  {hoon_dec(count)}
+=/  seed  0x{seed:x}
+=/  r  (from-atom:seed:rand %sm64 seed)
+=/  m  *(map @ @)
+=/  i  0
+|-  ^-  (map @ @)
+?:  =(i count)
+  m
+=^  v  r  (posit-unit:{door}:unumrand r)
+=/  bin  (bin-of v)
+=/  c  (fall (~(get by m) bin) 0)
+$(i +(i), m (~(put by m) bin +(c)))
+"""
+    return src, bins
+
+def cmd_gen_binned(args):
+    src, bins = gen_binned_hoon(args.width, args.bins, args.count, args.seed)
+    with open(args.output, 'w') as f:
+        f.write(src)
+    print(f"wrote {args.output} ({len(bins)} bins, {args.count} draws, seed=0x{args.seed:x})")
+    print(f"Deploy to a ship's %base desk, |commit, then run bare (no `=face` prefix --")
+    print(f"that specific combination with -build-file on a raw-expression file has been")
+    print(f"unreliable in dojo):")
+    print(f"  -build-file %/lib/{args.output.rsplit('/', 1)[-1].removesuffix('.hoon')}/hoon")
+    print(f"Capture the printed (map @ @) (bin -> count), then run:")
+    print(f"  python3 {sys.argv[0]} chi2-binned {args.width} <counts-file> --bins {args.bins}")
+
+def parse_bin_counts(path):
+    """Parses a captured dojo pane dump of a printed (map @ @): lines like
+    '[p=N q=M]' (N=bin index, M=count), Hoon's own decimal-dot-grouped
+    display. Strips the dots before converting to int."""
+    import re
+    counts = {}
+    with open(path) as f:
+        text = f.read()
+    for m in re.finditer(r'p=([\d.]+)\s+q=([\d.]+)', text):
+        bi = int(m.group(1).replace('.', ''))
+        c = int(m.group(2).replace('.', ''))
+        counts[bi] = c
+    return counts
+
+def cmd_chi2_binned(args):
+    probs, entries = expected_probabilities(args.width)
+    bins = quantile_bins(entries, probs, args.bins)
+    counts = parse_bin_counts(args.counts_file)
+    n_draws = sum(counts.values())
+    stat = Fraction(0)
+    rows = []
+    for bi, (pats, prob) in enumerate(bins):
+        observed = counts.get(bi, 0)
+        expected = prob * n_draws
+        term = (Fraction(observed) - expected) ** 2 / expected
+        stat += term
+        rows.append((observed, expected, term))
+    dof = len(bins) - 1
+    stat_f = float(stat)
+    print(f"{args.width}: N={n_draws} draws, {len(bins)} bins, dof={dof}")
+    print(f"chi-square statistic = {stat_f:.4f}")
+    if _scipy_chi2 is not None:
+        p_value = 1.0 - _scipy_chi2.cdf(stat_f, dof)
+        print(f"p-value = {p_value:.4f}  (fail to reject H0 [uniform-on-[0,1)] at alpha=0.01 if p > 0.01)")
+    else:
+        print("(scipy not installed -- compare the statistic above to a "
+              f"chi-square critical value table at dof={dof} yourself)")
+    if args.verbose:
+        for i, ((pats, prob), (observed, expected, term)) in enumerate(zip(bins, rows)):
+            print(f"  bin {i:3d}: patterns={len(pats):5d} observed={observed:6d} "
+                  f"expected={float(expected):9.2f} term={float(term):.4f}")
+
 # ---- CLI ----
 
 def cmd_table(args):
@@ -305,6 +441,25 @@ def main():
     x = sub.add_parser('exhaustive8',
                         help='compile+run posit8_exhaustive.c, compare against the oracle exactly')
     x.set_defaults(func=cmd_exhaustive8)
+
+    g = sub.add_parser('gen-binned',
+                        help='generate a .hoon harness that bins draws on-ship (for widths too '
+                             'large to safely dump a raw per-pattern histogram out of dojo)')
+    g.add_argument('width', choices=['posit16', 'posit32'])
+    g.add_argument('output', help='output .hoon file path')
+    g.add_argument('--bins', type=int, default=64)
+    g.add_argument('--count', type=int, default=1_000_000)
+    g.add_argument('--seed', type=lambda s: int(s, 0), default=0x2001)
+    g.set_defaults(func=cmd_gen_binned)
+
+    b = sub.add_parser('chi2-binned',
+                        help='chi-square a captured dojo pane dump of gen-binned\'s printed '
+                             '(map @ @) bin counts against the exact table')
+    b.add_argument('width', choices=['posit16', 'posit32'])
+    b.add_argument('counts_file', help='captured pane text containing [p=bin q=count] entries')
+    b.add_argument('--bins', type=int, default=64)
+    b.add_argument('--verbose', action='store_true')
+    b.set_defaults(func=cmd_chi2_binned)
 
     args = ap.parse_args()
     args.func(args)

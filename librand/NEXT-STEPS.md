@@ -196,22 +196,42 @@ full detail):
      the load-bearing evidence. Run via
      `python3 librand/tools/posit_unit_check.py exhaustive8` (compiles
      and runs the C harness, then does the comparison, all in one
-     command). posit16's
-     command is documented and ready to run the same way but wasn't
-     executed in this pass (extracting a large enough on-ship sample is
-     more awkward at that width, and its 65,536-entry histogram would be
-     unwieldy to print/parse from dojo); the bit-exact cross-check against
-     `posit_unit_check.py`'s `encode()` at posit16/32 (done for several
-     seeds, in `+test-posit-unit`) is a stronger per-draw guarantee than
-     the statistical test anyway, since it's the same deterministic code
-     path at every width. To rerun or extend: deploy a `.hoon` file like
-     `=/  count  N  =/  r  (from-atom:seed:rand %sm64 SEED)  =/  m
-     *(map @ @)  =/  i  0  |-  ^-  (map @ @)  ?:  =(i count)  m  =^  v  r
-     (posit-unit:rpb:unumrand r)  =/  c  (fall (~(get by m) v) 0)
-     $(i +(i), m (~(put by m) v +(c)))`, `-build-file` it, `~(tap by
-     <face>)` to print, paste the pairs into a Python dict, and feed to
-     `expected_probabilities`/`quantile_bins`/`chi_square_stat` in
-     `posit_unit_check.py` directly.
+     command).
+   - DONE (also added post-milestone-9, for the paper): posit16 chi-square
+     run at N=1,000,000. posit16 has 16,385 reachable patterns -- far too
+     many to safely dump a raw per-pattern histogram out of a live dojo
+     session (confirmed the hard way: the terminal scrollback silently
+     truncates the printed map well before the full histogram appears,
+     even after raising tmux's `history-limit`; a first attempt at fixing
+     this by embedding a 16,385-entry pattern-to-bin lookup table as one
+     big Hoon literal crashed the ship outright, twice). Fix: have the
+     SHIP do the binning itself into the SAME 64 quantile bins the chi-
+     square already uses, via a small (64-entry) list of bin-boundary
+     PATTERNS rather than a full lookup table -- posit16's reachable
+     patterns are nonneg-valued, so they sort identically by raw integer
+     and by decoded value, meaning each quantile bin is already a
+     contiguous range of raw pattern integers and only needs its lower
+     boundary recorded. `librand/tools/posit_unit_check.py gen-binned
+     posit16 out.hoon --bins 64 --count 1.000.000` generates the
+     deployable harness; `chi2-binned` consumes the captured ship output.
+     Two Hoon lessons paid for getting the harness itself right (both
+     baked into `gen_binned_hoon()`'s own header comment so they don't
+     recur): `~[a b c ...]` list literals infer a FIXED-SHAPE tuple type,
+     not the general recursive `(list @)` mold, so using one as a `|-`
+     trap's loop variable across recursive `$(...)` calls fails with a
+     confusing `mint-vain` (the shape genuinely differs each iteration,
+     shrinking one element per recursion) -- always `^-  (list @)` cast
+     list literals used this way; and an unrelated off-by-one in the
+     first `bin-of` draft (incrementing the running index BEFORE
+     checking the boundary it names, not after) produced a wildly wrong
+     first chi-square (15,700 on 63 dof) that would have been mistaken
+     for a real RNG bug if not caught by verifying `bin-of` against known
+     boundary values first. Corrected result: N=1,000,000, χ²=71.78 on 63
+     dof, p=0.210 -- consistent with the exact expected distribution.
+     The bit-exact cross-check against `posit_unit_check.py`'s `encode()`
+     at posit16/32 (done for several seeds, in `+test-posit-unit`)
+     remains a stronger per-draw guarantee than either statistical test,
+     since it's the same deterministic code path at every width.
    - Decided: the "sample at @rd, quantize/convert" pattern mentioned in
      rand-spec.md 12.1/12.4 (fixed-point and posit *distributions*) is
      NOT shipped as dedicated per-distribution wrapper arms (that would be

@@ -488,13 +488,12 @@
     c3_y* y_bytes = (c3_y*)u3a_malloc((syz_x+1)*sizeof(c3_y));
     u3r_bytes(0, syz_x+1, y_bytes, y_data);
 
-    //  Per element the desk Hoon (+fun-scalar %mod for %i754 in
-    //  lagoon.hoon, and its "Vere follow-on" note) computes C fmod:
-    //    a - b*trunc(a/b), quotient a/b in the door mode but truncated
-    //  TOWARD ZERO (toi %z, NOT the door mode), and a zero divisor or
-    //  non-finite quotient yields NaN rather than crashing.
-    //  fXX_roundToInt in minMag is exact-integer-equivalent to
-    //  san-of-toi-%z.
+    //  Per element the Hoon computes
+    //    (sub a (mul b (san (need (toi (div a b))))))
+    //  under the door rounding mode: the quotient is rounded to an
+    //  integer in the CURRENT mode (+toi), not truncated, and a
+    //  non-finite quotient makes (need ~) crash.  fXX_roundToInt in
+    //  the current mode is exact-integer-equivalent to san-of-toi.
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
       case 4:
@@ -503,11 +502,11 @@
           float16_t y_val16 = ((float16_t*)y_bytes)[i];
           float16_t div_result16 = f16_div(x_val16, y_val16);
           if ( f16_nonfin(div_result16) ) {
-            //  zero divisor / non-finite quotient: NaN, like the Hoon
-            ((float16_t*)y_bytes)[i] = (float16_t){ 0x7e00 };
-            continue;
+            u3a_free(x_bytes);
+            u3a_free(y_bytes);
+            return u3m_bail(c3__exit);
           }
-          float16_t int_result16 = f16_roundToInt(div_result16, softfloat_round_minMag, false);
+          float16_t int_result16 = f16_roundToInt(div_result16, softfloat_roundingMode, false);
           ((float16_t*)y_bytes)[i] = f16_sub(x_val16, f16_mul(y_val16, int_result16));
         }
         break;
@@ -518,11 +517,11 @@
           float32_t y_val32 = ((float32_t*)y_bytes)[i];
           float32_t div_result32 = f32_div(x_val32, y_val32);
           if ( f32_nonfin(div_result32) ) {
-            //  zero divisor / non-finite quotient: NaN, like the Hoon
-            ((float32_t*)y_bytes)[i] = (float32_t){ 0x7fc00000 };
-            continue;
+            u3a_free(x_bytes);
+            u3a_free(y_bytes);
+            return u3m_bail(c3__exit);
           }
-          float32_t int_result32 = f32_roundToInt(div_result32, softfloat_round_minMag, false);
+          float32_t int_result32 = f32_roundToInt(div_result32, softfloat_roundingMode, false);
           ((float32_t*)y_bytes)[i] = f32_sub(x_val32, f32_mul(y_val32, int_result32));
         }
         break;
@@ -533,11 +532,11 @@
           float64_t y_val64 = ((float64_t*)y_bytes)[i];
           float64_t div_result64 = f64_div(x_val64, y_val64);
           if ( f64_nonfin(div_result64) ) {
-            //  zero divisor / non-finite quotient: NaN, like the Hoon
-            ((float64_t*)y_bytes)[i] = (float64_t){ 0x7ff8000000000000ULL };
-            continue;
+            u3a_free(x_bytes);
+            u3a_free(y_bytes);
+            return u3m_bail(c3__exit);
           }
-          float64_t int_result64 = f64_roundToInt(div_result64, softfloat_round_minMag, false);
+          float64_t int_result64 = f64_roundToInt(div_result64, softfloat_roundingMode, false);
           ((float64_t*)y_bytes)[i] = f64_sub(x_val64, f64_mul(y_val64, int_result64));
         }
         break;
@@ -549,12 +548,12 @@
           float128_t div_result128;
           f128M_div(&x_val128, &y_val128, &div_result128);
           if ( f128M_nonfin(div_result128) ) {
-            //  zero divisor / non-finite quotient: NaN, like the Hoon
-            ((float128_t*)y_bytes)[i] = (float128_t){{ 0, 0x7fff800000000000ULL }};
-            continue;
+            u3a_free(x_bytes);
+            u3a_free(y_bytes);
+            return u3m_bail(c3__exit);
           }
           float128_t int_result128;
-          f128M_roundToInt(&div_result128, softfloat_round_minMag, false, &int_result128);
+          f128M_roundToInt(&div_result128, softfloat_roundingMode, false, &int_result128);
           float128_t mult_result128;
           f128M_mul(&y_val128, &int_result128, &mult_result128);
           f128M_sub(&x_val128, &mult_result128, &(((float128_t*)y_bytes)[i]));
@@ -1713,9 +1712,9 @@
 
     //  Same per-element formula as +mod on two rays (see
     //  u3qi_la_mod_i754): divide DIRECTLY (a rounded 1/n gives wrong
-    //  answers even for exact quotients), truncate the quotient toward
-    //  zero (C fmod, matching the desk Hoon), and yield NaN on a zero
-    //  divisor or non-finite quotient.
+    //  answers even for exact quotients), round the quotient to an
+    //  integer in the current door mode, and crash like (need ~) on a
+    //  non-finite quotient.
     //  Switch on the block size.
     switch (u3x_atom(bloq)) {
       case 4:
@@ -1724,11 +1723,10 @@
           float16_t x_val16 = ((float16_t*)x_bytes)[i];
           float16_t div_result16 = f16_div(x_val16, n16);
           if ( f16_nonfin(div_result16) ) {
-            //  zero divisor / non-finite quotient: NaN, like the Hoon
-            ((float16_t*)x_bytes)[i] = (float16_t){ 0x7e00 };
-            continue;
+            u3a_free(x_bytes);
+            return u3m_bail(c3__exit);
           }
-          float16_t int_result16 = f16_roundToInt(div_result16, softfloat_round_minMag, false);
+          float16_t int_result16 = f16_roundToInt(div_result16, softfloat_roundingMode, false);
           ((float16_t*)x_bytes)[i] = f16_sub(x_val16, f16_mul(n16, int_result16));
         }
         break;
@@ -1739,11 +1737,10 @@
           float32_t x_val32 = ((float32_t*)x_bytes)[i];
           float32_t div_result32 = f32_div(x_val32, n32);
           if ( f32_nonfin(div_result32) ) {
-            //  zero divisor / non-finite quotient: NaN, like the Hoon
-            ((float32_t*)x_bytes)[i] = (float32_t){ 0x7fc00000 };
-            continue;
+            u3a_free(x_bytes);
+            return u3m_bail(c3__exit);
           }
-          float32_t int_result32 = f32_roundToInt(div_result32, softfloat_round_minMag, false);
+          float32_t int_result32 = f32_roundToInt(div_result32, softfloat_roundingMode, false);
           ((float32_t*)x_bytes)[i] = f32_sub(x_val32, f32_mul(n32, int_result32));
         }
         break;
@@ -1754,11 +1751,10 @@
           float64_t x_val64 = ((float64_t*)x_bytes)[i];
           float64_t div_result64 = f64_div(x_val64, n64);
           if ( f64_nonfin(div_result64) ) {
-            //  zero divisor / non-finite quotient: NaN, like the Hoon
-            ((float64_t*)x_bytes)[i] = (float64_t){ 0x7ff8000000000000ULL };
-            continue;
+            u3a_free(x_bytes);
+            return u3m_bail(c3__exit);
           }
-          float64_t int_result64 = f64_roundToInt(div_result64, softfloat_round_minMag, false);
+          float64_t int_result64 = f64_roundToInt(div_result64, softfloat_roundingMode, false);
           ((float64_t*)x_bytes)[i] = f64_sub(x_val64, f64_mul(n64, int_result64));
         }
         break;
@@ -1770,12 +1766,11 @@
           float128_t div_result128;
           f128M_div(&x_val128, &n128, &div_result128);
           if ( f128M_nonfin(div_result128) ) {
-            //  zero divisor / non-finite quotient: NaN, like the Hoon
-            ((float128_t*)x_bytes)[i] = (float128_t){{ 0, 0x7fff800000000000ULL }};
-            continue;
+            u3a_free(x_bytes);
+            return u3m_bail(c3__exit);
           }
           float128_t int_result128;
-          f128M_roundToInt(&div_result128, softfloat_round_minMag, false, &int_result128);
+          f128M_roundToInt(&div_result128, softfloat_roundingMode, false, &int_result128);
           float128_t mult_result128;
           f128M_mul(&n128, &int_result128, &mult_result128);
           f128M_sub(&x_val128, &mult_result128, &(((float128_t*)x_bytes)[i]));

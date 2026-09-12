@@ -107,34 +107,27 @@
     !>((en-ray:la [~[2 2] 5 %i754 ~] ~[~[.14 .32] ~[.32 .77]]))
   !>((mmul:la ray-a ray-at))
 ::
-::  %mod truncates the quotient toward zero REGARDLESS of the door
-::  mode (C fmod): 7 mod 2 = 1 under every mode.  (A door-mode +toi
-::  would give -1 under %n/%u.)
-++  test-mod-truncates-regardless  ^-  tang
+::  %mod rounds the quotient in the door mode (+toi), matching arvo:
+::  7 mod 2 = 1 under %z (bare +la) and %d, but -1 under %n and %u.
+++  test-mod-honors-door-mode  ^-  tang
   =/  sev  (en-ray:la [~[1] 5 %i754 ~] ~[.7])
   =/  two  (en-ray:la [~[1] 5 %i754 ~] ~[.2])
   =/  one  (en-ray:la [~[1] 5 %i754 ~] ~[.1])
+  =/  neg  (en-ray:la [~[1] 5 %i754 ~] ~[.-1])
   ;:  weld
     (expect-eq !>(one) !>((mod:la sev two)))
-    (expect-eq !>(one) !>((mod:(lake %n) sev two)))
-    (expect-eq !>(one) !>((mod:(lake %u) sev two)))
     (expect-eq !>(one) !>((mod:(lake %d) sev two)))
+    (expect-eq !>(neg) !>((mod:(lake %n) sev two)))
+    (expect-eq !>(neg) !>((mod:(lake %u) sev two)))
   ==
 ::
-::  %mod with a zero divisor (or any non-finite quotient) is the
-::  canonical quiet NaN, NOT a crash.
-++  test-mod-zero-divisor-nan  ^-  tang
-  =/  nan  (en-ray:la [~[1] 5 %i754 ~] ~[.nan])
-  ;:  weld
-    %+  expect-eq  !>(nan)
-    !>  %+  mod:la
-          (en-ray:la [~[1] 5 %i754 ~] ~[.7])
-        (en-ray:la [~[1] 5 %i754 ~] ~[.0])
-    %+  expect-eq  !>(nan)
-    !>  %+  mod:la
-          (en-ray:la [~[1] 5 %i754 ~] ~[.7])
-        (en-ray:la [~[1] 5 %i754 ~] ~[.nan])
-  ==
+::  %mod with a zero divisor crashes: the quotient is non-finite and
+::  (need (toi ...)) fails.
+++  test-mod-zero-divisor-crashes  ^-  tang
+  %-  expect-fail
+  |.  %+  mod:la
+        (en-ray:la [~[1] 5 %i754 ~] ~[.7])
+      (en-ray:la [~[1] 5 %i754 ~] ~[.0])
 ::
 ::  Scalar mod/div divide DIRECTLY; multiplying by a rounded 1/n is
 ::  wrong even on exact quotients.  (The jet gave 21 mod 7 = 7 and

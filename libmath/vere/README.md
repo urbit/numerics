@@ -2,9 +2,10 @@
 
 Reference (master) copies of the hand-maintained C jet sources for the posit
 (`/lib/unum`) jets, mirrored by hand into the vere runtime (`urbit/vere`,
-branch `sigilante/unum-jets`).  SoftUnum itself is *vendored* into vere
-(`ext/softunum`, pinned tarball of `sigilante/SoftUnum`), so the only
-hand-synced jet file is `unum.c`.
+branch `sigilante/unum-jets-pr`).  SoftUnum itself is *vendored* into vere
+(`ext/softunum`, pinned tarball of `sigilante/SoftUnum`).  The jet source
+(`unum.c`), its declarations (`q.h`/`w.h`), and its hoon-135 registration
+(`135/tree.c`) are all mirrored here.
 
 ## Files here
 
@@ -12,18 +13,22 @@ hand-synced jet file is `unum.c`.
   dispatched on `bloq` read from the `pp` door sample (gate axis 30), calling
   SoftUnum `p8_*`/`p16_*`/`p32_*`.  posit64/128 (bloq 6/7) return `u3_none`
   (fall back to the pure-Hoon arm) until SoftUnum covers them.
-
-## Deltas applied in vere (not full copies — see the vere branch/PR)
-
-- `ext/softunum/{build.zig,build.zig.zon}` — vendor SoftUnum (mirror
-  `ext/softblas`); wired into `pkg/noun/build.zig{,.zon}`.
-- `pkg/noun/build.zig` — add `jets/i/unum.c` to the noun sources.
-- `pkg/noun/jets/w.h`, `q.h` — declare `u3wi_unum_*` / `u3qi_unum_*`.
-- `pkg/noun/jets/135/tree.c` — register `non/unum/<arm>` in the **hoon-135**
+- `noun/jets/q.h`, `noun/jets/w.h` — the `u3qi_unum_*` / `u3wi_unum_*`
+  declarations.  The wrappers are typed `u3_weak`: every op can return
+  `u3_none` (unsupported bloq 6/7, or a door sample that will not read), so
+  the dispatch punts cleanly to the pure-Hoon arm.  (`u3_weak` is a typedef
+  of `u3_noun`; the typing is what dozreg's refcount linter checks.)
+- `noun/jets/135/tree.c` — registers `non/unum/<arm>` in the **hoon-135**
   dashboard.  We ship to the lowest (current) kelvin only; the 408k pill boots
   hoon-135, so the 135 dashboard is the one consulted.  (Local testing against
   newer kelvins may also touch `136/137/tree.c`, but those are NOT part of the
   shipped change — only 135.)
+
+## Deltas applied in vere (build-system only — see the vere branch/PR)
+
+- `ext/softunum/{build.zig,build.zig.zon}` — vendor SoftUnum (mirror
+  `ext/softblas`); wired into `pkg/noun/build.zig{,.zon}`.
+- `pkg/noun/build.zig` — add `jets/i/unum.c` to the noun sources.
 
 ## Hoon side (`libmath/desk/lib/unum.hoon`)
 

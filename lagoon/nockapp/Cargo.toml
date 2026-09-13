@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = ["crates/lagoon-jets"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/urbit/numerics"
+
+[workspace.dependencies]
+# NockVM / NockApp runtime, pinned to one rev of nockchain/nockchain.
+nockvm = { git = "https://github.com/nockchain/nockchain.git", rev = "b9dd5af325d9c1784b7c4a36b26f577c38a50466" }
+nockapp = { git = "https://github.com/nockchain/nockchain.git", rev = "b9dd5af325d9c1784b7c4a36b26f577c38a50466" }
+# Pure-Rust SoftFloat / SoftBLAS (sigilante/RustFloat).
+sdfloat = { git = "https://github.com/sigilante/RustFloat.git", rev = "f7d449c" }
+sdblas = { git = "https://github.com/sigilante/RustFloat.git", rev = "f7d449c" }
+
+[profile.release]
+debug = 1

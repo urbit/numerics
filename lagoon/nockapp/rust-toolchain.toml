@@ -1,0 +1,5 @@
+[toolchain]
+# Pinned nightly (rustc 1.96) for workspace compatibility.
+channel = "nightly-2026-04-03"
+components = ["miri"]
+

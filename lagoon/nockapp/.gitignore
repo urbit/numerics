@@ -2,3 +2,4 @@ target/
 hoon/*.jam
 hoon/.jam-ok
 hoon/smoke*.hoon
+__pycache__/

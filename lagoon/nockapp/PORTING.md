@@ -97,3 +97,14 @@ Hoon-vs-vere-C divergences the port surfaced (the Rust follows the Hoon):
 Debug switches (all read from the environment; never set in production):
 `LAGOON_JET_TRACE`, `LAGOON_JET_SABOTAGE` (add-rays wrong on purpose),
 `LAGOON_JET_DISABLE=max,argmax,...` (named reduction jets punt).
+
+## The float doors (phase 6)
+
+`crates/hoon-float-jets` is a separate crate with no lagoon dependency; the
+same rules apply (punt on anything odd, rounding mode at axis 30, operands
+read as the low `width` bits like `sea:ff`). Verified three ways: the
+lagoon suite under all 68 hints (unchanged: the same two non-jet failures),
+`hoon/float-tests.hoon` under the 40 float hints (only the overflow rows
+mismatch), and the per-pair diff of `hoon/float-diff.hoon` with and without
+the jets (592 of 6400 pairs differ, all ±MAX vs ±inf). Do not "fix" the
+jets to overflow to infinity: the Hoon is what changes (urbit/urbit#7426).

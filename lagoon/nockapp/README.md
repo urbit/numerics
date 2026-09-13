@@ -5,11 +5,15 @@ the `%i754` array arms built on [`sdfloat`/`sdblas`](https://github.com/sigilant
 so a NockApp computes exactly the bits the Hoon (and the vere C jets) produce.
 
 ```
-crates/lagoon-jets/     the jets (`LAGOON_HOT`), `hot_state()` = hoon-138 built-ins + these
+crates/lagoon-jets/     the lagoon jets (`LAGOON_HOT`); `hot_state()` = hoon-138 built-ins
+                        + the float-door jets + these
   src/bin/lagoon-kick   test driver: fires a hoonc --arbitrary trap under the jets
+crates/hoon-float-jets/ jets for hoon-138's own rh/rs/rd/rq doors (`HOON_FLOAT_HOT`)
 hoon/                   generated: lib/ sur/ copies of the desk with `..part` -> `..ut`,
-                        the test files, and run-tests.hoon (the suite as lazy traps)
-scripts/sync-hoon.sh    regenerates hoon/ from ../desk and ../../libmath/desk
+                        the test files, run-tests.hoon (the lagoon suite as lazy traps),
+                        float-tests.hoon and float-diff.hoon (the float doors)
+scripts/sync-hoon.sh    regenerates hoon/lib, hoon/sur, hoon/run-tests.hoon
+scripts/gen-float-*.py  regenerate the float-door tests; float-diff-report.py classifies
 PORTING.md              rules for porting an arm; read before editing jets/
 ```
 
@@ -44,10 +48,33 @@ LAGOON_JET_TRACE=1 ...                                 # one stderr line per jet
 LAGOON_JET_SABOTAGE=1 ...                              # harness self-check: add-rays is made wrong
 ```
 
+## The float doors
+
+`crates/hoon-float-jets` jets `add sub mul div sqt lth lte equ gte gth` of
+hoon-138's `++rh`/`++rs`/`++rd`/`++rq` with sdfloat. Those doors already
+carry `~%`/`~/` hints, so the jets register at `k.138/one/two/tri/<door>/<arm>`
+with no Hoon change; `fma` stays Nock (sdfloat has no fused multiply-add).
+Every float operation on NockVM, not just lagoon's, becomes bit-exact and fast.
+
+```sh
+scripts/gen-float-tests.py && (cd hoon && hoonc --arbitrary --output float-tests.jam float-tests.hoon .)
+NOCK_TEST_JETS=k.138/one/two/tri/rs/add,...  ./target/release/lagoon-kick hoon/float-tests.jam
+```
+
+`float-tests.hoon` is 320 rows, one per (door, arm, value set, mode). Under
+test mode the only rows that mismatch are add/sub/mul/div on the
+overflow-capable value set in `%u`/`%d`/`%z`: the Hoon `++fl` overflows to
+infinity in every mode where IEEE 754 (and sdfloat) saturates to the largest
+finite value (urbit/urbit#7426). `scripts/float-diff-report.py` proves that
+is the whole difference: over 6400 input pairs the jets and the pure Hoon
+disagree 592 times, each time as ±MAX against ±inf, never otherwise. Once the
+Hoon is fixed those rows pass unchanged. `HOON_FLOAT_JET_DISABLE=1` leaves
+the doors to the Nock; `HOON_FLOAT_JET_TRACE=1` prints each call.
+
 ## Using the jets in a NockApp
 
 ```rust
-let hot = lagoon_jets::hot_state();          // URBIT_HOT_STATE ++ LAGOON_HOT
+let hot = lagoon_jets::hot_state();          // URBIT_HOT_STATE ++ HOON_FLOAT_HOT ++ LAGOON_HOT
 boot::setup(&kernel_jam, cli, &hot, "my-app", None).await?;
 ```
 

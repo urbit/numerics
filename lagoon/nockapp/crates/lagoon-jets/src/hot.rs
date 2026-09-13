@@ -64,13 +64,18 @@ pub const LAGOON_HOT: &[HotEntry] = &[
     lagoon_arm!(b"linspace", jets::shape::linspace),
 ];
 
-/// The hoon-138 built-in jets plus the lagoon jets: what a NockApp should
-/// hand to `boot::setup` / `create_context`. `Hot::init` registers only what
-/// it is given, so passing `LAGOON_HOT` alone would leave `add`, `dec`, and
-/// the bit operations running as raw Nock.
+/// The hoon-138 built-in jets, the `rh`/`rs`/`rd`/`rq` door jets, and the
+/// lagoon jets: what a NockApp should hand to `boot::setup` /
+/// `create_context`. `Hot::init` registers only what it is given, so passing
+/// `LAGOON_HOT` alone would leave `add`, `dec`, and the bit operations
+/// running as raw Nock.
 pub fn hot_state() -> Vec<HotEntry> {
-    let mut v = Vec::with_capacity(URBIT_HOT_STATE.len() + LAGOON_HOT.len());
+    let mut v = Vec::with_capacity(URBIT_HOT_STATE.len() + hoon_float_jets::HOON_FLOAT_HOT.len() + LAGOON_HOT.len());
     v.extend_from_slice(URBIT_HOT_STATE);
+    // Diagnostic: leave the float doors to the Nock, to diff jet vs Hoon.
+    if std::env::var_os("HOON_FLOAT_JET_DISABLE").is_none() {
+        v.extend_from_slice(hoon_float_jets::HOON_FLOAT_HOT);
+    }
     v.extend_from_slice(LAGOON_HOT);
     v
 }

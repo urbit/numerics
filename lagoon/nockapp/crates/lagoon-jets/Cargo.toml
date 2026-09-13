@@ -18,4 +18,5 @@ nockvm.workspace = true
 nockapp.workspace = true
 sdfloat.workspace = true
 sdblas.workspace = true
+hoon-float-jets = { path = "../hoon-float-jets" }
 either = "1"

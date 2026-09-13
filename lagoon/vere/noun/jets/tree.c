@@ -17,10 +17,10 @@
   ```
 */
 
-#include "c3.h"
+#include "c3/c3.h"
 #include "jets.h"
 #include "jets/w.h"
-
+#include "jets/136/w.h"
 
 static c3_c* no_hashes[] = { 0 };
 
@@ -275,13 +275,19 @@ static c3_c* _140_hex_coed__ed_puck_ha[] = {
   "1bc694675842345c50b0e20a2193bb5bcbb42f163fc832431a3d1822a81e4c98",
   0
 };
+
 static u3j_harm _140_hex_coed__ed_sign_a[] = {{".2", u3wee_sign}, {}};
-static c3_c* _140_hex_coed__ed_sign_ha[] = {
+
+static u3j_harm _140_hex_coed__ed_sign_octs_a[] = {{".2", u3wee_sign_octs}, {}};
+static c3_c* _140_hex_coed__ed_sign_octs_ha[] = {
   "34ad749bf8443611cbf1f7de90a066318bd12be36f2f7f6f55281f6f7ed79754",
   0
 };
+
 static u3j_harm _140_hex_coed__ed_veri_a[] = {{".2", u3wee_veri}, {}};
-static c3_c* _140_hex_coed__ed_veri_ha[] = {
+
+static u3j_harm _140_hex_coed__ed_veri_octs_a[] = {{".2", u3wee_veri_octs}, {}};
+static c3_c* _140_hex_coed__ed_veri_octs_ha[] = {
   "047a7eeccb2e68aeeee631b6db86e11a5a3aa9e179660553eca6304327612dcf",
   0
 };
@@ -323,9 +329,11 @@ static c3_c* _140_hex_coed__ed_shar_ha[] = {
   };
 
 static u3j_core _140_hex_coed__ed_d[] =
-  { { "sign", 7, _140_hex_coed__ed_sign_a, 0, _140_hex_coed__ed_sign_ha },
+  { { "sign", 7, _140_hex_coed__ed_sign_a, 0, no_hashes },
+    { "sign-octs", 7, _140_hex_coed__ed_sign_octs_a, 0, _140_hex_coed__ed_sign_octs_ha },
     { "puck", 7, _140_hex_coed__ed_puck_a, 0, _140_hex_coed__ed_puck_ha },
-    { "veri", 7, _140_hex_coed__ed_veri_a, 0, _140_hex_coed__ed_veri_ha },
+    { "veri", 7, _140_hex_coed__ed_veri_a, 0, no_hashes },
+    { "veri-octs", 7, _140_hex_coed__ed_veri_octs_a, 0, _140_hex_coed__ed_veri_octs_ha },
     { "shar", 7, _140_hex_coed__ed_shar_a, 0, _140_hex_coed__ed_shar_ha },
     { "point-add", 7, _140_hex_coed__ed_point_add_a, 0, 0 },
     { "scalarmult", 7, _140_hex_coed__ed_scalarmult_a, 0,
@@ -445,13 +453,10 @@ static c3_c* _140_hex_secp_ha[] = {
   0
 };
 
-  static u3j_harm _140_hex_blake2b_a[] = {{".2", u3we_blake, c3y}, {}};
-  static c3_c* _140_hex_blake2b_ha[] = {
-    "c432216ca53b5ad2284259167952761bb1046e280268c4d3b9ca70a2024e1934",
-    0
-  };
+  static u3j_harm _140_hex_blake2b_a[] = {{".2", u3we_blake2b, c3y}, {}};
+
 static u3j_core _140_hex_blake_d[] =
-  { { "blake2b", 7, _140_hex_blake2b_a, 0, _140_hex_blake2b_ha },
+  { { "blake2b", 7, _140_hex_blake2b_a, 0, no_hashes },
     {}
   };
 static c3_c* _140_hex_blake_ha[] = {
@@ -498,14 +503,14 @@ static u3j_core _140_hex_d[] =
   { "coed", 63, 0, _140_hex_coed_d, _140_hex_coed_ha },
   { "aes",  31, 0, _140_hex_aes_d,  _140_hex_aes_ha  },
 
-  { "hmac",   63, 0, _140_hex_hmac_d,  _140_hex_hmac_ha  },
-  { "argon",  31, 0, _140_hex_argon_d, _140_hex_argon_ha },
-  { "blake",  31, 0, _140_hex_blake_d, _140_hex_blake_ha },
-  { "kecc",   31, 0, _140_hex_kecc_d,  no_hashes         },
-  { "ripemd", 31, 0, _140_hex_ripe_d,  _140_hex_ripe_ha  },
-  { "scr",    31, 0, _140_hex_scr_d,   _140_hex_scr_ha   },
-  { "secp",    6, 0, _140_hex_secp_d,  _140_hex_secp_ha  },
-  { "mimes",  31, 0, _140_hex_mimes_d, _140_hex_mimes_ha },
+  { "hmac",   63, 0, _140_hex_hmac_d,   _140_hex_hmac_ha   },
+  { "argon",  31, 0, _140_hex_argon_d,  _140_hex_argon_ha  },
+  { "blake",  31, 0, _140_hex_blake_d,  _140_hex_blake_ha  },
+  { "kecc",   31, 0, _140_hex_kecc_d,   no_hashes          },
+  { "ripemd", 31, 0, _140_hex_ripe_d,   _140_hex_ripe_ha   },
+  { "scr",    31, 0, _140_hex_scr_d,    _140_hex_scr_ha    },
+  { "secp",    6, 0, _140_hex_secp_d,   _140_hex_secp_ha   },
+  { "mimes",  31, 0, _140_hex_mimes_d,  _140_hex_mimes_ha  },
   {}
 };
 static c3_c* _140_hex_ha[] = {
@@ -572,7 +577,7 @@ static c3_c* _140_pen_look_ha[] = {
   "fdda2166a2b9e1a9bda6ab375dd6fb6c610e18f54636a5e89896b45fd0a7169b",
   0
 };
-static u3j_harm _140_pen_loot_a[] = {{".2", u3wf_loot}, {}};
+static u3j_harm _140_pen_loot_a[] = {{".2", u3wf_loot_136}, {}};
 static c3_c* _140_pen_loot_ha[] = {
   "e275da4562ae6da9bd333aeae6b9829e886874c8b891898c0ef5306268eb45c1",
   0
@@ -2123,76 +2128,10 @@ static u3j_core _139_hex_json_d[] =
     {}
   };
 
-/* /lib jets in non core
-*/
-static u3j_harm _139_non__lagoon_add_a[]  = {{".2", u3wi_la_add}, {}};
-static u3j_harm _139_non__lagoon_sub_a[]  = {{".2", u3wi_la_sub}, {}};
-static u3j_harm _139_non__lagoon_mul_a[]  = {{".2", u3wi_la_mul}, {}};
-static u3j_harm _139_non__lagoon_div_a[]  = {{".2", u3wi_la_div}, {}};
-static u3j_harm _139_non__lagoon_mod_a[]  = {{".2", u3wi_la_mod}, {}};
-static u3j_harm _139_non__lagoon_adds_a[] = {{".2", u3wi_la_adds}, {}};
-static u3j_harm _139_non__lagoon_subs_a[] = {{".2", u3wi_la_subs}, {}};
-static u3j_harm _139_non__lagoon_muls_a[] = {{".2", u3wi_la_muls}, {}};
-static u3j_harm _139_non__lagoon_divs_a[] = {{".2", u3wi_la_divs}, {}};
-static u3j_harm _139_non__lagoon_mods_a[] = {{".2", u3wi_la_mods}, {}};
-static u3j_harm _139_non__lagoon_dot_a[]  = {{".2", u3wi_la_dot}, {}};
-static u3j_harm _139_non__lagoon_trans_a[] ={{".2", u3wi_la_transpose}, {}};
-static u3j_harm _139_non__lagoon_cumsum_a[]={{".2", u3wi_la_cumsum}, {}};
-static u3j_harm _139_non__lagoon_argmin_a[]={{".2", u3wi_la_argmin}, {}};
-static u3j_harm _139_non__lagoon_argmax_a[]={{".2", u3wi_la_argmax}, {}};
-static u3j_harm _139_non__lagoon_ravel_a[]={{".2", u3wi_la_ravel}, {}};
-static u3j_harm _139_non__lagoon_min_a[]  = {{".2", u3wi_la_min}, {}};
-static u3j_harm _139_non__lagoon_max_a[]  = {{".2", u3wi_la_max}, {}};
-static u3j_harm _139_non__lagoon_linspace_a[]={{".2", u3wi_la_linspace}, {}};
-static u3j_harm _139_non__lagoon_range_a[]= {{".2", u3wi_la_range}, {}};
-static u3j_harm _139_non__lagoon_abs_a[]  = {{".2", u3wi_la_abs}, {}};
-static u3j_harm _139_non__lagoon_gth_a[]  = {{".2", u3wi_la_gth}, {}};
-static u3j_harm _139_non__lagoon_gte_a[]  = {{".2", u3wi_la_gte}, {}};
-static u3j_harm _139_non__lagoon_lth_a[]  = {{".2", u3wi_la_lth}, {}};
-static u3j_harm _139_non__lagoon_lte_a[]  = {{".2", u3wi_la_lte}, {}};
-static u3j_harm _139_non__lagoon_diag_a[] = {{".2", u3wi_la_diag}, {}};
-static u3j_harm _139_non__lagoon_trace_a[]= {{".2", u3wi_la_trace}, {}};
-static u3j_harm _139_non__lagoon_mmul_a[] = {{".2", u3wi_la_mmul}, {}};
-static u3j_core _139_non__la_core_d[] =
-  { { "add-rays", 7, _139_non__lagoon_add_a,  0, no_hashes },
-    { "sub-rays", 7, _139_non__lagoon_sub_a,  0, no_hashes },
-    { "mul-rays", 7, _139_non__lagoon_mul_a,  0, no_hashes },
-    { "div-rays", 7, _139_non__lagoon_div_a,  0, no_hashes },
-    { "mod-rays", 7, _139_non__lagoon_mod_a,  0, no_hashes },
-    { "add-scal", 7, _139_non__lagoon_adds_a, 0, no_hashes },
-    { "sub-scal", 7, _139_non__lagoon_subs_a, 0, no_hashes },
-    { "mul-scal", 7, _139_non__lagoon_muls_a, 0, no_hashes },
-    { "div-scal", 7, _139_non__lagoon_divs_a, 0, no_hashes },
-    { "mod-scal", 7, _139_non__lagoon_mods_a, 0, no_hashes },
-    { "dot",      7, _139_non__lagoon_dot_a,  0, no_hashes },
-    { "transpose",7, _139_non__lagoon_trans_a, 0, no_hashes },
-    { "cumsum",   7, _139_non__lagoon_cumsum_a, 0, no_hashes },
-    { "argmin",   7, _139_non__lagoon_argmin_a, 0, no_hashes },
-    { "argmax",   7, _139_non__lagoon_argmax_a, 0, no_hashes },
-    { "ravel",    7, _139_non__lagoon_ravel_a, 0, no_hashes },
-    { "min",      7, _139_non__lagoon_min_a, 0, no_hashes },
-    { "max",      7, _139_non__lagoon_max_a, 0, no_hashes },
-    { "linspace", 7, _139_non__lagoon_linspace_a, 0, no_hashes },
-    { "range",    7, _139_non__lagoon_range_a, 0, no_hashes },
-    { "abs",      7, _139_non__lagoon_abs_a, 0, no_hashes },
-    { "gth",      7, _139_non__lagoon_gth_a, 0, no_hashes },
-    { "gte",      7, _139_non__lagoon_gte_a, 0, no_hashes },
-    { "lth",      7, _139_non__lagoon_lth_a, 0, no_hashes },
-    { "lte",      7, _139_non__lagoon_lte_a, 0, no_hashes },
-    { "diag",     7, _139_non__lagoon_diag_a, 0, no_hashes },
-    { "trace",    7, _139_non__lagoon_trace_a,0, no_hashes },
-    { "mmul",     7, _139_non__lagoon_mmul_a, 0, no_hashes },
-    {}
-  };
 
-static u3j_core _139_non_d[] =
-  { { "lagoon", 7, 0, _139_non__la_core_d, no_hashes },
-    {}
-  };
 
 static u3j_core _139_hex_d[] =
-{ { "non", 7, 0, _139_non_d, no_hashes },
-
+{
   { "lore",  63, _140_hex_lore_a, 0, no_hashes },
   { "leer",  63, _140_hex_leer_a, 0, no_hashes },
   { "loss",  63, _140_hex_loss_a, 0, no_hashes },
@@ -2201,16 +2140,15 @@ static u3j_core _139_hex_d[] =
   { "coed", 63, 0, _140_hex_coed_d, no_hashes },
   { "aes",  31, 0, _140_hex_aes_d,  no_hashes },
 
-  { "hmac",   63, 0, _140_hex_hmac_d,  no_hashes },
-  { "argon",  31, 0, _140_hex_argon_d, no_hashes },
-  { "blake",  31, 0, _140_hex_blake_d, no_hashes },
-  { "kecc",   31, 0, _140_hex_kecc_d,  no_hashes },
-  { "ripemd", 31, 0, _140_hex_ripe_d,  no_hashes },
-  { "scr",    31, 0, _140_hex_scr_d,   no_hashes },
-  { "secp",    6, 0, _140_hex_secp_d,  no_hashes },
-  { "mimes",  31, 0, _140_hex_mimes_d, no_hashes },
-  { "json",   31, 0, _139_hex_json_d,  no_hashes },
-
+  { "hmac",   63, 0, _140_hex_hmac_d,   no_hashes  },
+  { "argon",  31, 0, _140_hex_argon_d,  no_hashes  },
+  { "blake",  31, 0, _140_hex_blake_d,  no_hashes  },
+  { "kecc",   31, 0, _140_hex_kecc_d,   no_hashes  },
+  { "ripemd", 31, 0, _140_hex_ripe_d,   no_hashes  },
+  { "scr",    31, 0, _140_hex_scr_d,    no_hashes  },
+  { "secp",    6, 0, _140_hex_secp_d,   no_hashes  },
+  { "mimes",  31, 0, _140_hex_mimes_d,  no_hashes  },
+  { "json",   31, 0, _139_hex_json_d,   no_hashes  },
   {}
 };
 
@@ -2395,8 +2333,57 @@ u3j_core _k139_d[] =
   {}
 };
 
+  static u3j_harm _138_hex_blake3_hash_a[] = {{".2", u3we_blake3_hash, c3y}, {}};
+  static u3j_harm _138_hex_blake3_compress_a[] = {{".2", u3we_blake3_compress, c3y}, {}};
+  static u3j_harm _138_hex_blake3_chunk_output_a[] = {{".2", u3we_blake3_chunk_output, c3y}, {}};
+  static u3j_core _138_hex_blake3_d[] =
+    { { "hash", 7, _138_hex_blake3_hash_a, 0, no_hashes },
+      { "chunk-output", 7, _138_hex_blake3_chunk_output_a, 0, no_hashes },
+      {}
+    };
+  static u3j_core _138_hex_blake3_impl_d[] =
+    { { "compress", 7, _138_hex_blake3_compress_a, 0, no_hashes },
+      { "blake3",   7, 0,          _138_hex_blake3_d, no_hashes },
+      {}
+    };
+static u3j_core _138_hex_blake_d[] =
+  { { "blake2b",     7, _140_hex_blake2b_a,     0, no_hashes },
+    { "blake3-impl", 7, 0, _138_hex_blake3_impl_d, no_hashes },
+    {}
+  };
+
+  static u3j_harm _138_hex_chacha_crypt_a[] = {{".2", u3we_chacha_crypt, c3y}, {}};
+  static u3j_harm _138_hex_chacha_xchacha_a[] = {{".2", u3we_chacha_xchacha, c3y}, {}};
+static u3j_core _138_hex_chacha_d[] =
+  { { "crypt",   7, _138_hex_chacha_crypt_a,   0, no_hashes },
+    { "xchacha", 7, _138_hex_chacha_xchacha_a, 0, no_hashes },
+    {}
+  };
+
+static u3j_core _138_hex_d[] =
+{ { "lore",  63, _140_hex_lore_a, 0, no_hashes },
+  { "leer",  63, _140_hex_leer_a, 0, no_hashes },
+  { "loss",  63, _140_hex_loss_a, 0, no_hashes },
+  { "lune", 127, _140_hex_lune_a, 0, no_hashes },
+
+  { "coed", 63, 0, _140_hex_coed_d, no_hashes },
+  { "aes",  31, 0, _140_hex_aes_d,  no_hashes },
+
+  { "hmac",   63, 0, _140_hex_hmac_d,   no_hashes },
+  { "argon",  31, 0, _140_hex_argon_d,  no_hashes },
+  { "blake",  31, 0, _138_hex_blake_d,  no_hashes },
+  { "chacha", 31, 0, _138_hex_chacha_d, no_hashes },
+  { "kecc",   31, 0, _140_hex_kecc_d,   no_hashes },
+  { "ripemd", 31, 0, _140_hex_ripe_d,   no_hashes },
+  { "scr",    31, 0, _140_hex_scr_d,    no_hashes },
+  { "secp",    6, 0, _140_hex_secp_d,   no_hashes },
+  { "mimes",  31, 0, _140_hex_mimes_d,  no_hashes },
+  { "json",   31, 0, _139_hex_json_d,   no_hashes },
+  {}
+};
+
 static u3j_core _138_pen_d[] =
-{ { "hex", 7, 0, _139_hex_d, no_hashes },
+{ { "hex", 7, 0, _138_hex_d, no_hashes },
 
   { "cell", 7, _140_pen_cell_a, 0, no_hashes },
   { "comb", 7, _140_pen_comb_a, 0, no_hashes },
@@ -2496,6 +2483,8 @@ static u3j_core _138_two__by_d[] =
 
 static u3j_harm _138_two_mate_a[] = {{".2", u3wb_mate, c3y}, {}};
 
+static u3j_harm _138_two_aor_a[] = {{".2", u3wc_aor, c3y}, {}};
+
 static u3j_core _138_two_d[] =
 { { "tri", 3, 0, _138_tri_d, no_hashes, _140_tri_ho },
 
@@ -2522,6 +2511,7 @@ static u3j_core _138_two_d[] =
   { "welp", 7, _140_two_welp_a, 0, no_hashes },
   { "zing", 7, _140_two_zing_a, 0, no_hashes },
 
+  { "aor",  7, _138_two_aor_a, 0, no_hashes },
   { "bex",  7, _140_two_bex_a, 0, no_hashes },
   { "cat",  7, _140_two_cat_a, 0, no_hashes },
   { "can",  7, _140_two_can_a, 0, no_hashes },
@@ -2579,13 +2569,11 @@ static u3j_core _138_one_d[] =
   {}
 };
 
-u3j_core _k138_d[] =
+static u3j_core _k138_d[] =
 { { "one", 3, 0, _138_one_d, no_hashes },
   {}
 };
 
-
-//  TODO: probably need different ha hashes
 
 static u3j_core _a50_two__by_d[] =
   { { "apt", 7, _140_two__by_apt_a, 0, _140_two__by_apt_ha },
@@ -2630,7 +2618,6 @@ u3j_core _a50_d[] =
   { "mix", 7,  _140_two_mix_a, 0, _140_two_mix_ha },
   { "mor", 7,  _140_two_mor_a, 0, _140_two_mor_ha },
   { "mug", 7,  _140_two_mug_a, 0, _140_two_mug_ha },
-  { "muk", 59, _140_two_muk_a, 0, _140_two_muk_ha },  //  TODO: why 59?
   { "rep", 7,  _140_two_rep_a, 0, _140_two_rep_ha },
   { "rip", 7,  _140_two_rip_a, 0, _140_two_rip_ha },
   { "rsh", 7,  _140_two_rsh_a, 0, _140_two_rsh_ha },
@@ -2650,10 +2637,17 @@ u3j_core _a50_d[] =
   {}
 };
 
+extern u3j_core _k137_d[];
+extern u3j_core _k136_d[];
+extern u3j_core _k135_d[];
+
 static u3j_core _d[] =
 { { "k140", 0, 0, _k140_d, _k140_ha,  0, (u3j_core*) 140,     0 },
   { "k139", 0, 0, _k139_d, no_hashes, 0, (u3j_core*) 139,     0 },
   { "k138", 0, 0, _k138_d, no_hashes, 0, (u3j_core*) 138,     0 },
+  { "k137", 0, 0, _k137_d, no_hashes, 0, (u3j_core*) 137,     0 },
+  { "k136", 0, 0, _k136_d, no_hashes, 0, (u3j_core*) 136,     0 },
+  { "k135", 0, 0, _k135_d, no_hashes, 0, (u3j_core*) 135,     0 },
   { "a50",  0, 0, _a50_d,  _k140_ha,  0, (u3j_core*) c3__a50, 0 },
   {}
 };

@@ -29,6 +29,25 @@ fn cord(n: Noun, space: &nockvm::noun::NounSpace) -> String {
     }
 }
 
+/// Render a small noun (atoms in hex, cells bracketed), for `--raw`.
+fn show(n: Noun, space: &nockvm::noun::NounSpace, depth: usize) -> String {
+    if depth > 100_000 {
+        return "...".into();
+    }
+    match n.in_space(space).as_atom() {
+        Ok(a) => {
+            let bytes = a.to_le_bytes();
+            let hex: String = bytes.iter().rev().map(|b| format!("{b:02x}")).collect();
+            let hex = hex.trim_start_matches('0');
+            format!("0x{}", if hex.is_empty() { "0" } else { hex })
+        }
+        Err(_) => {
+            let c = n.in_space(space).as_cell().unwrap();
+            format!("[{} {}]", show(c.head().noun(), space, depth + 1), show(c.tail().noun(), space, depth + 1))
+        }
+    }
+}
+
 fn list(mut n: Noun, space: &nockvm::noun::NounSpace) -> Vec<Noun> {
     let mut out = Vec::new();
     while let Ok(c) = n.in_space(space).as_cell() {
@@ -78,10 +97,7 @@ fn main() {
     };
     if raw {
         let space = context.stack.noun_space();
-        match built.in_space(&space).as_atom() {
-            Ok(a) => println!("atom: {:?}", a.as_u64().ok()),
-            Err(_) => println!("cell"),
-        }
+        println!("{}", show(built, &space, 0));
         return;
     }
     let t0 = std::time::Instant::now();

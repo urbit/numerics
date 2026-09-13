@@ -31,6 +31,34 @@
   |=  [a=@ b=@]  ^-  ray:ls
   (en-ray:(lake %n) [[~[2] 5 %i754 ~] ~[a b]])
 ::
+::  ++close-rh/rd/rq + ++rh1/rd1/rq1: the same pattern as ++close-rs/++rs1
+::  above, at the other three %i754 bloqs (4=@rh, 6=@rd, 7=@rq).  Added
+::  alongside the saloon.hoon +sa scalar-dispatch rtol fix (rand-spec.md
+::  milestone 8 prerequisite): the existing tests here only ever exercised
+::  bloq 5 (@rs), so the fix's bloq 4/6/7 branches -- mechanically
+::  identical, but otherwise untested at runtime -- get one spot check
+::  each below (+test-exp-rh/rd/rq).
+::
+++  close-rh
+  |=  [x=ray:ls y=ray:ls]  ^-  ?
+  (all:(lake %n) (is-close:(lake %n) x y [.~~1e-2 .~~1e-2]))
+++  close-rd
+  |=  [x=ray:ls y=ray:ls]  ^-  ?
+  (all:(lake %n) (is-close:(lake %n) x y [.~1e-9 .~1e-9]))
+++  close-rq
+  |=  [x=ray:ls y=ray:ls]  ^-  ?
+  (all:(lake %n) (is-close:(lake %n) x y [.~~~1e-15 .~~~1e-15]))
+::
+++  rh1
+  |=  [a=@]  ^-  ray:ls
+  (en-ray:(lake %n) [[~[1] 4 %i754 ~] ~[a]])
+++  rd1
+  |=  [a=@]  ^-  ray:ls
+  (en-ray:(lake %n) [[~[1] 6 %i754 ~] ~[a]])
+++  rq1
+  |=  [a=@]  ^-  ray:ls
+  (en-ray:(lake %n) [[~[1] 7 %i754 ~] ~[a]])
+::
 ::  Unary ops: input and expected-output rays share the same values as the
 ::  scalar tests in saloon.hoon so the two suites cross-validate.
 ::
@@ -111,4 +139,24 @@
   =/  a  (en-ray:(lake %n) [[~[3 2] 5 %i754 ~] ~[.1 .2 .3 .4 .5 .6]])
   =/  res  (exp:sa a)
   (expect !>(=(shape.meta.res ~[3 2])))
+::
+::  +test-exp-rh/rd/rq: see the ++close-rh/rd/rq header comment above.
+::
+++  test-exp-rh
+  ^-  tang
+  =/  a  (rh1 .~~4)
+  =/  w  (rh1 .~~54.6)
+  (expect !>((close-rh (exp:sa a) w)))
+::
+++  test-exp-rd
+  ^-  tang
+  =/  a  (rd1 .~4)
+  =/  w  (rd1 .~54.598150033144236)
+  (expect !>((close-rd (exp:sa a) w)))
+::
+++  test-exp-rq
+  ^-  tang
+  =/  a  (rq1 .~~~4)
+  =/  w  (rq1 .~~~54.59815003314423907811026120286088)
+  (expect !>((close-rq (exp:sa a) w)))
 --

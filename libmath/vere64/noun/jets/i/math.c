@@ -1853,7 +1853,7 @@ typedef int64_t  c3_ds;
   static u3_noun
   _rd_jet(u3_noun cor, float64_t (*fun)(float64_t))
   {
-    u3_noun x = u3r_at(u3x_sam, cor);
+    u3_weak x = u3r_at(u3x_sam, cor);
     if ( u3_none == x || c3n == u3ud(x) ) {
       return u3m_bail(c3__exit);
     }
@@ -2024,7 +2024,7 @@ typedef int64_t  c3_ds;
     union sing s; s.s = v; { c3_d out = (c3_d)s.c; return u3i_chubs(1, &out); }
   }
   static u3_noun _rs_jet(u3_noun cor, float32_t (*fun)(float32_t)) {
-    u3_noun x = u3r_at(u3x_sam, cor);
+    u3_weak x = u3r_at(u3x_sam, cor);
     if ( u3_none == x || c3n == u3ud(x) ) return u3m_bail(c3__exit);
     softfloat_roundingMode = softfloat_round_near_even;
     _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (for @rs tan)
@@ -2085,7 +2085,7 @@ typedef int64_t  c3_ds;
     union half s; s.h = v; { c3_d out = (c3_d)s.c; return u3i_chubs(1, &out); }
   }
   static u3_noun _rh_jet(u3_noun cor, float16_t (*fun)(float16_t)) {
-    u3_noun x = u3r_at(u3x_sam, cor);
+    u3_weak x = u3r_at(u3x_sam, cor);
     if ( u3_none == x || c3n == u3ud(x) ) return u3m_bail(c3__exit);
     softfloat_roundingMode = softfloat_round_near_even;   // kernels run near-even
     _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (for @rh tan/cbt/log-2/log-10)
@@ -2146,7 +2146,7 @@ typedef int64_t  c3_ds;
     union quad s; s.q = v; return u3i_chubs(2, &s.w[0]);
   }
   static u3_noun _rq_jet(u3_noun cor, float128_t (*fun)(float128_t)) {
-    u3_noun x = u3r_at(u3x_sam, cor);
+    u3_weak x = u3r_at(u3x_sam, cor);
     if ( u3_none == x || c3n == u3ud(x) ) return u3m_bail(c3__exit);
     softfloat_roundingMode = softfloat_round_near_even;   // kernels run near-even
     _math_rnd = _rnd_of(u3r_at(60, cor));        // door rounding r (for tan/cbt/log-2/log-10)

@@ -3,7 +3,7 @@
 =+  lagoon
 ::                                                    ::
 ::::                    ++la                          ::  (2v) vector/matrix ops
-~%  %non  ..part  ~  :: nest non in hex for now
+~%  %non  ..ut  ~  :: nest non in hex for now
 |%
 ::    $rounding-mode:  the four IEEE modes the @r precision doors accept
 +$  rounding-mode  ?(%n %u %d %z)   :: round nearest, up, down, to zero

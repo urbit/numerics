@@ -44,8 +44,33 @@ Linear algebra (over Lagoon arrays):
 - `++eigvals`, eigenvalues only (1-D ray).
 - `++eigvecs`, eigenvectors only.
 
-Set rounding mode and tolerance with `++sake` before calling `++eig` (the bare
-`++sa` default `rtol` is unusable); `rtol`'s width must match the component.
+Solvers and factorizations (`%i754` only, bloq 4/5/6/7):
+
+- `++chol`, the Cholesky factor `L` of a symmetric positive-definite matrix
+  (`A = L*L^T`, lower triangular); `++chol-unit` is the same thing returning
+  `(unit ray)`, with `~` instead of a crash when the matrix is not positive
+  definite.
+- `++trsv-lo` / `++trsv-up`, forward and back substitution against `L` (the
+  latter reads `L` transposed rather than materializing `L^T`).
+- `++chol-solve`, `A*x = v` by one factorization plus the two substitutions.
+- `++cg`, conjugate gradient from `x0 = 0` → `[x iter rnorm]`, so the caller can
+  tell convergence from exhaustion; `++pcg` adds the Jacobi (diagonal)
+  preconditioner.  Each iteration is one `++matvec` and two `++dotv`, touching
+  the matrix only through products.
+- `++svd`, the thin singular value decomposition by **one-sided Jacobi** →
+  `[u s v]` with `A = U*diag(S)*V^T` and `s` sorted DESCENDING (unlike `++eig`,
+  whose order is arbitrary); `++svd-vals` for the values alone.  Needs
+  `rows >= cols` — transpose a wide matrix and swap `u`/`v`.
+- Vector helpers, on rank-1 rays of shape `~[n]` (as `++diag` returns, not
+  `n x 1` matrices): `++matvec`, `++dotv`, `++nrm2`, `++axpyv`, `++col-dot`.
+
+Every inner product in these arms sums LEFT TO RIGHT from the kind's `+0` — the
+order a C or Rust kernel walks, so they stay jettable, and not NumPy's pairwise
+summation.
+
+Set rounding mode and tolerance with `++sake` before calling `++eig`, `++cg`,
+`++pcg` or `++svd` (the bare `++sa` default `rtol` is unusable); `rtol`'s width
+must match the component.
 
 Random array filling (`rand-spec.md` section 8, in `/Users/neal/urbit/numerics/librand/`):
 

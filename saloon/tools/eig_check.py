@@ -157,7 +157,7 @@ def emit_hoon():
     print("    |-  ^-  (list @)")
     print("    ?:  =(i n)  (flop acc)")
     print("    $(i +(i), acc [(get-item:(lake %n) r ~[i]) acc])")
-    print("  =/  srt  (sort lst |=([p=@ q=@] (~(lth rd:math [%n .~1e-10]) p q)))")
+    print("  =/  srt  (sort lst |=([p=@ q=@] (~(lth rd:math [%n .~1e-10 `@rd`0]) p q)))")
     print("  (en-ray:(lake %n) [[~[n] 6 %i754 ~] srt])")
     print("++  eigpair-ok")
     print("  |=  [a=ray:ls n=@]")

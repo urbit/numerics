@@ -121,8 +121,8 @@ def emit():
     print("    ?:  =(i n)  (flop acc)")
     print("    $(i +(i), acc [(get-item:(lake %n) r ~[i]) acc])")
     print("  =/  cmp")
-    print("    ?:  =(6 b)  |=([p=@ q=@] (~(lth rd:math [%n .~1e-10]) p q))")
-    print("    |=([p=@ q=@] (~(lth rs:math [%n .1e-6]) p q))")
+    print("    ?:  =(6 b)  |=([p=@ q=@] (~(lth rd:math [%n .~1e-10 `@rd`0]) p q))")
+    print("    |=([p=@ q=@] (~(lth rs:math [%n .1e-6 `@rs`0]) p q))")
     print("  (en-ray:(lake %n) [[~[n] b %i754 ~] (sort lst cmp)])")
     for name, mat, cb, atom, rb, lit in CASES:
         n = mat.shape[0]

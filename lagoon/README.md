@@ -100,6 +100,23 @@ The following arms are provided:
 - `++argmin`
 - `++cumsum`
 - `++prod`
+- `++sum-dim` — sum along a dimension (dropping it)
+- `++prod-dim` — product along a dimension
+- `++max-dim` / `++min-dim` — extremum along a dimension
+- `++argmax-dim` / `++argmin-dim` — index of the first extremum along a dimension (`%uint` bloq 6)
+- `++mean` / `++mean-dim` — arithmetic mean (`%i754`)
+- `++var` / `++var-dim` — variance with a `ddof` (`%i754`)
+- `++std` / `++std-dim` — standard deviation (`%i754`)
+- `++norm` / `++norm-dim` — `%l1`/`%l2`/`%linf`/`%fro` norms (`$norm-ord`)
+- `++sort-dim` — sort each slice along a dimension, `%asc` or `%des`
+- `++argsort-dim` — the sorting permutation (`%uint` bloq 6, stable)
+- `++argtop-dim` — indices of the `k` largest along a dimension
+- `++take-dim` — NumPy's `take_along_axis`; pairs with the two above
+- `++cdist-sq` / `++pdist-sq` — squared Euclidean distance matrices (`%i754`)
+- `++broadcast-to` — expand to a shape by NumPy broadcasting rules
+- `++prod-list` / `++drop-dim` / `++dim-parts` / `++dim-slices` / `++slice-flat` /
+  `++fold-slice` / `++slice-op` / `++slice-idx` / `++rank-slice` /
+  `++norm-slice` / `++i754-sun` / `++i754-sqt` (helper functions)
 - `++reshape`
 - `++stack`
 - `++hstack`
@@ -152,6 +169,9 @@ Nonobvious points to note:
 > (cumsum:(lake:la %u) (en-ray:(lake:la %u) [~[7 1] 5 %i754 ~] ~[.1 .5 .-5 .2 .3 .-20 .-1]))
 [meta=[shape=~[1 1] bloq=5 kind=%i754 fxp=~] data=0x1.c170.0000]
 ```
+4. The axis-wise arms (`++sum-dim` and friends) fold LEFT TO RIGHT along the axis, seeded with each slice's first element.  The whole-array `++cumsum`, `++max`, and `++min` fold right to left (they use `+reel`), so on an inexact sum `++sum-dim` over a rank-1 ray and `++cumsum` can differ in the last bits.  The left fold is the order a C or Rust kernel walks, which is why it is the one a jet must reproduce; `/tests/lib/lagoon-axis-rounding` pins it with a vector whose two fold orders disagree.
+5. `++cdist-sq` sums squared differences directly rather than via the Gram identity `|x|^2 + |y|^2 - 2*A*B^T`.  The identity is much faster (a single `++mmul`) but rounds differently and can produce small negative entries, so it is not a legal jet for this arm.  The same test file pins that too.
+6. The index-producing arms (`++argmax-dim`, `++argmin-dim`, `++argsort-dim`, `++argtop-dim`) return `%uint` rays of bloq 6 whatever the input width, and `++take-dim` consumes them.  Reductions drop the reduced dimension (NumPy's `keepdims=False`), and a rank-1 ray reduces to shape `~[1]`; `++argtop-dim` is the exception, replacing the dimension with `k`.
 
 ---
 

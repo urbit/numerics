@@ -1,5 +1,36 @@
 #   MAchine leaRning in hOON (Maroon)
 
+Maroon has two independent lines.
+
+##  `/lib/maroon` — classical models (active)
+
+Models built out of whole-array Lagoon operations and Saloon decompositions,
+the work list in [urbit/numerics#86](https://github.com/urbit/numerics/issues/86).
+A dataset is an `n x d` `%i754` ray, one row per sample; labels are `%uint`
+bloq-6 rays, as Lagoon's `++argmin-dim` returns, so everything composes without
+reshaping.
+
+- `++pca`, `++pca-transform` — principal components from the SVD of the centred
+  data (not an eigendecomposition of the covariance, which squares the
+  condition number). `.comp` holds the components as COLUMNS, largest variance
+  first; component signs are arbitrary, as in every PCA.
+- `++kmeans` — Lloyd's algorithm from given centroids, deterministic, stopping
+  at the exact fixed point of the assignment and reporting the iteration count.
+- `++kmeans-pp` — k-means++ seeding, threading an `/lib/rand` generator
+  explicitly so a seed reproduces its centroids; `++kmeans-fit` is the two
+  together.
+- `++assign`, `++update`, `++inertia`, `++cov`, `++center`, `++col-mean`, and
+  the row helpers `++row`/`++set-row`.
+
+Set the rounding mode and tolerance with `++make` before use, as Saloon's
+`++sake` does. Every sum folds left to right from `+0`, the order a jet will
+walk. Oracle: `maroon/tools/ml_check.py` (NumPy + scikit-learn).
+
+##  `/lib/tinygrad` — the autodiff port (dormant)
+
+The 2024 tinygrad port below. It does not currently build; the retarget is
+scoped in [urbit/numerics#85](https://github.com/urbit/numerics/issues/85).
+
 **WIP ~2024.5.2 implementing tinygrad operations**
 
 - Our current objective is to implement `++forward` inference.

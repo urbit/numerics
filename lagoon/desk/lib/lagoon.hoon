@@ -946,6 +946,656 @@
     %+  scalar-to-ray  meta.a
     (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar meta.a %mul) b c)))
   ::
+  ::  Axis-wise reductions, norms, sorting, and distances
+  ::
+  ::  These arms take a dimension index .dim (0 = outermost/rows, 1 = columns,
+  ::  ...) and work along it.  Reductions REMOVE .dim from the result's shape
+  ::  (NumPy's default keepdims=False); reducing a rank-1 ray gives shape ~[1].
+  ::
+  ::  ACCUMULATION ORDER.  Every arm here folds LEFT TO RIGHT along the axis,
+  ::  seeded with the slice's first element: ((x0 op x1) op x2) op ...  This is
+  ::  the order a C/Rust kernel walks, so these arms stay jettable; note it is
+  ::  NOT the right fold the whole-array +cumsum/+max/+min use, and it is not
+  ::  NumPy's pairwise summation either, so inexact sums can differ from both
+  ::  in the last bits.  None of these arms is jetted yet.
+  ::
+  ::    $norm-ord:  which norm +norm/+norm-dim computes
+  ::
+  ::  %l1 sum|x|, %l2 sqrt(sum x^2), %linf max|x|, %fro the Frobenius norm.
+  ::  Since these arms reduce a flat slice, %fro and %l2 coincide; both tags
+  ::  are kept so callers can say which they mean.
+  +$  norm-ord  ?(%l1 %l2 %linf %fro)
+  ::
+  ::    +prod-list:  (list @) -> @
+  ::
+  ::  The product of .a, with the empty product 1.  (+roll with ^mul yields the
+  ::  accumulator's bunt 0 on ~, which would collapse every count and stride.)
+  ::  Source
+  ++  prod-list
+    |=  a=(list @)
+    ^-  @
+    ::  an explicit loop, not (roll a ^mul): +roll is wet, and passing it the
+    ::  ?~-narrowed non-empty list fails to nest on its own recursion.
+    =/  acc  1
+    |-  ^-  @
+    ?~  a  acc
+    $(acc (^mul acc i.a), a t.a)
+  ::
+  ::    +drop-dim:  [shape=(list @) dim=@ud] -> (list @)
+  ::
+  ::  .shape with dimension .dim removed, or ~[1] when that would empty it (so
+  ::  a reduced rank-1 ray stays a well-formed rank-1 ray).
+  ::  Source
+  ++  drop-dim
+    |=  [shape=(list @) dim=@ud]
+    ^-  (list @)
+    =/  out  (weld (scag dim shape) (slag +(dim) shape))
+    ?~(out ~[1] out)
+  ::
+  ::    +dim-parts:  [shape=(list @) dim=@ud] -> [outer=@ len=@ inner=@]
+  ::
+  ::  Splits .shape around .dim for row-major traversal: element (i, j, k) with
+  ::  i < outer, j < len, k < inner sits at flat index i*len*inner + j*inner + k,
+  ::  and its slice sits at slice index i*inner + k.  Crashes unless .dim is a
+  ::  real dimension and every dimension is nonzero.
+  ::  Source
+  ++  dim-parts
+    |=  [shape=(list @) dim=@ud]
+    ^-  [outer=@ len=@ inner=@]
+    ?>  (^lth dim (lent shape))
+    ?>  (levy shape |=(d=@ !=(0 d)))
+    :+  (prod-list (scag dim shape))
+      (snag dim shape)
+    (prod-list (slag +(dim) shape))
+  ::
+  ::    +dim-slices:  [a=ray dim=@ud] -> (list (list @))
+  ::
+  ::  Every 1-D slice of .a along .dim, each in increasing .dim order, the
+  ::  slices themselves in the row-major order of the dim-dropped result (slice
+  ::  (i, k) at index i*inner + k).  Backs every arm in this section.
+  ::  Source
+  ++  dim-slices
+    |=  [a=ray dim=@ud]
+    ^-  (list (list @))
+    =/  p  (dim-parts shape.meta.a dim)
+    =/  dat  (ravel a)
+    %-  zing
+    %+  turn  (gulf 0 (dec outer.p))
+    |=  i=@
+    ^-  (list (list @))
+    %+  turn  (gulf 0 (dec inner.p))
+    |=  k=@
+    ^-  (list @)
+    =/  base  (^add (^mul i (^mul len.p inner.p)) k)
+    %+  turn  (gulf 0 (dec len.p))
+    |=(j=@ (snag (^add base (^mul j inner.p)) dat))
+  ::
+  ::    +slice-flat:  [outer=@ inner=@ k=@ud vals=(list (list @))] -> (list @)
+  ::
+  ::  The inverse of +dim-slices for a result whose .dim has length .k: scatters
+  ::  .vals (in slice order, each .k long) into flat row-major order.
+  ::  Source
+  ++  slice-flat
+    |=  [outer=@ inner=@ k=@ud vals=(list (list @))]
+    ^-  (list @)
+    %+  turn  (gulf 0 (dec (^mul (^mul outer k) inner)))
+    |=  n=@
+    ^-  @
+    =/  i    (^div n (^mul k inner))
+    =/  rem  (^mod n (^mul k inner))
+    =/  j    (^div rem inner)
+    =/  c    (^mod rem inner)
+    (snag j (snag (^add (^mul i inner) c) vals))
+  ::
+  ::    +fold-slice:  [fun=$-([@ @] @) s=(list @)] -> @
+  ::
+  ::  Folds .fun over .s left to right, seeded with the head: no identity
+  ::  element is needed, so it works for %gth/%lth as well as %add.  Crashes on
+  ::  an empty slice.
+  ::  Source
+  ++  fold-slice
+    |=  [fun=$-([@ @] @) s=(list @)]
+    ^-  @
+    ?~  s  !!
+    =/  acc  i.s
+    =/  r    t.s
+    |-  ^-  @
+    ?~  r  acc
+    $(acc (fun acc i.r), r t.r)
+  ::
+  ::    +slice-op:  [a=ray dim=@ud fun=$-((list @) @)] -> ray
+  ::
+  ::  Reduces every slice of .a along .dim to one scalar with .fun, giving a ray
+  ::  of .a's kind with .dim dropped.
+  ::  Source
+  ++  slice-op
+    |=  [a=ray dim=@ud fun=$-((list @) @)]
+    ^-  ray
+    ?>  (check a)
+    =/  m=meta  meta.a
+    =.  shape.m  (drop-dim shape.meta.a dim)
+    (spac [m (rep bloq.m (turn (dim-slices a dim) fun))])
+  ::
+  ::    +slice-idx:  [a=ray dim=@ud fun=$-((list @) @)] -> ray
+  ::
+  ::  Like +slice-op, but each slice reduces to an INDEX: the result is a %uint
+  ::  ray of bloq 6 (64-bit, wide enough for any axis) with .dim dropped.
+  ::  Source
+  ++  slice-idx
+    |=  [a=ray dim=@ud fun=$-((list @) @)]
+    ^-  ray
+    ?>  (check a)
+    =/  m=meta  [(drop-dim shape.meta.a dim) 6 %uint ~]
+    (spac [m (rep 6 (turn (dim-slices a dim) fun))])
+  ::
+  ::    +rank-slice:  [=meta s=(list @) dir=?(%asc %des)] -> (list [v=@ i=@])
+  ::
+  ::  One slice's [value index] pairs in sorted order: ascending by the kind's
+  ::  %lth for %asc, descending by %gth for %des, ties broken by the lower
+  ::  original index.  That tiebreak makes the order a strict total order (so
+  ::  the sort is deterministic) and equivalent to a stable sort.  Needs a
+  ::  totally ordered kind, so it crashes on %cplx; with NaN present the order
+  ::  is unspecified (NaN compares false both ways and falls back to the index).
+  ::  Source
+  ++  rank-slice
+    |=  [=meta s=(list @) dir=?(%asc %des)]
+    ^-  (list [v=@ i=@])
+    =/  cmp  (fun-scalar meta ?:(?=(%asc dir) %lth %gth))
+    =/  pairs=(list [v=@ i=@])
+      %+  turn  (gulf 0 (dec (lent s)))
+      |=(i=@ [v=(snag i s) i=i])
+    %+  sort  pairs
+    |=  [x=[v=@ i=@] y=[v=@ i=@]]
+    ^-  ?
+    ?.  =(0 (cmp v.x v.y))  %.y
+    ?.  =(0 (cmp v.y v.x))  %.n
+    (^lth i.x i.y)
+  ::
+  ::    +i754-sun:  [=bloq n=@] -> @
+  ::
+  ::  The @ud .n as an %i754 float of width .bloq (for dividing by a count).
+  ::  Source
+  ++  i754-sun
+    |=  [=bloq n=@]
+    ^-  @
+    ?+  bloq  !!
+      %7  (~(sun rq rnd) n)
+      %6  (~(sun rd rnd) n)
+      %5  (~(sun rs rnd) n)
+      %4  (~(sun rh rnd) n)
+    ==
+  ::
+  ::    +i754-sqt:  [=bloq x=@] -> @
+  ::
+  ::  The square root of the %i754 value .x at width .bloq, rounded in .rnd.
+  ::  Source
+  ++  i754-sqt
+    |=  [=bloq x=@]
+    ^-  @
+    ?+  bloq  !!
+      %7  (~(sqt rq rnd) x)
+      %6  (~(sqt rd rnd) x)
+      %5  (~(sqt rs rnd) x)
+      %4  (~(sqt rh rnd) x)
+    ==
+  ::
+  ::    +sum-dim:  [a=ray dim=@ud] -> ray
+  ::
+  ::  Sums .a along .dim, dropping that dimension.  %unum sums each slice
+  ::  exactly in the quire (single rounding), as +cumsum does for the whole
+  ::  array; every other kind folds left to right.
+  ::    Examples
+  ::      > (ravel:la (sum-dim:la (en-ray:la [[~[2 3] 5 %i754 ~] ~[~[.1 .2 .3] ~[.4 .5 .6]]]) 0))
+  ::      ~[.5 .7 .9]
+  ::  Source
+  ++  sum-dim
+    |=  [a=ray dim=@ud]
+    ^-  ray
+    ?>  (check a)
+    ?:  ?=(%unum kind.meta.a)
+      (slice-op a dim |=(s=(list @) (unum-sum bloq.meta.a s)))
+    (slice-op a dim |=(s=(list @) (fold-slice (fun-scalar meta.a %add) s)))
+  ::
+  ::    +prod-dim:  [a=ray dim=@ud] -> ray
+  ::
+  ::  The product along .dim, dropping that dimension.
+  ::  Source
+  ++  prod-dim
+    |=  [a=ray dim=@ud]
+    ^-  ray
+    ?>  (check a)
+    (slice-op a dim |=(s=(list @) (fold-slice (fun-scalar meta.a %mul) s)))
+  ::
+  ::    +max-dim:  [a=ray dim=@ud] -> ray
+  ::
+  ::  The maximum along .dim, dropping that dimension.  Needs a totally ordered
+  ::  kind (crashes on %cplx), like +max.
+  ::  Source
+  ++  max-dim
+    |=  [a=ray dim=@ud]
+    ^-  ray
+    ?>  (check a)
+    =/  gt  (fun-scalar meta.a %gth)
+    (slice-op a dim |=(s=(list @) (fold-slice |=([x=@ y=@] ?.(=(0 (gt x y)) x y)) s)))
+  ::
+  ::    +min-dim:  [a=ray dim=@ud] -> ray
+  ::
+  ::  The minimum along .dim, dropping that dimension.  Needs a totally ordered
+  ::  kind (crashes on %cplx), like +min.
+  ::  Source
+  ++  min-dim
+    |=  [a=ray dim=@ud]
+    ^-  ray
+    ?>  (check a)
+    =/  lt  (fun-scalar meta.a %lth)
+    (slice-op a dim |=(s=(list @) (fold-slice |=([x=@ y=@] ?.(=(0 (lt x y)) x y)) s)))
+  ::
+  ::    +argmax-dim:  [a=ray dim=@ud] -> ray
+  ::
+  ::  The index along .dim of the FIRST maximum of each slice, as a %uint bloq-6
+  ::  ray with .dim dropped.
+  ::  Source
+  ++  argmax-dim
+    |=  [a=ray dim=@ud]
+    ^-  ray
+    ?>  (check a)
+    =/  gt  (fun-scalar meta.a %gth)
+    %^  slice-idx  a  dim
+    |=  s=(list @)
+    ^-  @
+    ?~  s  !!
+    =/  bv  i.s
+    =/  bi  0
+    =/  j   1
+    =/  r   t.s
+    |-  ^-  @
+    ?~  r  bi
+    ?.  =(0 (gt i.r bv))
+      $(bv i.r, bi j, j +(j), r t.r)
+    $(j +(j), r t.r)
+  ::
+  ::    +argmin-dim:  [a=ray dim=@ud] -> ray
+  ::
+  ::  The index along .dim of the FIRST minimum of each slice, as a %uint bloq-6
+  ::  ray with .dim dropped.
+  ::  Source
+  ++  argmin-dim
+    |=  [a=ray dim=@ud]
+    ^-  ray
+    ?>  (check a)
+    =/  lt  (fun-scalar meta.a %lth)
+    %^  slice-idx  a  dim
+    |=  s=(list @)
+    ^-  @
+    ?~  s  !!
+    =/  bv  i.s
+    =/  bi  0
+    =/  j   1
+    =/  r   t.s
+    |-  ^-  @
+    ?~  r  bi
+    ?.  =(0 (lt i.r bv))
+      $(bv i.r, bi j, j +(j), r t.r)
+    $(j +(j), r t.r)
+  ::
+  ::    +mean-dim:  [a=ray dim=@ud] -> ray
+  ::
+  ::  The arithmetic mean along .dim (%i754 only): the left-to-right sum, then
+  ::  ONE division by the axis length.
+  ::  Source
+  ++  mean-dim
+    |=  [a=ray dim=@ud]
+    ^-  ray
+    ?>  (check a)
+    ?>  ?=(%i754 kind.meta.a)
+    =/  p   (dim-parts shape.meta.a dim)
+    =/  n   (i754-sun bloq.meta.a len.p)
+    =/  ad  (fun-scalar meta.a %add)
+    =/  dv  (fun-scalar meta.a %div)
+    (slice-op a dim |=(s=(list @) (dv (fold-slice ad s) n)))
+  ::
+  ::    +var-dim:  [a=ray dim=@ud ddof=@ud] -> ray
+  ::
+  ::  The variance along .dim (%i754 only), two-pass: the mean, then the
+  ::  left-to-right sum of squared deviations, divided once by (len - .ddof).
+  ::  .ddof=0 is NumPy's default (population variance); .ddof=1 is the sample
+  ::  variance.  Crashes unless .ddof is less than the axis length.
+  ::  Source
+  ++  var-dim
+    |=  [a=ray dim=@ud ddof=@ud]
+    ^-  ray
+    ?>  (check a)
+    ?>  ?=(%i754 kind.meta.a)
+    =/  p  (dim-parts shape.meta.a dim)
+    ?>  (^gth len.p ddof)
+    =/  n   (i754-sun bloq.meta.a len.p)
+    =/  dn  (i754-sun bloq.meta.a (^sub len.p ddof))
+    =/  ad  (fun-scalar meta.a %add)
+    =/  sb  (fun-scalar meta.a %sub)
+    =/  ml  (fun-scalar meta.a %mul)
+    =/  dv  (fun-scalar meta.a %div)
+    %^  slice-op  a  dim
+    |=  s=(list @)
+    ^-  @
+    =/  m  (dv (fold-slice ad s) n)
+    (dv (fold-slice ad (turn s |=(x=@ =/(d (sb x m) (ml d d))))) dn)
+  ::
+  ::    +std-dim:  [a=ray dim=@ud ddof=@ud] -> ray
+  ::
+  ::  The standard deviation along .dim (%i754 only): +var-dim, then one square
+  ::  root per element.
+  ::  Source
+  ++  std-dim
+    |=  [a=ray dim=@ud ddof=@ud]
+    ^-  ray
+    =/  v  (var-dim a dim ddof)
+    %-  spac
+    :-  meta.v
+    (rep bloq.meta.v (turn (ravel v) |=(x=@ (i754-sqt bloq.meta.v x))))
+  ::
+  ::    +mean:  a=ray -> ray
+  ::
+  ::  The mean of every element of .a (%i754 only), boxed as an all-1s-shape
+  ::  ray.  Sums LEFT TO RIGHT, so it is not bit-for-bit (+cumsum / n), which
+  ::  folds right.
+  ::  Source
+  ++  mean
+    |=  a=ray
+    ^-  ray
+    ?>  (check a)
+    ?>  ?=(%i754 kind.meta.a)
+    =/  dat  (ravel a)
+    %+  scalar-to-ray  meta.a
+    %+  (fun-scalar meta.a %div)
+      (fold-slice (fun-scalar meta.a %add) dat)
+    (i754-sun bloq.meta.a (lent dat))
+  ::
+  ::    +var:  [a=ray ddof=@ud] -> ray
+  ::
+  ::  The variance of every element of .a (%i754 only), boxed as an all-1s-shape
+  ::  ray.  Two-pass, like +var-dim.
+  ::  Source
+  ++  var
+    |=  [a=ray ddof=@ud]
+    ^-  ray
+    ?>  (check a)
+    ?>  ?=(%i754 kind.meta.a)
+    =/  dat  (ravel a)
+    =/  cnt  (lent dat)
+    ?>  (^gth cnt ddof)
+    =/  ad  (fun-scalar meta.a %add)
+    =/  sb  (fun-scalar meta.a %sub)
+    =/  ml  (fun-scalar meta.a %mul)
+    =/  dv  (fun-scalar meta.a %div)
+    =/  m   (dv (fold-slice ad dat) (i754-sun bloq.meta.a cnt))
+    %+  scalar-to-ray  meta.a
+    %+  dv
+      (fold-slice ad (turn dat |=(x=@ =/(d (sb x m) (ml d d)))))
+    (i754-sun bloq.meta.a (^sub cnt ddof))
+  ::
+  ::    +std:  [a=ray ddof=@ud] -> ray
+  ::
+  ::  The standard deviation of every element of .a (%i754 only), boxed as an
+  ::  all-1s-shape ray.
+  ::  Source
+  ++  std
+    |=  [a=ray ddof=@ud]
+    ^-  ray
+    =/  v  (var a ddof)
+    %+  scalar-to-ray  meta.a
+    (i754-sqt bloq.meta.a -:(ravel v))
+  ::
+  ::    +norm-slice:  [=meta s=(list @) ord=norm-ord] -> @
+  ::
+  ::  One slice's norm.  %l1 and %linf work on any kind with an %abs (so not
+  ::  %cplx, which has no total order for %linf); %l2 and %fro need a square
+  ::  root and so are %i754 only.
+  ::  Source
+  ++  norm-slice
+    |=  [=meta s=(list @) ord=norm-ord]
+    ^-  @
+    =/  ab  (trans-scalar bloq.meta kind.meta %abs)
+    =/  ad  (fun-scalar meta %add)
+    =/  ml  (fun-scalar meta %mul)
+    =/  gt  (fun-scalar meta %gth)
+    ?-    ord
+        %l1    (fold-slice ad (turn s ab))
+      ::
+        %linf  (fold-slice |=([x=@ y=@] ?.(=(0 (gt x y)) x y)) (turn s ab))
+      ::
+        %l2
+      ?>  ?=(%i754 kind.meta)
+      (i754-sqt bloq.meta (fold-slice ad (turn s |=(x=@ (ml x x)))))
+      ::
+        %fro
+      ?>  ?=(%i754 kind.meta)
+      (i754-sqt bloq.meta (fold-slice ad (turn s |=(x=@ (ml x x)))))
+    ==
+  ::
+  ::    +norm:  [a=ray ord=norm-ord] -> ray
+  ::
+  ::  The norm of .a over every element (so %fro is the Frobenius norm of a
+  ::  matrix), boxed as an all-1s-shape ray.
+  ::    Examples
+  ::      > -:(ravel:la (norm:la (en-ray:la [[~[2] 5 %i754 ~] ~[.3 .4]]) %l2))
+  ::      .5
+  ::  Source
+  ++  norm
+    |=  [a=ray ord=norm-ord]
+    ^-  ray
+    ?>  (check a)
+    (scalar-to-ray meta.a (norm-slice meta.a (ravel a) ord))
+  ::
+  ::    +norm-dim:  [a=ray dim=@ud ord=norm-ord] -> ray
+  ::
+  ::  The norm of each slice along .dim, dropping that dimension (row norms for
+  ::  dim=1 on a matrix).
+  ::  Source
+  ++  norm-dim
+    |=  [a=ray dim=@ud ord=norm-ord]
+    ^-  ray
+    ?>  (check a)
+    (slice-op a dim |=(s=(list @) (norm-slice meta.a s ord)))
+  ::
+  ::    +sort-dim:  [a=ray dim=@ud dir=?(%asc %des)] -> ray
+  ::
+  ::  .a with every slice along .dim sorted, ascending (%asc) or descending
+  ::  (%des); the shape is unchanged.  Ties keep their original relative order.
+  ::    Examples
+  ::      > (ravel:la (sort-dim:la (en-ray:la [[~[3] 5 %i754 ~] ~[.3 .1 .2]]) 0 %asc))
+  ::      ~[.1 .2 .3]
+  ::  Source
+  ++  sort-dim
+    |=  [a=ray dim=@ud dir=?(%asc %des)]
+    ^-  ray
+    ?>  (check a)
+    =/  p  (dim-parts shape.meta.a dim)
+    =/  vals
+      %+  turn  (dim-slices a dim)
+      |=(s=(list @) (turn (rank-slice meta.a s dir) |=(q=[v=@ i=@] v.q)))
+    %-  spac
+    :-  meta.a
+    (rep bloq.meta.a (slice-flat outer.p inner.p len.p vals))
+  ::
+  ::    +argsort-dim:  [a=ray dim=@ud dir=?(%asc %des)] -> ray
+  ::
+  ::  The permutation that sorts each slice along .dim, as a %uint bloq-6 ray of
+  ::  the same shape as .a.  Stable: ties appear in increasing index order.
+  ::  Source
+  ++  argsort-dim
+    |=  [a=ray dim=@ud dir=?(%asc %des)]
+    ^-  ray
+    ?>  (check a)
+    =/  p  (dim-parts shape.meta.a dim)
+    =/  vals
+      %+  turn  (dim-slices a dim)
+      |=(s=(list @) (turn (rank-slice meta.a s dir) |=(q=[v=@ i=@] i.q)))
+    %-  spac
+    :-  `meta`[shape.meta.a 6 %uint ~]
+    (rep 6 (slice-flat outer.p inner.p len.p vals))
+  ::
+  ::    +argtop-dim:  [a=ray dim=@ud k=@ud] -> ray
+  ::
+  ::  The indices of the .k largest elements of each slice along .dim, largest
+  ::  first, as a %uint bloq-6 ray whose .dim is .k long (so unlike the
+  ::  reductions, .dim is replaced rather than dropped).  Ties go to the lower
+  ::  index.  Crashes unless 0 < .k <= the axis length.
+  ::  Source
+  ++  argtop-dim
+    |=  [a=ray dim=@ud k=@ud]
+    ^-  ray
+    ?>  (check a)
+    =/  p  (dim-parts shape.meta.a dim)
+    ?>  ?&(!=(0 k) (^lte k len.p))
+    =/  vals
+      %+  turn  (dim-slices a dim)
+      |=  s=(list @)
+      (scag k (turn (rank-slice meta.a s %des) |=(q=[v=@ i=@] i.q)))
+    %-  spac
+    :-  `meta`[(snap shape.meta.a dim k) 6 %uint ~]
+    (rep 6 (slice-flat outer.p inner.p k vals))
+  ::
+  ::    +take-dim:  [a=ray idx=ray dim=@ud] -> ray
+  ::
+  ::  NumPy's take_along_axis: .idx is a %uint ray agreeing with .a on every
+  ::  dimension but .dim, and the result (of .idx's shape, .a's kind) holds the
+  ::  element of .a that each index selects along .dim.  Pairs with
+  ::  +argsort-dim and +argtop-dim.  Crashes on an out-of-range index.
+  ::  Source
+  ++  take-dim
+    |=  [a=ray idx=ray dim=@ud]
+    ^-  ray
+    ?>  (check a)
+    ?>  (check idx)
+    ?>  ?=(%uint kind.meta.idx)
+    ?>  =((lent shape.meta.a) (lent shape.meta.idx))
+    ?>  .=((drop-dim shape.meta.a dim) (drop-dim shape.meta.idx dim))
+    =/  pi   (dim-parts shape.meta.idx dim)
+    =/  sls  (dim-slices a dim)
+    =/  isl  (dim-slices idx dim)
+    =/  vals
+      %+  turn  (gulf 0 (dec (lent sls)))
+      |=  s=@
+      ^-  (list @)
+      =/  src  (snag s sls)
+      (turn (snag s isl) |=(w=@ (snag w src)))
+    =/  m=meta  meta.a
+    =.  shape.m  shape.meta.idx
+    (spac [m (rep bloq.m (slice-flat outer.pi inner.pi len.pi vals))])
+  ::
+  ::    +cdist-sq:  [a=ray b=ray] -> ray
+  ::
+  ::  The matrix of SQUARED Euclidean distances between the rows of .a (m x d)
+  ::  and the rows of .b (n x d), as an m x n ray (%i754 only).
+  ::
+  ::  Computed DIRECTLY, as the left-to-right sum over .d of (a_ik - b_jk)^2 --
+  ::  NOT via the Gram identity |x|^2 + |y|^2 - 2*a*b^T, which is faster but
+  ::  rounds differently (and can go negative).  A jet must match this loop bit
+  ::  for bit, so it cannot use the identity either.
+  ::    Examples
+  ::      > (ravel:la (cdist-sq:la (en-ray:la [[~[2 2] 5 %i754 ~] ~[~[.0 .0] ~[.1 .0]]]) (en-ray:la [[~[2 2] 5 %i754 ~] ~[~[.0 .0] ~[.0 .1]]])))
+  ::      ~[.0 .1 .1 .2]
+  ::  Source
+  ++  cdist-sq
+    |=  [a=ray b=ray]
+    ^-  ray
+    ?>  (check a)
+    ?>  (check b)
+    ?>  ?=(%i754 kind.meta.a)
+    ?>  =(kind.meta.a kind.meta.b)
+    ?>  =(bloq.meta.a bloq.meta.b)
+    ?>  =(2 (lent shape.meta.a))
+    ?>  =(2 (lent shape.meta.b))
+    =/  wid  (snag 1 shape.meta.a)
+    ?>  =(wid (snag 1 shape.meta.b))
+    =/  m   (snag 0 shape.meta.a)
+    =/  n   (snag 0 shape.meta.b)
+    =/  da  (ravel a)
+    =/  db  (ravel b)
+    =/  ad  (fun-scalar meta.a %add)
+    =/  sb  (fun-scalar meta.a %sub)
+    =/  ml  (fun-scalar meta.a %mul)
+    =/  sqd  |=([x=@ y=@] =/(t (sb x y) (ml t t)))
+    =/  out=(list @)
+      %-  zing
+      %+  turn  (gulf 0 (dec m))
+      |=  i=@
+      ^-  (list @)
+      %+  turn  (gulf 0 (dec n))
+      |=  j=@
+      ^-  @
+      =/  ia  (^mul i wid)
+      =/  ib  (^mul j wid)
+      =/  acc  (sqd (snag ia da) (snag ib db))
+      =/  k  1
+      |-  ^-  @
+      ?:  =(k wid)  acc
+      %=  $
+        k    +(k)
+        acc  (ad acc (sqd (snag (^add ia k) da) (snag (^add ib k) db)))
+      ==
+    =/  mt=meta  meta.a
+    =.  shape.mt  ~[m n]
+    (spac [mt (rep bloq.mt out)])
+  ::
+  ::    +pdist-sq:  a=ray -> ray
+  ::
+  ::  The squared-distance matrix of .a against itself (n x n, zero diagonal).
+  ::  Source
+  ++  pdist-sq
+    |=  a=ray
+    ^-  ray
+    (cdist-sq a a)
+  ::
+  ::    +broadcast-to:  [a=ray shape=(list @)] -> ray
+  ::
+  ::  .a expanded to .shape by NumPy's broadcasting rules: the shapes are
+  ::  right-aligned (.a's is padded with leading 1s), and each of .a's
+  ::  dimensions must either match the target or be 1, in which case its single
+  ::  element repeats along that dimension.  Materializes the result rather than
+  ::  taking a view, since a $ray is its data.
+  ::    Examples
+  ::      > (ravel:la (broadcast-to:la (en-ray:la [[~[2 1] 5 %i754 ~] ~[~[.1] ~[.2]]]) ~[2 3]))
+  ::      ~[.1 .1 .1 .2 .2 .2]
+  ::  Source
+  ++  broadcast-to
+    |=  [a=ray shape=(list @)]
+    ^-  ray
+    ?>  (check a)
+    =/  rnk  (lent shape)
+    =/  rka  (lent shape.meta.a)
+    ?>  (^lte rka rnk)
+    ?>  (levy shape |=(d=@ !=(0 d)))
+    =/  src  (weld `(list @)`(reap (^sub rnk rka) 1) shape.meta.a)
+    ?>  =/  i  0
+        |-  ^-  ?
+        ?:  =(i rnk)  %.y
+        ?.  ?|(=((snag i src) (snag i shape)) =(1 (snag i src)))  %.n
+        $(i +(i))
+    =/  dat  (ravel a)
+    =/  out=(list @)
+      %+  turn  (gulf 0 (dec (prod-list shape)))
+      |=  n=@
+      ^-  @
+      =/  i    rnk
+      =/  rem  n
+      =/  off  0
+      =/  st   1
+      |-  ^-  @
+      ?:  =(0 i)  (snag off dat)
+      =/  d   (dec i)
+      =/  td  (snag d shape)
+      =/  sd  (snag d src)
+      %=  $
+        i    d
+        rem  (^div rem td)
+        off  (^add off (^mul st ?:(=(1 sd) 0 (^mod rem td))))
+        st   (^mul st sd)
+      ==
+    =/  m=meta  meta.a
+    =.  shape.m  shape
+    (spac [m (rep bloq.m out)])
+  ::
   ::    +reshape:  [a=ray shape=(list @)] -> ray
   ::
   ::  .a viewed with a new .shape over the same row-major data.  Crashes unless

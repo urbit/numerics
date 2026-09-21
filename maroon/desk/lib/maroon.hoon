@@ -98,9 +98,10 @@
     =/  n  (rows x)
     ~|  'maroon cov: ddof must be less than the sample count'
     ?>  (gth n ddof)
-    =/  xc  (center x)
+    ::  +gram, not mmul of a transpose: the lagoon transpose jet crashes on
+    ::  runtimes older than urbit/vere#1057
     %+  div-scalar:lag
-      (mmul:lag (transpose:lag xc) xc)
+      (gram:sal (center x))
     (i754-sun:lag bloq.meta.x (sub n ddof))
   ::    +pca:  [x=ray k=@ud] -> [comp=ray vals=ray mean=ray]
   ::
@@ -309,5 +310,109 @@
     ?:  =(i n)  acc
     =/  j  `@`(get-item:lag lab ~[i])
     $(i +(i), acc (fadd:sal b acc (get-item:lag d2 ~[i j])))
+  ::
+  ::  Linear models.  A target .y is a rank-1 ray of shape ~[n], one entry per
+  ::  sample.  Both fits CENTRE the data and recover the intercept afterwards
+  ::  (intercept = mean(y) - mean(x).coef), which is what scikit-learn does
+  ::  with fit_intercept=True and keeps the intercept out of the ridge
+  ::  penalty.
+  ::
+  ::    +linreg:  [x=ray y=ray] -> [coef=ray intercept=@]
+  ::
+  ::  Ordinary least squares, solved through Saloon's +lstsq (Householder QR)
+  ::  rather than the normal equations, which would square the condition
+  ::  number.  Needs the centred .x to have full column rank.
+  ::    Examples
+  ::      > =ma  (make %n .~1e-12)
+  ::      > =x   (en-ray:la [[~[4 1] 6 %i754 ~] ~[~[.~0] ~[.~0] ~[.~2] ~[.~2]]])
+  ::      > =y   (en-ray:la [[~[4] 6 %i754 ~] ~[.~1 .~1 .~7 .~7]])
+  ::      > =f   (linreg:ma x y)
+  ::      > [;;((list @rd) data:(de-ray:la coef.f)) `@rd`intercept.f]
+  ::      [~[.~3] .~1]                       ::  y = 3x + 1
+  ::  Source
+  ++  linreg
+    |=  [x=ray:ls y=ray:ls]
+    ^-  [coef=ray:ls intercept=@]
+    ?>  =(2 (lent shape.meta.x))
+    ?>  =(1 (lent shape.meta.y))
+    ~|  'maroon linreg: x and y must have the same number of samples'
+    ?>  =((rows x) (snag 0 shape.meta.y))
+    =/  b    bloq.meta.x
+    =/  ym   (get-item:lag (mean:lag y) ~[0])
+    =/  yc   (sub:lag y (fill:lag meta.y ym))
+    =/  coef  (lstsq:sal (center x) yc)
+    [coef (fsub:sal b ym (dotv:sal (col-mean x) coef))]
+  ::    +ridge:  [x=ray y=ray alpha=@] -> [coef=ray intercept=@]
+  ::
+  ::  Ridge regression, minimizing |Xc*coef - yc|^2 + alpha*|coef|^2 by
+  ::  solving (Xc^T*Xc + alpha*I) coef = Xc^T*yc with Saloon's +chol-solve.
+  ::  .alpha is a raw %i754 scalar of the data's width and must be >= 0; any
+  ::  alpha > 0 makes the system positive definite even when .x is rank
+  ::  deficient, which is half the point of ridge.  alpha = 0 is plain OLS by
+  ::  the normal equations.
+  ::  Source
+  ++  ridge
+    |=  [x=ray:ls y=ray:ls alpha=@]
+    ^-  [coef=ray:ls intercept=@]
+    ?>  =(2 (lent shape.meta.x))
+    ?>  =(1 (lent shape.meta.y))
+    ~|  'maroon ridge: x and y must have the same number of samples'
+    ?>  =((rows x) (snag 0 shape.meta.y))
+    =/  b  bloq.meta.x
+    ~|  'maroon ridge: alpha must be >= 0'
+    ?>  (fgte:sal b alpha (f0:sal b))
+    =/  d   (cols x)
+    =/  ym  (get-item:lag (mean:lag y) ~[0])
+    =/  yc  (sub:lag y (fill:lag meta.y ym))
+    =/  xc  (center x)
+    ::  Xc^T*Xc with alpha added down the diagonal
+    =/  a
+      =/  g  (gram:sal xc)
+      =/  i  0
+      |-  ^-  ray:ls
+      ?:  =(i d)  g
+      %=  $
+        i  +(i)
+        g  (set-item:lag g ~[i i] (fadd:sal b (get-item:lag g ~[i i]) alpha))
+      ==
+    =/  coef  (chol-solve:sal a (matvec-t:sal xc yc))
+    [coef (fsub:sal b ym (dotv:sal (col-mean x) coef))]
+  ::    +predict:  [x=ray coef=ray intercept=@] -> ray
+  ::
+  ::  A linear model's predictions for .x: x*coef + intercept, shape ~[n].
+  ::  Source
+  ++  predict
+    |=  [x=ray:ls coef=ray:ls intercept=@]
+    ^-  ray:ls
+    =/  p  (matvec:sal x coef)
+    (add:lag p (fill:lag meta.p intercept))
+  ::    +mse:  [y=ray p=ray] -> @
+  ::
+  ::  The mean squared error between targets .y and predictions .p.
+  ::  Source
+  ++  mse
+    |=  [y=ray:ls p=ray:ls]
+    ^-  @
+    ?>  =(shape.meta.y shape.meta.p)
+    =/  r  (sub:lag y p)
+    (get-item:lag (mean:lag (mul:lag r r)) ~[0])
+  ::    +r2:  [y=ray p=ray] -> @
+  ::
+  ::  The coefficient of determination, 1 - SS_res/SS_tot: 1 for a perfect
+  ::  fit, 0 for predicting the mean, negative for worse than that.  Crashes
+  ::  on a constant .y, where it is undefined (0/0).
+  ::  Source
+  ++  r2
+    |=  [y=ray:ls p=ray:ls]
+    ^-  @
+    ?>  =(shape.meta.y shape.meta.p)
+    =/  b   bloq.meta.y
+    =/  r   (sub:lag y p)
+    =/  ym  (get-item:lag (mean:lag y) ~[0])
+    =/  yc  (sub:lag y (fill:lag meta.y ym))
+    =/  ss-tot  (dotv:sal yc yc)
+    ~|  'maroon r2: y is constant, so R^2 is undefined'
+    ?<  =(ss-tot (f0:sal b))
+    (fsub:sal b (f1:sal b) (fdiv:sal b (dotv:sal r r) ss-tot))
   --
 --

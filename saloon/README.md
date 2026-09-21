@@ -53,6 +53,15 @@ Solvers and factorizations (`%i754` only, bloq 4/5/6/7):
 - `++trsv-lo` / `++trsv-up`, forward and back substitution against `L` (the
   latter reads `L` transposed rather than materializing `L^T`).
 - `++chol-solve`, `A*x = v` by one factorization plus the two substitutions.
+- `++qr`, the thin Householder QR `A = Q*R` (rows >= cols): `Q` has orthonormal
+  columns, `R` is upper triangular with an exactly-zero subdiagonal. Signs
+  follow LAPACK (`alpha = -sign(x0)*|x|`), so they match `numpy.linalg.qr`,
+  negative diagonal entries included. `++trsv-r` is its back substitution.
+- `++lstsq`, least squares `min |A*x - v|` as `R^-1 * Q^T*v`, avoiding the
+  squared condition number of the normal equations. Needs full column rank.
+- `++gram` (`x^T*x`) and `++matvec-t` (`m^T*x`), both without materializing a
+  transpose — and so without the lagoon transpose jet, which crashes on
+  runtimes older than urbit/vere#1057.
 - `++cg`, conjugate gradient from `x0 = 0` → `[x iter rnorm]`, so the caller can
   tell convergence from exhaustion; `++pcg` adds the Jacobi (diagonal)
   preconditioner.  Each iteration is one `++matvec` and two `++dotv`, touching

@@ -19,6 +19,13 @@ reshaping.
 - `++kmeans-pp` — k-means++ seeding, threading an `/lib/rand` generator
   explicitly so a seed reproduces its centroids; `++kmeans-fit` is the two
   together.
+- `++linreg` — ordinary least squares through Saloon's QR `++lstsq`, not the
+  normal equations; `++ridge` — `(Xc^T*Xc + alpha*I) coef = Xc^T*yc` through
+  `++chol-solve`. Both centre the data and recover the intercept afterwards,
+  as scikit-learn does, which keeps the intercept out of the ridge penalty.
+  They return `[coef intercept]`; `++predict` applies them.
+- `++mse`, `++r2` — the metrics (R^2 crashes on a constant target, where it is
+  0/0).
 - `++assign`, `++update`, `++inertia`, `++cov`, `++center`, `++col-mean`, and
   the row helpers `++row`/`++set-row`.
 

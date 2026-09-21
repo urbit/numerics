@@ -1,0 +1,1 @@
+../../../librand/desk/lib/rand.hoon

@@ -1423,6 +1423,228 @@
     ^-  ray:ls
     =/  res  (svd a)
     s.res
+  ::    +matvec-t:  [m=ray x=ray] -> ray
+  ::
+  ::  m^T*x without materializing m^T: for m of shape ~[rows cols] and x of
+  ::  shape ~[rows], the result has shape ~[cols], entry j being the
+  ::  left-to-right inner product of column j with x.
+  ::  Source
+  ++  matvec-t
+    |=  [m=ray:ls x=ray:ls]
+    ^-  ray:ls
+    =/  b  bloq.meta.m
+    ?>  =(2 (lent shape.meta.m))
+    ?>  =(1 (lent shape.meta.x))
+    =/  rows  (snag 0 shape.meta.m)
+    =/  cols  (snag 1 shape.meta.m)
+    ?>  =(rows (snag 0 shape.meta.x))
+    =/  r  (zeros:(lake rnd) [~[cols] b %i754 ~])
+    =/  j  0
+    |-  ^-  ray:ls
+    ?:  =(j cols)  r
+    =/  dotp
+      =/  i  0
+      =/  acc  (f0 b)
+      |-  ^-  @
+      ?:  =(i rows)  acc
+      $(i +(i), acc (fadd b acc (fmul b (gi m ~[i j]) (gi x ~[i]))))
+    $(j +(j), r (si r ~[j] dotp))
+  ::    +gram:  x=ray -> ray
+  ::
+  ::  The Gram matrix x^T*x of a 2-D ray (d x d for x of shape ~[n d]), each
+  ::  entry a left-to-right column inner product.  Exactly symmetric, since
+  ::  entry (i,j) and (j,i) multiply the same pairs; and it does not route
+  ::  through the lagoon transpose jet, which crashes on runtimes older than
+  ::  urbit/vere#1057.
+  ::  Source
+  ++  gram
+    |=  x=ray:ls
+    ^-  ray:ls
+    =/  b  bloq.meta.x
+    ?>  =(2 (lent shape.meta.x))
+    =/  d  (snag 1 shape.meta.x)
+    =/  g  (zeros:(lake rnd) [~[d d] b %i754 ~])
+    =/  i  0
+    |-  ^-  ray:ls
+    ?:  =(i d)  g
+    =/  row
+      =/  j  0
+      |-  ^-  ray:ls
+      ?:  =(j d)  g
+      $(j +(j), g (si g ~[i j] (col-dot x i j)))
+    $(i +(i), g row)
+  ::    +sum-sq:  [b=@ x=(list @)] -> @
+  ::
+  ::  The left-to-right sum of squares of a list of %i754 scalars, from +0.
+  ::  Source
+  ++  sum-sq
+    |=  [b=@ x=(list @)]
+    ^-  @
+    =/  acc  (f0 b)
+    |-  ^-  @
+    ?~  x  acc
+    $(x t.x, acc (fadd b acc (fmul b i.x i.x)))
+  ::    +house:  [b=@ x=(list @)] -> [v=(list @) vv=@ alpha=@]
+  ::
+  ::  The Householder reflector that maps .x onto a multiple of e1:
+  ::  H = I - 2*v*v^T/(v.v) with H*x = alpha*e1, choosing
+  ::  alpha = -sign(x0)*|x| so that v0 = x0 - alpha never cancels.  That is
+  ::  LAPACK's convention (dlarfg), which is why R's diagonal can be negative
+  ::  and matches numpy.linalg.qr's signs.  A zero .x gives vv = 0, which the
+  ::  caller treats as "no reflection".
+  ::  Source
+  ++  house
+    |=  [b=@ x=(list @)]
+    ^-  [v=(list @) vv=@ alpha=@]
+    ?~  x  !!
+    =/  nx  (fsqt b (sum-sq b x))
+    =/  alpha  (fneg b (fmul b (fsign b i.x) nx))
+    =/  v=(list @)  [(fsub b i.x alpha) t.x]
+    [v (sum-sq b v) alpha]
+  ::    +reflect:  [b=@ w=ray k=@ud v=(list @) vv=@ c0=@ud c1=@ud] -> ray
+  ::
+  ::  Applies the reflector (.v, .vv) to rows .k and below of columns
+  ::  .c0 .. .c1-1 of .w: each column loses (2*(v.col)/vv)*v.
+  ::  Source
+  ++  reflect
+    |=  [b=@ w=ray:ls k=@ud v=(list @) vv=@ c0=@ud c1=@ud]
+    ^-  ray:ls
+    =/  m  (snag 0 shape.meta.w)
+    =/  j  c0
+    |-  ^-  ray:ls
+    ?:  =(j c1)  w
+    =/  s
+      =/  i  k
+      =/  acc  (f0 b)
+      |-  ^-  @
+      ?:  =(i m)  acc
+      $(i +(i), acc (fadd b acc (fmul b (snag (^sub i k) v) (gi w ~[i j]))))
+    =/  f  (fdiv b (fmul b (f2 b) s) vv)
+    =.  w
+      =/  i  k
+      |-  ^-  ray:ls
+      ?:  =(i m)  w
+      %=  $
+        i  +(i)
+        w  (si w ~[i j] (fsub b (gi w ~[i j]) (fmul b f (snag (^sub i k) v))))
+      ==
+    $(j +(j))
+  ::    +qr:  a=ray -> [q=ray r=ray]
+  ::
+  ::  The thin QR factorization of .a (rows >= cols) by Householder
+  ::  reflections: A = Q*R with .q the same shape as .a and orthonormal
+  ::  columns, and .r an n x n upper-triangular matrix whose subdiagonal is
+  ::  exactly zero.  Signs follow LAPACK (see +house), so R's diagonal may be
+  ::  negative, as numpy.linalg.qr's is.
+  ::
+  ::  Column k is reduced by one reflector acting on rows k and below; the
+  ::  reflectors are then applied, in reverse, to the first n columns of the
+  ::  identity to form Q.  A zero column needs no reflection and is skipped.
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a  (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~2 .~0] ~[.~0 .~2]]])
+  ::      > ;;((list (list @rd)) data:(de-ray:la r:(qr:sa a)))
+  ::      ~[~[.~-2 .~0] ~[.~0 .~-2]]
+  ::  Source
+  ++  qr
+    |=  a=ray:ls
+    ^-  [q=ray:ls r=ray:ls]
+    =/  b  bloq.meta.a
+    ?>  ?|(=(4 b) =(5 b) =(6 b) =(7 b))
+    ?>  =(%i754 kind.meta.a)
+    ?>  =(2 (lent shape.meta.a))
+    =/  m  (snag 0 shape.meta.a)
+    =/  n  (snag 1 shape.meta.a)
+    ~|  'saloon qr: needs rows >= cols'
+    ?>  (^gte m n)
+    ::  reduce the columns, keeping each reflector for Q (last one first)
+    =/  wr
+      =/  w  a
+      =/  refl=(list [k=@ud v=(list @) vv=@])  ~
+      =/  k  0
+      |-  ^-  [w=ray:ls refl=(list [k=@ud v=(list @) vv=@])]
+      ?:  =(k n)  [w refl]
+      =/  x  (turn (gulf k (dec m)) |=(i=@ (gi w ~[i k])))
+      =/  h  (house b x)
+      ?:  =(vv.h (f0 b))  $(k +(k))
+      %=  $
+        k     +(k)
+        w     (reflect b w k v.h vv.h k n)
+        refl  [[k v.h vv.h] refl]
+      ==
+    ::  Q: the reflectors applied, last first, to the first n columns of I
+    =/  q
+      =/  q0
+        =/  z  (zeros:(lake rnd) [~[m n] b %i754 ~])
+        =/  i  0
+        |-  ^-  ray:ls
+        ?:  =(i n)  z
+        $(i +(i), z (si z ~[i i] (f1 b)))
+      =/  rs  refl.wr
+      |-  ^-  ray:ls
+      ?~  rs  q0
+      $(rs t.rs, q0 (reflect b q0 k.i.rs v.i.rs vv.i.rs 0 n))
+    ::  R: the top n rows of the reduced matrix, with an exact-zero subdiagonal
+    =/  r
+      =/  o  (zeros:(lake rnd) [~[n n] b %i754 ~])
+      =/  i  0
+      |-  ^-  ray:ls
+      ?:  =(i n)  o
+      =/  row
+        =/  j  i
+        |-  ^-  ray:ls
+        ?:  =(j n)  o
+        $(j +(j), o (si o ~[i j] (gi w.wr ~[i j])))
+      $(i +(i), o row)
+    [q r]
+  ::    +trsv-r:  [r=ray v=ray] -> ray
+  ::
+  ::  Solves R*x = v by back substitution for upper-triangular .r, read as it
+  ::  is (entries below the diagonal are ignored).  The companion of +qr, as
+  ::  +trsv-lo/+trsv-up are of +chol.
+  ::  Source
+  ++  trsv-r
+    |=  [r=ray:ls v=ray:ls]
+    ^-  ray:ls
+    =/  b  bloq.meta.r
+    ?>  =(2 (lent shape.meta.r))
+    =/  n  (snag 0 shape.meta.r)
+    ?>  =(n (snag 1 shape.meta.r))
+    ?>  =(1 (lent shape.meta.v))
+    ?>  =(n (snag 0 shape.meta.v))
+    =/  x  (zeros:(lake rnd) [~[n] b %i754 ~])
+    =/  todo  n
+    |-  ^-  ray:ls
+    ?:  =(0 todo)  x
+    =/  i  (dec todo)
+    =/  rhs
+      =/  k  +(i)
+      =/  acc  (gi v ~[i])
+      |-  ^-  @
+      ?:  =(k n)  acc
+      $(k +(k), acc (fsub b acc (fmul b (gi r ~[i k]) (gi x ~[k]))))
+    $(todo i, x (si x ~[i] (fdiv b rhs (gi r ~[i i]))))
+  ::    +lstsq:  [a=ray v=ray] -> ray
+  ::
+  ::  The least-squares solution of A*x ~ v (rows >= cols): the x minimizing
+  ::  |A*x - v|, as R^-1 * Q^T*v from +qr.  Needs .a to have full column rank;
+  ::  a rank-deficient .a gives a zero pivot in R and a non-finite result.
+  ::  Solving through QR rather than the normal equations A^T*A*x = A^T*v
+  ::  avoids squaring the condition number.
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a  (en-ray:la [[~[3 2] 6 %i754 ~] ~[~[.~2 .~0] ~[.~0 .~2] ~[.~0 .~0]]])
+  ::      > =v  (en-ray:la [[~[3] 6 %i754 ~] ~[.~4 .~6 .~1]])
+  ::      > ;;((list @rd) data:(de-ray:la (lstsq:sa a v)))
+  ::      ~[.~2 .~3]                         ::  the third row is unreachable
+  ::  Source
+  ++  lstsq
+    |=  [a=ray:ls v=ray:ls]
+    ^-  ray:ls
+    ?>  =(1 (lent shape.meta.v))
+    ?>  =((snag 0 shape.meta.a) (snag 0 shape.meta.v))
+    =/  f  (qr a)
+    (trsv-r r.f (matvec-t q.f v))
   ::
   +|  %rand
   ::

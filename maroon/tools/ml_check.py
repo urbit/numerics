@@ -188,6 +188,58 @@ km = KMeans(n_clusters=2, n_init=10, random_state=0).fit(np.array(P2))
 groups = sorted(sorted(np.flatnonzero(km.labels_ == j).tolist()) for j in range(2))
 check("kmeans P2 partition vs sklearn", groups, [[0, 1], [2, 3]])
 
+print("== +linreg / +ridge / +predict / +mse / +r2: exact ==")
+#  x = [0,0,2,2], y = 3x + 1.  Centred x is [-1,-1,1,1] with norm exactly 2, so
+#  the one Householder step and the back-substitution stay exact.
+RX = [[0], [0], [2], [2]]
+RY = [1, 1, 7, 7]
+xm = qmean([r[0] for r in RX])
+ym = qmean(RY)
+xc = [Fraction(r[0]) - xm for r in RX]
+yc = [Fraction(v) - ym for v in RY]
+#  OLS on one centred feature: coef = (xc.yc)/(xc.xc)
+coef = sum((a * b for a, b in zip(xc, yc)), Fraction(0)) / sum((a * a for a in xc), Fraction(0))
+check("linreg coef", exact_repr(coef), 3.0)
+check("linreg intercept", exact_repr(ym - xm * coef), 1.0)
+#  the Householder route the Hoon actually takes: norm 2, v = xc - alpha*e1
+nx = Fraction(2)
+alpha = nx if xc[0] < 0 else -nx
+v = [xc[0] - alpha] + xc[1:]
+vv = sum((t * t for t in v), Fraction(0))
+f_q = (2 * sum((t * e for t, e in zip(v, [1, 0, 0, 0])), Fraction(0))) / vv
+check("linreg Householder scale is exact", Fraction(float(f_q)) == f_q, True)
+#  ridge with alpha = 12: (xc.xc + 12) coef = xc.yc -> 16 coef = 12
+rc = sum((a * b for a, b in zip(xc, yc)), Fraction(0)) / (sum((a * a for a in xc), Fraction(0)) + 12)
+check("ridge coef (alpha=12)", exact_repr(rc), 0.75)
+check("ridge intercept (alpha=12)", exact_repr(ym - xm * rc), 3.25)
+preds = [ym - xm * rc + rc * Fraction(r[0]) for r in RX]
+res = [Fraction(yv) - p for yv, p in zip(RY, preds)]
+mse = sum((t * t for t in res), Fraction(0)) / len(res)
+check("ridge mse", exact_repr(mse), 5.0625)
+sst = sum((t * t for t in yc), Fraction(0))
+r2 = 1 - sum((t * t for t in res), Fraction(0)) / sst
+check("ridge r2", exact_repr(r2), 0.4375)
+#  and the OLS fit is perfect
+check("linreg mse is 0", exact_repr(sum(((Fraction(yv) - (ym - xm * coef + coef * Fraction(r[0]))) ** 2
+                                          for yv, r in zip(RY, RX)), Fraction(0))), 0.0)
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.metrics import mean_squared_error, r2_score
+lr = LinearRegression().fit(np.array(RX, dtype=float), np.array(RY, dtype=float))
+close("linreg vs sklearn", [lr.coef_[0], lr.intercept_], [3.0, 1.0])
+rg = Ridge(alpha=12.0).fit(np.array(RX, dtype=float), np.array(RY, dtype=float))
+close("ridge vs sklearn", [rg.coef_[0], rg.intercept_], [0.75, 3.25])
+close("mse vs sklearn", [mean_squared_error(RY, rg.predict(np.array(RX, dtype=float)))], [5.0625])
+close("r2 vs sklearn", [r2_score(RY, rg.predict(np.array(RX, dtype=float)))], [0.4375])
+
+print("== +linreg / +ridge: two features, against sklearn ==")
+MX = np.array([[1.0, 2.0], [2.0, 1.0], [3.0, 4.0], [4.0, 3.0], [5.0, 6.0]])
+MY = np.array([3.1, 2.9, 7.2, 6.8, 11.1])
+lr2 = LinearRegression().fit(MX, MY)
+rg2 = Ridge(alpha=1.0).fit(MX, MY)
+print(f"  linreg 2-feature: coef={lr2.coef_.tolist()} intercept={lr2.intercept_!r}")
+print(f"  ridge  2-feature: coef={rg2.coef_.tolist()} intercept={rg2.intercept_!r}")
+print(f"  linreg r2 on its training data: {r2_score(MY, lr2.predict(MX))!r}")
+
 print("== ties go to the lower centroid index ==")
 #  a point equidistant from both centroids
 check("assign tie", assign([[5.0]], [[0.0], [10.0]]), [0])

@@ -29,8 +29,8 @@
     ?:  =(i n)  (flop acc)
     $(i +(i), acc [(get-item:(lake %n) r ~[i]) acc])
   =/  cmp
-    ?:  =(6 b)  |=([p=@ q=@] (~(lth rd:math [%n .~1e-10]) p q))
-    |=([p=@ q=@] (~(lth rs:math [%n .1e-6]) p q))
+    ?:  =(6 b)  |=([p=@ q=@] (~(lth rd:math [%n .~1e-10 `@rd`0]) p q))
+    |=([p=@ q=@] (~(lth rs:math [%n .1e-6 `@rs`0]) p q))
   (en-ray:(lake %n) [[~[n] b %i754 ~] (sort lst cmp)])
 ::  cs2: 2x2 Hermitian, eigenvalues [1.0, 3.0]
 ++  m-cs2

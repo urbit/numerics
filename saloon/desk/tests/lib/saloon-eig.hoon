@@ -32,7 +32,7 @@
     |-  ^-  (list @)
     ?:  =(i n)  (flop acc)
     $(i +(i), acc [(get-item:(lake %n) r ~[i]) acc])
-  =/  srt  (sort lst |=([p=@ q=@] (~(lth rd:math [%n .~1e-10]) p q)))
+  =/  srt  (sort lst |=([p=@ q=@] (~(lth rd:math [%n .~1e-10 `@rd`0]) p q)))
   (en-ray:(lake %n) [[~[n] 6 %i754 ~] srt])
 ++  eigpair-ok
   |=  [a=ray:ls n=@]

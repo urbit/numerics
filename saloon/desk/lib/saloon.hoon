@@ -952,6 +952,478 @@
   ::  Source
   ++  eigvecs  |=(a=ray:ls ^-(ray:ls +:(eig a)))
   ::
+  ::  Direct and iterative solvers: Cholesky (+chol) with its triangular
+  ::  solves, conjugate gradient (+cg, +pcg), and the one-sided Jacobi SVD
+  ::  (+svd).  All %i754 only, at bloq 4/5/6/7.
+  ::
+  ::  VECTORS are rank-1 rays of shape ~[n], as +diag returns -- not n x 1
+  ::  matrices.  +matvec bridges to a 2-D matrix.
+  ::
+  ::  ACCUMULATION ORDER.  Every inner product here sums LEFT TO RIGHT from the
+  ::  kind's +0, which is what a C or Rust kernel does, so these arms stay
+  ::  jettable; it is not NumPy's pairwise summation, so the last bits of an
+  ::  inexact dot product can differ from NumPy's.
+  ::
+  ::  TOLERANCE.  +cg/+pcg/+svd take their convergence threshold from the
+  ::  core's .rtol, exactly as +eig does: prefer +sake to set it, since the bare
+  ::  `sa` default (0x1, a denormal) is replaced by a width-appropriate +feps.
+  ::
+  ::    +matvec:  [m=ray x=ray] -> ray
+  ::
+  ::  The matrix-vector product m*x, for m of shape ~[rows cols] and x of shape
+  ::  ~[cols]; the result has shape ~[rows].
+  ::  Source
+  ++  matvec
+    |=  [m=ray:ls x=ray:ls]
+    ^-  ray:ls
+    =/  b  bloq.meta.m
+    ?>  =(2 (lent shape.meta.m))
+    ?>  =(1 (lent shape.meta.x))
+    =/  rows  (snag 0 shape.meta.m)
+    =/  cols  (snag 1 shape.meta.m)
+    ?>  =(cols (snag 0 shape.meta.x))
+    =/  r  (zeros:(lake rnd) [~[rows] b %i754 ~])
+    =/  i  0
+    |-  ^-  ray:ls
+    ?:  =(i rows)  r
+    =/  dotp
+      =/  j  0
+      =/  acc  (f0 b)
+      |-  ^-  @
+      ?:  =(j cols)  acc
+      $(j +(j), acc (fadd b acc (fmul b (gi m ~[i j]) (gi x ~[j]))))
+    $(i +(i), r (si r ~[i] dotp))
+  ::    +dotv:  [x=ray y=ray] -> @
+  ::
+  ::  The inner product of two rank-1 rays of the same shape, summed left to
+  ::  right.
+  ::  Source
+  ++  dotv
+    |=  [x=ray:ls y=ray:ls]
+    ^-  @
+    =/  b  bloq.meta.x
+    ?>  =(shape.meta.x shape.meta.y)
+    =/  n  (snag 0 shape.meta.x)
+    =/  i  0
+    =/  acc  (f0 b)
+    |-  ^-  @
+    ?:  =(i n)  acc
+    $(i +(i), acc (fadd b acc (fmul b (gi x ~[i]) (gi y ~[i]))))
+  ::    +nrm2:  x=ray -> @
+  ::
+  ::  The Euclidean norm of a rank-1 ray, sqrt(x.x).
+  ::  Source
+  ++  nrm2  |=(x=ray:ls ^-(@ (fsqt bloq.meta.x (dotv x x))))
+  ::    +axpyv:  [al=@ x=ray y=ray] -> ray
+  ::
+  ::  y + al*x, elementwise, for rank-1 rays (BLAS axpy).
+  ::  Source
+  ++  axpyv
+    |=  [al=@ x=ray:ls y=ray:ls]
+    ^-  ray:ls
+    =/  b  bloq.meta.x
+    ?>  =(shape.meta.x shape.meta.y)
+    =/  n  (snag 0 shape.meta.x)
+    =/  i  0
+    |-  ^-  ray:ls
+    ?:  =(i n)  y
+    $(i +(i), y (si y ~[i] (fadd b (gi y ~[i]) (fmul b al (gi x ~[i])))))
+  ::    +col-dot:  [w=ray p=@ q=@] -> @
+  ::
+  ::  The inner product of columns .p and .q of the 2-D ray .w, summed left to
+  ::  right.  Backs the one-sided Jacobi sweep.
+  ::  Source
+  ++  col-dot
+    |=  [w=ray:ls p=@ q=@]
+    ^-  @
+    =/  b  bloq.meta.w
+    =/  rows  (snag 0 shape.meta.w)
+    =/  i  0
+    =/  acc  (f0 b)
+    |-  ^-  @
+    ?:  =(i rows)  acc
+    $(i +(i), acc (fadd b acc (fmul b (gi w ~[i p]) (gi w ~[i q]))))
+  ::    +chol-unit:  a=ray -> (unit ray)
+  ::
+  ::  The Cholesky factor L of a symmetric positive-definite .a, lower
+  ::  triangular with A = L*L^T, or ~ when .a is not positive definite (a
+  ::  pivot that is zero or negative -- which is how this arm reports the
+  ::  failure, rather than crashing).  Asserts squareness and symmetry within
+  ::  the same tolerance +eig uses (+near).
+  ::
+  ::  Right-looking and column-by-column: each pivot is a_jj minus the
+  ::  left-to-right sum of the squares to its left, and each subdiagonal entry
+  ::  divides by the pivot once.
+  ::  Source
+  ++  chol-unit
+    |=  a=ray:ls
+    ^-  (unit ray:ls)
+    =/  b  bloq.meta.a
+    ?>  ?|(=(4 b) =(5 b) =(6 b) =(7 b))
+    ?>  =(%i754 kind.meta.a)
+    ?>  =(2 (lent shape.meta.a))
+    =/  n  (snag 0 shape.meta.a)
+    ?>  =(n (snag 1 shape.meta.a))
+    ~|  'saloon chol: matrix is not symmetric'
+    ?>  (symmetric a)
+    =/  l  (zeros:(lake rnd) [~[n n] b %i754 ~])
+    =/  j  0
+    |-  ^-  (unit ray:ls)
+    ?:  =(j n)  `l
+    =/  piv
+      =/  k  0
+      =/  acc  (gi a ~[j j])
+      |-  ^-  @
+      ?:  =(k j)  acc
+      =/  ljk  (gi l ~[j k])
+      $(k +(k), acc (fsub b acc (fmul b ljk ljk)))
+    ::  a zero or negative pivot means .a is not positive definite
+    ?:  (flte b piv (f0 b))  ~
+    =/  ljj  (fsqt b piv)
+    =.  l  (si l ~[j j] ljj)
+    =.  l
+      =/  i  +(j)
+      |-  ^-  ray:ls
+      ?:  =(i n)  l
+      =/  off
+        =/  k  0
+        =/  acc  (gi a ~[i j])
+        |-  ^-  @
+        ?:  =(k j)  acc
+        $(k +(k), acc (fsub b acc (fmul b (gi l ~[i k]) (gi l ~[j k]))))
+      $(i +(i), l (si l ~[i j] (fdiv b off ljj)))
+    $(j +(j))
+  ::    +chol:  a=ray -> ray
+  ::
+  ::  +chol-unit, crashing rather than producing ~ when .a is not positive
+  ::  definite.
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a  (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~4 .~2] ~[.~2 .~5]]])
+  ::      > ;;((list (list @rd)) data:(de-ray:la (chol:sa a)))
+  ::      ~[~[.~2 .~0] ~[.~1 .~2]]
+  ::  Source
+  ++  chol
+    |=  a=ray:ls
+    ^-  ray:ls
+    ~|  'saloon chol: matrix is not positive definite'
+    (need (chol-unit a))
+  ::    +trsv-lo:  [l=ray v=ray] -> ray
+  ::
+  ::  Solves L*y = v by forward substitution, for lower-triangular .l (entries
+  ::  above the diagonal are ignored) and rank-1 .v.
+  ::  Source
+  ++  trsv-lo
+    |=  [l=ray:ls v=ray:ls]
+    ^-  ray:ls
+    =/  b  bloq.meta.l
+    ?>  =(2 (lent shape.meta.l))
+    =/  n  (snag 0 shape.meta.l)
+    ?>  =(n (snag 1 shape.meta.l))
+    ?>  =(1 (lent shape.meta.v))
+    ?>  =(n (snag 0 shape.meta.v))
+    =/  y  (zeros:(lake rnd) [~[n] b %i754 ~])
+    =/  i  0
+    |-  ^-  ray:ls
+    ?:  =(i n)  y
+    =/  rhs
+      =/  k  0
+      =/  acc  (gi v ~[i])
+      |-  ^-  @
+      ?:  =(k i)  acc
+      $(k +(k), acc (fsub b acc (fmul b (gi l ~[i k]) (gi y ~[k]))))
+    $(i +(i), y (si y ~[i] (fdiv b rhs (gi l ~[i i]))))
+  ::    +trsv-up:  [l=ray v=ray] -> ray
+  ::
+  ::  Solves L^T*x = v by back substitution, reading .l transposed rather than
+  ::  materializing L^T.
+  ::  Source
+  ++  trsv-up
+    |=  [l=ray:ls v=ray:ls]
+    ^-  ray:ls
+    =/  b  bloq.meta.l
+    ?>  =(2 (lent shape.meta.l))
+    =/  n  (snag 0 shape.meta.l)
+    ?>  =(n (snag 1 shape.meta.l))
+    ?>  =(1 (lent shape.meta.v))
+    ?>  =(n (snag 0 shape.meta.v))
+    =/  x  (zeros:(lake rnd) [~[n] b %i754 ~])
+    =/  todo  n
+    |-  ^-  ray:ls
+    ?:  =(0 todo)  x
+    =/  i  (dec todo)
+    =/  rhs
+      =/  k  +(i)
+      =/  acc  (gi v ~[i])
+      |-  ^-  @
+      ?:  =(k n)  acc
+      $(k +(k), acc (fsub b acc (fmul b (gi l ~[k i]) (gi x ~[k]))))
+    $(todo i, x (si x ~[i] (fdiv b rhs (gi l ~[i i]))))
+  ::    +chol-solve:  [a=ray v=ray] -> ray
+  ::
+  ::  Solves A*x = v for symmetric positive-definite .a: one Cholesky
+  ::  factorization, then a forward and a back substitution.  Crashes if .a is
+  ::  not positive definite.
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a  (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~4 .~2] ~[.~2 .~5]]])
+  ::      > =v  (en-ray:la [[~[2] 6 %i754 ~] ~[.~10 .~9]])
+  ::      > ;;((list @rd) data:(de-ray:la (chol-solve:sa a v)))
+  ::      ~[.~2 .~1]
+  ::  Source
+  ++  chol-solve
+    |=  [a=ray:ls v=ray:ls]
+    ^-  ray:ls
+    =/  l  (chol a)
+    (trsv-up l (trsv-lo l v))
+  ::    +cg:  [a=ray v=ray maxit=@ud] -> [x=ray iter=@ud rnorm=@]
+  ::
+  ::  Solves A*x = v by conjugate gradient from x0 = 0, for symmetric
+  ::  positive-definite .a.  Stops when |r| <= rtol*|v| or after .maxit
+  ::  iterations, and reports both the iteration count and the final residual
+  ::  norm so the caller can tell convergence from exhaustion.
+  ::
+  ::  Each iteration is one +matvec and two +dotv, so it needs no
+  ::  factorization and touches .a only through products.  On a matrix that is
+  ::  not positive definite the search direction can go flat (p.Ap = 0); that
+  ::  breakdown returns the current iterate rather than dividing by zero.
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a  (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~4 .~2] ~[.~2 .~5]]])
+  ::      > =v  (en-ray:la [[~[2] 6 %i754 ~] ~[.~10 .~9]])
+  ::      > ;;((list @rd) data:(de-ray:la x:(cg:sa a v 20)))
+  ::      ~[.~2 .~1.0000000000000004]
+  ::  Source
+  ++  cg
+    |=  [a=ray:ls v=ray:ls maxit=@ud]
+    ^-  [x=ray:ls iter=@ud rnorm=@]
+    =/  b  bloq.meta.a
+    ?>  ?|(=(4 b) =(5 b) =(6 b) =(7 b))
+    ?>  =(%i754 kind.meta.a)
+    ?>  =(2 (lent shape.meta.a))
+    =/  n  (snag 0 shape.meta.a)
+    ?>  =(n (snag 1 shape.meta.a))
+    ?>  =(1 (lent shape.meta.v))
+    ?>  =(n (snag 0 shape.meta.v))
+    ~|  'saloon cg: matrix is not symmetric'
+    ?>  (symmetric a)
+    =/  tol  ?:(=(0x1 `@`rtol) `@r`(feps b) rtol)
+    =/  thresh  (fmul b `@`tol (nrm2 v))
+    =/  x  (zeros:(lake rnd) [~[n] b %i754 ~])
+    =/  r  v
+    =/  p  v
+    =/  rs  (dotv r r)
+    =/  it  0
+    |-  ^-  [x=ray:ls iter=@ud rnorm=@]
+    =/  rn  (fsqt b rs)
+    ?:  (flte b rn thresh)  [x it rn]
+    ?:  =(it maxit)  [x it rn]
+    =/  ap  (matvec a p)
+    =/  pap  (dotv p ap)
+    ::  a flat direction means .a is not positive definite; stop cleanly
+    ?:  =(pap (f0 b))  [x it rn]
+    =/  al  (fdiv b rs pap)
+    =/  r2  (axpyv (fneg b al) ap r)
+    =/  rs2  (dotv r2 r2)
+    %=  $
+      it  +(it)
+      x   (axpyv al p x)
+      r   r2
+      p   (axpyv (fdiv b rs2 rs) p r2)
+      rs  rs2
+    ==
+  ::    +pcg:  [a=ray v=ray maxit=@ud] -> [x=ray iter=@ud rnorm=@]
+  ::
+  ::  +cg with the Jacobi (diagonal) preconditioner: each iteration also
+  ::  divides the residual by diag(A), which helps badly scaled systems and
+  ::  costs one extra vector per step.  A zero diagonal entry is treated as 1,
+  ::  leaving that component unscaled.
+  ::  Source
+  ++  pcg
+    |=  [a=ray:ls v=ray:ls maxit=@ud]
+    ^-  [x=ray:ls iter=@ud rnorm=@]
+    =/  b  bloq.meta.a
+    ?>  ?|(=(4 b) =(5 b) =(6 b) =(7 b))
+    ?>  =(%i754 kind.meta.a)
+    ?>  =(2 (lent shape.meta.a))
+    =/  n  (snag 0 shape.meta.a)
+    ?>  =(n (snag 1 shape.meta.a))
+    ?>  =(1 (lent shape.meta.v))
+    ?>  =(n (snag 0 shape.meta.v))
+    ~|  'saloon pcg: matrix is not symmetric'
+    ?>  (symmetric a)
+    =/  tol  ?:(=(0x1 `@`rtol) `@r`(feps b) rtol)
+    =/  thresh  (fmul b `@`tol (nrm2 v))
+    ::  dinv: 1/a_ii, or 1 where the diagonal entry is zero
+    =/  dinv
+      =/  d  (zeros:(lake rnd) [~[n] b %i754 ~])
+      =/  i  0
+      |-  ^-  ray:ls
+      ?:  =(i n)  d
+      =/  aii  (gi a ~[i i])
+      =/  w  ?:(=(aii (f0 b)) (f1 b) (fdiv b (f1 b) aii))
+      $(i +(i), d (si d ~[i] w))
+    =/  scale
+      |=  [q=ray:ls]
+      ^-  ray:ls
+      =/  o  (zeros:(lake rnd) [~[n] b %i754 ~])
+      =/  i  0
+      |-  ^-  ray:ls
+      ?:  =(i n)  o
+      $(i +(i), o (si o ~[i] (fmul b (gi q ~[i]) (gi dinv ~[i]))))
+    =/  x  (zeros:(lake rnd) [~[n] b %i754 ~])
+    =/  r  v
+    =/  z  (scale v)
+    =/  p  z
+    =/  rz  (dotv r z)
+    =/  it  0
+    |-  ^-  [x=ray:ls iter=@ud rnorm=@]
+    =/  rn  (nrm2 r)
+    ?:  (flte b rn thresh)  [x it rn]
+    ?:  =(it maxit)  [x it rn]
+    =/  ap  (matvec a p)
+    =/  pap  (dotv p ap)
+    ?:  =(pap (f0 b))  [x it rn]
+    =/  al  (fdiv b rz pap)
+    =/  r2  (axpyv (fneg b al) ap r)
+    =/  z2  (scale r2)
+    =/  rz2  (dotv r2 z2)
+    %=  $
+      it  +(it)
+      x   (axpyv al p x)
+      r   r2
+      z   z2
+      p   (axpyv (fdiv b rz2 rz) p z2)
+      rz  rz2
+    ==
+  ::    +svd-sweep:  [w=ray v=ray tol=@] -> [mat=ray vecs=ray rots=@ud]
+  ::
+  ::  One cyclic one-sided Jacobi sweep over every column pair p<q of .w: the
+  ::  rotation that makes columns p and q orthogonal is applied to .w and
+  ::  accumulated into .v.  A pair whose columns are already orthogonal to
+  ::  within .tol (relative to their norms) is skipped; .rots counts the
+  ::  rotations actually applied, so the driver can stop when a sweep is idle.
+  ::  Source
+  ++  svd-sweep
+    |=  [w=ray:ls v=ray:ls tol=@]
+    ^-  [mat=ray:ls vecs=ray:ls rots=@ud]
+    =/  b  bloq.meta.w
+    =/  n  (snag 1 shape.meta.w)
+    ?:  (^lte n 1)  [w v 0]
+    =/  p  0
+    =/  q  1
+    =/  rots  0
+    |-  ^-  [mat=ray:ls vecs=ray:ls rots=@ud]
+    =/  al  (col-dot w p p)
+    =/  be  (col-dot w q q)
+    =/  ga  (col-dot w p q)
+    =/  spin
+      ?:  =(ga (f0 b))  %.n
+      (fgte b (fabs b ga) (fmul b tol (fsqt b (fmul b al be))))
+    =/  wv
+      ?.  spin  [w v]
+      ::  the rotation that zeroes the column inner product: t solves
+      ::  t^2 + 2*zeta*t - 1 = 0 with zeta = (beta-alpha)/(2*gamma)
+      =/  ze  (fdiv b (fsub b be al) (fmul b (f2 b) ga))
+      =/  t   (fdiv b (fsign b ze) (fadd b (fabs b ze) (fsqt b (fadd b (fmul b ze ze) (f1 b)))))
+      =/  c   (fdiv b (f1 b) (fsqt b (fadd b (fmul b t t) (f1 b))))
+      =/  s   (fmul b t c)
+      [(rot-cols w p q c s) (rot-cols v p q c s)]
+    =.  w  -.wv
+    =.  v  +.wv
+    =?  rots  spin  +(rots)
+    ?:  =(+(q) n)
+      ?:  =(+(p) (dec n))  [w v rots]
+      $(p +(p), q (^add p 2))
+    $(q +(q))
+  ::    +svd:  a=ray -> [u=ray s=ray v=ray]
+  ::
+  ::  The thin singular value decomposition of .a (rows >= cols) by one-sided
+  ::  Jacobi: A = U*diag(S)*V^T, with .u the same shape as .a and orthonormal
+  ::  columns, .s a rank-1 ray of singular values in DESCENDING order, and .v
+  ::  an n x n orthogonal matrix.
+  ::
+  ::  Jacobi rotations orthogonalize the COLUMNS of a working copy of .a; at
+  ::  convergence the column norms are the singular values and the normalized
+  ::  columns are U, with V the accumulated rotations.  Unlike +eig the output
+  ::  is sorted, since the singular values have a natural (descending) order;
+  ::  a zero singular value leaves that column of .u zero.
+  ::
+  ::  Sweeps are capped at 30; hitting the cap emits a `~&` trace and returns
+  ::  the partially converged factors, as +eig does.  For a wide matrix
+  ::  (rows < cols) transpose first and swap .u and .v.
+  ::    Examples
+  ::      > =sa  (sake %n .~1e-12)
+  ::      > =a  (en-ray:la [[~[2 2] 6 %i754 ~] ~[~[.~3 .~0] ~[.~0 .~4]]])
+  ::      > ;;((list @rd) data:(de-ray:la s:(svd:sa a)))
+  ::      ~[.~4 .~3]
+  ::  Source
+  ++  svd
+    |=  a=ray:ls
+    ^-  [u=ray:ls s=ray:ls v=ray:ls]
+    =/  b  bloq.meta.a
+    ?>  ?|(=(4 b) =(5 b) =(6 b) =(7 b))
+    ?>  =(%i754 kind.meta.a)
+    ?>  =(2 (lent shape.meta.a))
+    =/  rows  (snag 0 shape.meta.a)
+    =/  n  (snag 1 shape.meta.a)
+    ~|  'saloon svd: needs rows >= cols; transpose and swap u/v for a wide matrix'
+    ?>  (^gte rows n)
+    =/  tol  ?:(=(0x1 `@`rtol) `@r`(feps b) rtol)
+    ::  orthogonalize the columns
+    =/  wv
+      =/  w  a
+      =/  v  (eye:(lake rnd) [~[n n] b %i754 ~])
+      =/  sweep  0
+      |-  ^-  [ray:ls ray:ls]
+      ?:  =(30 sweep)
+        ~&  "saloon svd: hit sweep cap (30) without converging to rtol"
+        [w v]
+      =/  res  (svd-sweep w v `@`tol)
+      ?:  =(0 rots.res)  [mat.res vecs.res]
+      $(sweep +(sweep), w mat.res, v vecs.res)
+    =/  w  -.wv
+    =/  vv  +.wv
+    ::  column norms are the singular values
+    =/  sv
+      =/  d  (zeros:(lake rnd) [~[n] b %i754 ~])
+      =/  j  0
+      |-  ^-  ray:ls
+      ?:  =(j n)  d
+      $(j +(j), d (si d ~[j] (fsqt b (col-dot w j j))))
+    ::  sort descending, permuting the columns of U and V to match
+    =/  perm  (argsort-dim:(lake rnd) sv 0 %des)
+    =/  s  (zeros:(lake rnd) [~[n] b %i754 ~])
+    =/  u  (zeros:(lake rnd) [~[rows n] b %i754 ~])
+    =/  v  (zeros:(lake rnd) [~[n n] b %i754 ~])
+    =/  j  0
+    |-  ^-  [u=ray:ls s=ray:ls v=ray:ls]
+    ?:  =(j n)  [u s v]
+    =/  src  `@`(gi perm ~[j])
+    =/  sj  (gi sv ~[src])
+    =.  s  (si s ~[j] sj)
+    =.  u
+      =/  i  0
+      |-  ^-  ray:ls
+      ?:  =(i rows)  u
+      =/  wij  (gi w ~[i src])
+      $(i +(i), u (si u ~[i j] ?:(=(sj (f0 b)) (f0 b) (fdiv b wij sj))))
+    =.  v
+      =/  i  0
+      |-  ^-  ray:ls
+      ?:  =(i n)  v
+      $(i +(i), v (si v ~[i j] (gi vv ~[i src])))
+    $(j +(j))
+  ::    +svd-vals:  a=ray -> ray
+  ::
+  ::  Just the singular values of .a, descending (the .s of +svd).
+  ::  Source
+  ++  svd-vals
+    |=  a=ray:ls
+    ^-  ray:ls
+    =/  res  (svd a)
+    s.res
+  ::
   +|  %rand
   ::
   ::  +rand-ray (rand-spec.md section 8): fills a Lagoon $ray with random

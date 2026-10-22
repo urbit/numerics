@@ -210,6 +210,24 @@
     return __( sin_d == (met_d - 1) );
   }
 
+/* no elements: a zero dimension.  After _check() that is the same
+**   as the data being a single block (the pin alone).  The Hoon
+**   crashes on most such rays (+bin-op takes (dec (lent ali)),
+**   +min/+max take -:(ravel a), +diag takes (dec -.shape)), but not
+**   on every kind, so the jets punt and let the Hoon decide.
+**   @Refcount: retains arguments
+*/
+  static inline c3_o _empty(u3_noun shape)
+  {
+    while ( u3_nul != shape ) {
+      if ( 0 == u3h(shape) ) {
+        return c3y;
+      }
+      shape = u3t(shape);
+    }
+    return c3n;
+  }
+
 /* add - axpy = 1*x+y
 */
   u3_weak
@@ -259,6 +277,7 @@
     }
 
     // r_data is the result noun of [data]
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -321,6 +340,7 @@
     }
 
     // r_data is the result noun of [data]
+    x_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), x_bytes);
 
     //  Clean up and return.
@@ -388,6 +408,7 @@
     }
 
     // r_data is the result noun of [data]
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -448,12 +469,13 @@
 
       case 7:
         for (c3_d i = 0; i < len_x; i++) {
-          f128M_div(&(((float128_t*)y_bytes)[i]), &(((float128_t*)x_bytes)[i]), &(((float128_t*)y_bytes)[i]));
+          f128M_div(&(((float128_t*)x_bytes)[i]), &(((float128_t*)y_bytes)[i]), &(((float128_t*)y_bytes)[i]));
         }
         break;
     }
 
     // r_data is the result noun of [data]
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -566,6 +588,7 @@
     }
 
     // r_data is the result noun of [data]
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -1082,6 +1105,7 @@
     }
 
     // r_data is the result noun of [data]
+    x_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), x_bytes);
 
     //  Clean up and return.
@@ -1154,6 +1178,7 @@
     }
 
     // r_data is the result noun of [data]
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -1227,6 +1252,7 @@
     }
 
     // r_data is the result noun of [data]
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -1300,6 +1326,7 @@
     }
 
     // r_data is the result noun of [data]
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -1373,6 +1400,7 @@
     }
 
     // r_data is the result noun of [data]
+    y_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), y_bytes);
 
     //  Clean up and return.
@@ -1783,6 +1811,7 @@
     }
 
     // r_data is the result noun of [data]
+    x_bytes[syz_x] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz_x+1)*sizeof(c3_y), x_bytes);
 
     //  Clean up and return.
@@ -2244,6 +2273,14 @@
     }
     c3_d N = Na;
 
+    if ( (M > c3_h_max) || (P > c3_h_max) ) {
+      return u3_none;
+    }
+    c3_d len_r = M*P;                     // M*P
+    if ( len_r > (c3_d_max >> (bloq - 3)) ) {
+      return u3_none;
+    }
+
     //  Unpack the data as a byte array.  We assume total length < 2**64.
     // len_x is length in base units
     c3_d len_x = _get_length(x_shape);    // M*N
@@ -2264,12 +2301,9 @@
     // y_bytes is the data array (w/o leading 0x1)
     c3_y* y_bytes = (c3_y*)u3a_malloc(syz_y*sizeof(c3_y));
     u3r_bytes(0, syz_y, y_bytes, y_data);
-    
-    // len_r is length in base units
-    c3_d len_r = M*P;                     // M*P
 
     // syz_r is length in bytes
-    c3_d syz_r = len_r * pow(2, bloq-3);  // M*P
+    c3_d syz_r = len_r << (bloq - 3);     // M*P
 
     // r_bytes is the result array
     c3_y* r_bytes = (c3_y*)u3a_malloc((syz_r+1)*sizeof(c3_y));
@@ -2359,12 +2393,13 @@
     switch ( bl ) {
       case 3: _LA_EW(c3_b,        _tn_msk64(w),  w - 1, _tn_div64,  _tn_rem64);  break;
       case 4: _LA_EW(c3_s,        _tn_msk64(w),  w - 1, _tn_div64,  _tn_rem64);  break;
-      case 5: _LA_EW(c3_w,        _tn_msk64(w),  w - 1, _tn_div64,  _tn_rem64);  break;
+      case 5: _LA_EW(c3_h,        _tn_msk64(w),  w - 1, _tn_div64,  _tn_rem64);  break;
       case 6: _LA_EW(c3_d,        _tn_msk64(w),  w - 1, _tn_div64,  _tn_rem64);  break;
       case 7: _LA_EW(_twoc_u128,  _tn_msk128(w), w - 1, _tn_div128, _tn_rem128); break;
     }
 #undef _LA_EW
 
+    yb[syz] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz + 1) * sizeof(c3_y), yb);
     u3a_free(xb);
     u3a_free(yb);
@@ -2405,12 +2440,13 @@
     switch ( bl ) {
       case 3: _LA_CMP(c3_b,       int8_t);     break;
       case 4: _LA_CMP(c3_s,       c3_ss);      break;
-      case 5: _LA_CMP(c3_w,       c3_ws);      break;
+      case 5: _LA_CMP(c3_h,       c3_hs);      break;
       case 6: _LA_CMP(c3_d,       c3_ds);      break;
       case 7: _LA_CMP(_twoc_u128, _twoc_s128); break;
     }
 #undef _LA_CMP
 
+    yb[syz] = 0x1;  // pin head
     u3_noun r_data = u3i_bytes((syz + 1) * sizeof(c3_y), yb);
     u3a_free(xb);  u3a_free(yb);
     return r_data;
@@ -2438,7 +2474,7 @@
     switch ( bl ) {
       case 3: _LA_SUM(c3_b);       break;
       case 4: _LA_SUM(c3_s);       break;
-      case 5: _LA_SUM(c3_w);       break;
+      case 5: _LA_SUM(c3_h);       break;
       case 6: _LA_SUM(c3_d);       break;
       case 7: _LA_SUM(_twoc_u128); break;
     }
@@ -2468,7 +2504,7 @@
     switch ( bl ) {
       case 3: _LA_DOT(c3_b);       break;
       case 4: _LA_DOT(c3_s);       break;
-      case 5: _LA_DOT(c3_w);       break;
+      case 5: _LA_DOT(c3_h);       break;
       case 6: _LA_DOT(c3_d);       break;
       case 7: _LA_DOT(_twoc_u128); break;
     }
@@ -2497,7 +2533,7 @@
     switch ( bl ) {
       case 3: _LA_MM(c3_b,       int8_t);     break;
       case 4: _LA_MM(c3_s,       c3_ss);      break;
-      case 5: _LA_MM(c3_w,       c3_ws);      break;
+      case 5: _LA_MM(c3_h,       c3_hs);      break;
       case 6: _LA_MM(c3_d,       c3_ds);      break;
       case 7: _LA_MM(_twoc_u128, _twoc_s128); break;
     }
@@ -2528,7 +2564,7 @@
     switch ( bl ) {
       case 3: _LA_ARG(c3_b,       int8_t);     break;
       case 4: _LA_ARG(c3_s,       c3_ss);      break;
-      case 5: _LA_ARG(c3_w,       c3_ws);      break;
+      case 5: _LA_ARG(c3_h,       c3_hs);      break;
       case 6: _LA_ARG(c3_d,       c3_ds);      break;
       case 7: _LA_ARG(_twoc_u128, _twoc_s128); break;
     }
@@ -2587,6 +2623,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754:
             if ( c3n == _set_rounding_la(rnd) ) { return u3_none; }
@@ -2641,6 +2680,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754:
             if ( c3n == _set_rounding_la(rnd) ) { return u3_none; }
@@ -2695,6 +2737,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754:
             if ( c3n == _set_rounding_la(rnd) ) { return u3_none; }
@@ -2749,6 +2794,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754:
             if ( c3n == _set_rounding_la(rnd) ) { return u3_none; }
@@ -2803,6 +2851,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754:
             if ( c3n == _set_rounding_la(rnd) ) { return u3_none; }
@@ -2895,6 +2946,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             u3_weak r_data = u3qi_la_argmin_i754(x_data, x_shape, x_bloq);
@@ -2977,6 +3031,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             u3_weak r_data = u3qi_la_argmax_i754(x_data, x_shape, x_bloq);
@@ -3019,6 +3076,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             u3_weak r_data = u3qi_la_min_i754(x_data, x_shape, x_bloq);
@@ -3063,6 +3123,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             u3_weak r_data = u3qi_la_max_i754(x_data, x_shape, x_bloq);
@@ -3150,6 +3213,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             u3_weak r_data = u3qi_la_gth_i754(x_data, y_data, x_shape, x_bloq);
@@ -3198,6 +3264,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             u3_weak r_data = u3qi_la_gte_i754(x_data, y_data, x_shape, x_bloq);
@@ -3246,6 +3315,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             u3_weak r_data = u3qi_la_lth_i754(x_data, y_data, x_shape, x_bloq);
@@ -3294,6 +3366,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             u3_weak r_data = u3qi_la_lte_i754(x_data, y_data, x_shape, x_bloq);
@@ -3337,6 +3412,9 @@
       if ( c3n == _check(x_meta, x_data) ) {
         return u3m_bail(c3__exit);
       }
+      if ( c3y == _empty(x_shape) ) {
+        return u3_none;                 //  empty ray: the Hoon decides
+      }
       switch (x_kind) {
         case c3__i754:
           if ( c3n == _set_rounding_la(rnd) ) { return u3_none; }
@@ -3374,6 +3452,9 @@
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       if ( c3n == _check(x_meta, x_data) ) {
         return u3m_bail(c3__exit);
+      }
+      if ( c3y == _empty(x_shape) ) {
+        return u3_none;                 //  empty ray: the Hoon decides
       }
       switch (x_kind) {
         case c3__i754:
@@ -3413,6 +3494,9 @@
       if ( c3n == _check(x_meta, x_data) ) {
         return u3m_bail(c3__exit);
       }
+      if ( c3y == _empty(x_shape) ) {
+        return u3_none;                 //  empty ray: the Hoon decides
+      }
       switch (x_kind) {
         case c3__i754:
           if ( c3n == _set_rounding_la(rnd) ) { return u3_none; }
@@ -3451,6 +3535,9 @@
       if ( c3n == _check(x_meta, x_data) ) {
         return u3m_bail(c3__exit);
       }
+      if ( c3y == _empty(x_shape) ) {
+        return u3_none;                 //  empty ray: the Hoon decides
+      }
       switch (x_kind) {
         case c3__i754:
           if ( c3n == _set_rounding_la(rnd) ) { return u3_none; }
@@ -3488,6 +3575,9 @@
       rnd = u3h(u3t(u3t(u3t(cor))));  // 30
       if ( c3n == _check(x_meta, x_data) ) {
         return u3m_bail(c3__exit);
+      }
+      if ( c3y == _empty(x_shape) ) {
+        return u3_none;                 //  empty ray: the Hoon decides
       }
       switch (x_kind) {
         case c3__i754:
@@ -3540,6 +3630,9 @@
         return u3m_bail(c3__exit);
       }
 
+      if ( c3y == _empty(u3h(x_meta)) ) {
+        return u3_none;                 //  empty ray: the Hoon decides
+      }
       switch (x_kind) {
         case c3__i754: {
           //  ... and the %i754 path, (cumsum (mul a b)), asserts
@@ -3712,6 +3805,9 @@
       {
         return u3m_bail(c3__exit);
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         u3_weak r_data = u3qi_la_diag(x_data, x_shape, x_bloq);
         if (r_data == u3_none) { return u3_none; }
         //  result shape is ~[n 1] where n is the (square) input's first dim
@@ -3743,6 +3839,9 @@
       if ( c3n == _check(x_meta, x_data) ) {
         return u3m_bail(c3__exit);      //  +diag asserts (check a)
       } else {
+        if ( c3y == _empty(x_shape) ) {
+          return u3_none;                 //  empty ray: the Hoon decides
+        }
         switch (x_kind) {
           case c3__i754: {
             //  the sum in (cumsum (diag a)) rounds per the door mode

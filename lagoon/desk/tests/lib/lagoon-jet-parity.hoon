@@ -7,11 +7,8 @@
 ::  disagrees with any of these is wrong.  All rays are %i754; bare +la
 ::  rounds %z (the bunt of $rounding-mode), +lake picks others.
 ::
-::  NB: %mod here follows THIS desk's C-fmod semantics (quotient
-::  truncated toward zero regardless of door mode; NaN, not a crash, on
-::  a zero divisor or non-finite quotient) -- deliberately different
-::  from the upstream urbit/urbit library, whose +toi-based %mod rounds
-::  in the door mode and crashes.
+::  NB: %mod follows +toi, as in urbit/urbit: the quotient rounds in
+::  the door mode, and a zero divisor or non-finite quotient crashes.
 ::
 /-  *lagoon
 /+  *test

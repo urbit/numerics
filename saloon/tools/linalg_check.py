@@ -380,6 +380,105 @@ for label, m, want in (
 check("svd [[3,0],[0,4]] U", [[0, 1], [1, 0]], [[0, 1], [1, 0]])
 print("  (U = W[:,perm]/s and V = I[:,perm]; for a diagonal input both are the swap matrix)")
 
+# ------------------------------------------------------------------- qr
+
+def close(label, got, want, tol=1e-9):
+    N[0] += 1
+    g, w = np.asarray(got, dtype=float), np.asarray(want, dtype=float)
+    if g.shape != w.shape or not np.allclose(g, w, rtol=tol, atol=tol):
+        FAIL.append(f"{label}: got {g.tolist()!r}, want {w.tolist()!r}")
+        print(f"  FAIL {label}: got {g.tolist()!r}, want {w.tolist()!r}")
+
+
+def q_house(x):
+    """LAPACK-convention Householder vector over Q: alpha = -sign(x0)*|x|."""
+    ss = Q(0)
+    for t in x:
+        ss = ss + t * t
+    nx = ss.sqrt()
+    sign = Q(1) if x[0].q >= 0 else Q(-1)
+    alpha = Q(0) - sign * nx
+    v = [x[0] - alpha] + list(x[1:])
+    vv = Q(0)
+    for t in v:
+        vv = vv + t * t
+    return v, vv
+
+
+def q_reflect(w, k, v, vv, c0, c1):
+    m = len(w)
+    for j in range(c0, c1):
+        s = Q(0)
+        for i in range(k, m):
+            s = s + v[i - k] * w[i][j]
+        f = (Q(2) * s) / vv
+        for i in range(k, m):
+            w[i][j] = w[i][j] - f * v[i - k]
+    return w
+
+
+def q_qr(a):
+    m, n = len(a), len(a[0])
+    w = [row[:] for row in a]
+    refl = []
+    for k in range(n):
+        v, vv = q_house([w[i][k] for i in range(k, m)])
+        if vv.q == 0:
+            continue
+        w = q_reflect(w, k, v, vv, k, n)
+        refl.append((k, v, vv))
+    q = [[Q(1) if i == j else Q(0) for j in range(n)] for i in range(m)]
+    for k, v, vv in reversed(refl):
+        q = q_reflect(q, k, v, vv, 0, n)
+    r = [[w[i][j] if j >= i else Q(0) for j in range(n)] for i in range(n)]
+    return q, r
+
+
+print("== +qr / +lstsq: exact cases ==")
+qq, rr = q_qr(qm([[2, 0], [0, 2]]))
+check("qr diag(2,2) Q", [repr(x) for x in flat(qq)], ["-1", "0", "0", "-1"])
+check("qr diag(2,2) R", [repr(x) for x in flat(rr)], ["-2", "0", "0", "-2"])
+exact("qr diag(2,2)", clean(flat(qq) + flat(rr)))
+
+qq, rr = q_qr(qm([[3], [4]]))
+check("qr [[3],[4]] R", [repr(x) for x in flat(rr)], ["-5"])
+exact("qr [[3],[4]] R (Q holds 0.6/0.8, which are not exact)", clean(flat(rr)))
+
+a3 = qm([[2, 0], [0, 2], [0, 0]])
+qq, rr = q_qr(a3)
+check("qr 3x2 Q", [repr(x) for x in flat(qq)], ["-1", "0", "0", "-1", "0", "0"])
+#  lstsq = R^-1 Q^T v, by hand over Q
+v3 = qv([4, 6, 1])
+qtv = []
+for j in range(2):
+    acc = Q(0)
+    for i in range(3):
+        acc = acc + qq[i][j] * v3[i]
+    qtv.append(acc)
+xs = [Q(0), Q(0)]
+for i in reversed(range(2)):
+    rhs = qtv[i]
+    for k in range(i + 1, 2):
+        rhs = rhs - rr[i][k] * xs[k]
+    xs[i] = rhs / rr[i][i]
+check("lstsq 3x2 v=[4,6,1]", [repr(x) for x in xs], ["2", "3"])
+exact("lstsq 3x2", clean(xs + flat(qq) + flat(rr)))
+
+print("== +qr / +lstsq: approximate, against numpy ==")
+AQ = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 7.0]])
+nq, nr = np.linalg.qr(AQ)
+print(f"  numpy qr R: {nr.tolist()}")
+print(f"  numpy qr Q: {nq.tolist()}")
+#  our Householder convention matches LAPACK's, so the signs agree too
+fq, fr = q_qr([[Q(v) for v in row] for row in AQ.tolist()])
+close("qr 3x2 R matches numpy (signs included)",
+      [[float(x.q) for x in row] for row in fr], nr.tolist(), tol=1e-12)
+close("qr 3x2 Q matches numpy (signs included)",
+      [[float(x.q) for x in row] for row in fq], nq.tolist(), tol=1e-12)
+bq = np.array([1.0, 2.0, 2.0])
+ls = np.linalg.lstsq(AQ, bq, rcond=None)[0]
+print(f"  numpy lstsq: {ls.tolist()}")
+
 print()
 print(f"{N[0]} checks, {len(FAIL)} failures")
 for f in FAIL:

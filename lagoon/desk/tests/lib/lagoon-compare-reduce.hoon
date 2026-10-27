@@ -21,13 +21,13 @@
   ==
 ::
 ++  shapes  ^-  (list (list @))  ~[~[1 1] ~[2 3] ~[3 3]]
-+$  rrow  [bloq=@ zero=@ one=@ two=@ three=@ five=@]
++$  rrow  [bloq=@ zero=@ one=@ two=@ three=@ five=@ six=@]
 ++  reals
   ^-  (list rrow)
-  :~  [4 .~~0 .~~1 .~~2 .~~3 .~~5]
-      [5 .0 .1 .2 .3 .5]
-      [6 .~0 .~1 .~2 .~3 .~5]
-      [7 .~~~0 .~~~1 .~~~2 .~~~3 .~~~5]
+  :~  [4 .~~0 .~~1 .~~2 .~~3 .~~5 .~~6]
+      [5 .0 .1 .2 .3 .5 .6]
+      [6 .~0 .~1 .~2 .~3 .~5 .~6]
+      [7 .~~~0 .~~~1 .~~~2 .~~~3 .~~~5 .~~~6]
   ==
 ++  uint-bloqs  ^-  (list @)  ~[3 4 5 6]
 ::  elementwise: %i754 over reals x shapes
@@ -132,6 +132,26 @@
   %-  each-vec
   |=  [r=rrow a=ray]
   (expect-eq !>(`@`three.r) !>((hed (cumsum:la a))))
+::  prod over [one two three] = six.  The fold seeds from the kind's one
+::  (+one), not the integer 1 -- which as %i754 bits is the smallest denormal
+::  and used to drag every real product into the denormal range (S-21).
+++  test-prod  ^-  tang
+  %-  zing
+  %+  turn  reals
+  |=  r=rrow
+  =/  a  (en-ray:la [`meta`[~[3] bloq.r %i754 ~] ~[one.r two.r three.r]])
+  (expect-eq !>(`@`six.r) !>((hed (prod:la a))))
+::  prod of an all-ones ray is one, at every shape (a denormal seed fails this)
+++  test-prod-ones  ^-  tang
+  %-  each-real
+  |=  [r=rrow m=meta]
+  (expect-eq !>(`@`one.r) !>((hed (prod:la (ones:la m)))))
+::  prod over [zero one two] is zero (a denormal seed also gives zero here, so
+::  this pins the zero case rather than S-21)
+++  test-prod-zero  ^-  tang
+  %-  each-vec
+  |=  [r=rrow a=ray]
+  (expect-eq !>(`@`zero.r) !>((hed (prod:la a))))
 ++  test-argmin  ^-  tang
   %-  each-vec
   |=  [r=rrow a=ray]

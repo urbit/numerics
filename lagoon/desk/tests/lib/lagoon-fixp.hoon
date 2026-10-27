@@ -58,6 +58,15 @@
   =.  r  (set-item:la r ~[0 2] 0x18)              ::  1.5
   =.  r  (set-item:la r ~[0 3] 0xf0)              ::  -1.0
   %+  expect-eq  !>(`@`0x20)  !>((get-item:la (cumsum:la r) ~[0 0]))
+::  prod over [1.5 2.0 0.5 -1.0] = -1.5 (0xe8): the fold seeds from fixed one
+::  (0x10), not the integer 1 (which would be 1/16 here)
+++  test-fixp-prod  ^-  tang
+  =/  r=ray  (fill:la [~[1 4] 3 %fixp [3 4]] 0x0)
+  =.  r  (set-item:la r ~[0 0] 0x18)              ::  1.5
+  =.  r  (set-item:la r ~[0 1] 0x20)              ::  2.0
+  =.  r  (set-item:la r ~[0 2] 0x8)               ::  0.5
+  =.  r  (set-item:la r ~[0 3] 0xf0)              ::  -1.0
+  %+  expect-eq  !>(`@`0xe8)  !>((get-item:la (prod:la r) ~[0 0]))
 ::  exact dot product: 0.5*2.0 + 1.5*2.0 = 4.0 (0x40)
 ++  test-fixp-dot  ^-  tang
   =/  m=meta  [~[1 2] 3 %fixp [3 4]]

@@ -79,6 +79,14 @@
   =.  r  (set-item:la r ~[0 2] 0xae)              ::  -5
   =.  r  (set-item:la r ~[0 3] 0x52)              ::  5
   %+  expect-eq  !>(`@`0x52)  !>((get-item:la (cumsum:la r) ~[0 0]))
+::  prod over posit8 [2 3 -2] = -12 (0xa4): seeded from posit one (0x40),
+::  not the integer 1 (the smallest positive posit)
+++  test-unum-prod  ^-  tang
+  =/  r=ray  (fill:la [~[1 3] 3 %unum ~] 0x0)
+  =.  r  (set-item:la r ~[0 0] 0x48)              ::  2
+  =.  r  (set-item:la r ~[0 1] 0x4c)              ::  3
+  =.  r  (set-item:la r ~[0 2] 0xb8)              ::  -2
+  %+  expect-eq  !>(`@`0xa4)  !>((get-item:la (prod:la r) ~[0 0]))
 ::  posit16 arithmetic (bloq 4, rph)
 ++  test-unum-posit16  ^-  tang
   ;:  weld

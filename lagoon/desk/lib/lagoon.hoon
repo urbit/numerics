@@ -370,20 +370,17 @@
   ++  en-ray
     |=  =baum
     ^-  ray
-    =/  a=ray  (zeros meta.baum)
-    =/  i  0
-    =/  n  (roll shape.meta.a ^mul)
-    |-
-    ?:  =(i n)  a
-    %=  $
-      i  +(i)
-      data.a
-        %+  con
-          data.a
-        %+  lsh
-          [bloq.meta.a i]
-        (get-item-baum baum (get-dim shape.meta.a i))
-    ==
+    ::  flatten the nested list row-major in one pass and pack it with +rep
+    ::  (the old per-element +get-dim/+get-item-baum/+con loop was quadratic).
+    =/  flat=(list @)
+      =|  acc=(list @)
+      =/  stk=(list ndray)  ~[data.baum]
+      |-  ^-  (list @)
+      ?~  stk  (flop acc)
+      ?@  i.stk  $(stk t.stk, acc [i.stk acc])
+      $(stk (weld i.stk t.stk))
+    ?>  =((lent flat) (roll shape.meta.baum ^mul))
+    (spac [meta.baum (rep bloq.meta.baum flat)])
   ::
   ::    +de-ray:  ray -> baum
   ::
@@ -466,7 +463,9 @@
     ^-  ray
     =/  len  (roll shape.meta ^mul)
     :-  meta
-    (con +:(zeros meta) (fil bloq.meta len x))
+    ::  +rep, not +fil: +fil re-shifts a growing atom per element (quadratic
+    ::  in the length, and unjetted); +rep is one pass and jetted.
+    (con +:(zeros meta) (rep bloq.meta (reap len x)))
   ::
   ++  spac
     |=  =ray
@@ -495,72 +494,82 @@
   ::
   ::    +change:  [=ray =kind =bloq] -> ray
   ::
-  ::  Converts .ray to a new .kind and .bloq (width), element by element:
-  ::  %uint<->%i754 and re-widening within a kind.  %unum/%cplx/%fixp conversions
-  ::  are not yet wired (they crash with a message); note the %i754->%uint
-  ::  negative-value limitation called out inline.
-  ::  Some unsupported conversion paths produce a diagnostic message; others crash
-  ::  with a bare `!!`.  Callers should verify the source and target kind are
-  ::  compatible.
+  ::  Converts .ray to a new .kind and .bloq (width), element by element, at
+  ::  any rank (rank 0 included).  Wired paths:
+  ::    %uint -> %uint   re-box at the new width; an element wider than the
+  ::                     new bloq is truncated to it (as +rep does)
+  ::    %uint -> %i754   integer to float (+sun, door rounding)
+  ::    %i754 -> %uint   truncate toward zero (+toi).  KNOWN LIMITATION: a
+  ::                     negative value has no %uint image; +toi yields a
+  ::                     negative @s whose (div ... 2) wraps rather than
+  ::                     clamping or crashing, so callers must pre-clamp
+  ::    %i754 -> %i754   float to float across widths (+sea then +bit, door
+  ::                     rounding); the same width is a bit-exact copy
+  ::  %unum/%cplx/%fixp conversions are not yet wired and crash with a message;
+  ::  an unknown (kind, bloq) pair crashes with a bare `!!`.
   ::  Source
   ++  change
     |=  [=ray =kind =bloq]
     ^-  ^ray
-    ?+    kind.meta.ray  !!
-        %uint
-      ?+    kind  !!
-          :: %uint -> %uint
+    ?>  (check ray)
+    =/  fun=$-(@ @)
+      ?+    kind.meta.ray  !!
           %uint
-        %-  en-ray
-        :-  [shape.meta.ray bloq %uint tail.meta.ray]
-        data:(de-ray ray)
-          :: %uint -> %i754
-          %i754
-        %-  en-ray
-        :-  [shape.meta.ray bloq %i754 tail.meta.ray]
-        %+  turn  (ravel ray)
-        ?+  bloq  !!
-          %7  ~(sun rq rnd)
-          %6  ~(sun rd rnd)
-          %5  ~(sun rs rnd)
-          %4  ~(sun rh rnd)
+        ?+    kind  !!
+          %uint  |=(a=@ a)
+            %i754
+          ?+  bloq  !!
+            %7  ~(sun rq rnd)
+            %6  ~(sun rd rnd)
+            %5  ~(sun rs rnd)
+            %4  ~(sun rh rnd)
+          ==
         ==
-      ==
       ::
-        %i754
-      ?+    kind  !!
-          :: %i754 -> %uint.  KNOWN LIMITATION: a negative %i754 value has no
-          :: %uint representation; +toi yields a negative @s and the (div ... 2)
-          :: wraps it rather than clamping/erroring.  Callers must pre-clamp.
-          %uint
-        %-  en-ray
-        :-  [shape.meta.ray bloq %uint tail.meta.ray]
-        %+  turn  (ravel ray)
-        ?+  bloq.meta.ray  !!
-          %7  |=(a=@rq ^-(@u (^div (need (~(toi rq rnd) a)) 2)))
-          %6  |=(a=@rd ^-(@u (^div (need (~(toi rd rnd) a)) 2)))
-          %5  |=(a=@rs ^-(@u (^div (need (~(toi rs rnd) a)) 2)))
-          %4  |=(a=@rh ^-(@u (^div (need (~(toi rh rnd) a)) 2)))
-        ==
-          :: %i754 -> %i754
           %i754
-        ?>  &((^gte bloq %4) (^lte bloq %7))
-        %-  en-ray
-        :-  [shape.meta.ray bloq %i754 tail.meta.ray]
-        data:(de-ray ray)
-      ==
+        ?+    kind  !!
+            %uint
+          ?+  bloq.meta.ray  !!
+            %7  |=(a=@rq ^-(@u (^div (need (~(toi rq rnd) a)) 2)))
+            %6  |=(a=@rd ^-(@u (^div (need (~(toi rd rnd) a)) 2)))
+            %5  |=(a=@rs ^-(@u (^div (need (~(toi rs rnd) a)) 2)))
+            %4  |=(a=@rh ^-(@u (^div (need (~(toi rh rnd) a)) 2)))
+          ==
+            %i754
+          ?:  =(bloq bloq.meta.ray)  |=(a=@ a)
+          =/  to-fn=$-(@ fn)
+            ?+  bloq.meta.ray  !!
+              %7  ~(sea rq rnd)
+              %6  ~(sea rd rnd)
+              %5  ~(sea rs rnd)
+              %4  ~(sea rh rnd)
+            ==
+          =/  of-fn=$-(fn @)
+            ?+  bloq  !!
+              %7  ~(bit rq rnd)
+              %6  ~(bit rd rnd)
+              %5  ~(bit rs rnd)
+              %4  ~(bit rh rnd)
+            ==
+          |=(a=@ (of-fn (to-fn a)))
+        ==
       ::  %unum conversion (to/from posits) is not yet wired; see the unum
       ::  to-r*/from-r* matrix in /lib/unum for the eventual mapping.
-        %unum
-      ~|('lagoon: change/convert not yet implemented for %unum' !!)
+          %unum
+        ~|('lagoon: change/convert not yet implemented for %unum' !!)
       ::  out of complex is lossy and ambiguous (real part? modulus?); refuse
       ::  and make the caller pick (abs for modulus).  Into-complex TODO.
-        %cplx
-      ~|('lagoon: change out of %cplx is lossy; use abs or an explicit re/im' !!)
+          %cplx
+        ~|('lagoon: change out of %cplx is lossy; use abs or an explicit re/im' !!)
       ::  %fixp conversion not yet wired; use /lib/fixed's to-rs/from-rs.
-        %fixp
-      ~|('lagoon: change/convert not yet implemented for %fixp' !!)
-    ==
+          %fixp
+        ~|('lagoon: change/convert not yet implemented for %fixp' !!)
+      ==
+    ::  ravel -> map -> re-pin: rank-agnostic, unlike the old +de-ray/+en-ray
+    ::  round trip (which only knew ranks 1 and 2 and crashed at rank 0).
+    %-  spac
+    :-  [shape.meta.ray bloq kind tail.meta.ray]
+    (rep bloq (turn (ravel ray) fun))
   ::
   ::  Builders
   ::
@@ -590,6 +599,26 @@
     %^  set-item
         r
       ~[i i]
+    (one meta)
+  ::    +zeros:  meta -> ray
+  ::
+  ::  A ray of shape/kind .meta with every scalar 0 (the kind's zero, which is
+  ::  the 0x0 bit pattern for every supported kind).
+  ::  Source
+  ++  zeros
+    |=  =meta  ^-  ray
+    ~_  leaf+"lagoon-fail"
+    :-  meta
+    (lsh [bloq.meta (roll shape.meta ^mul)] 1)
+  ::    +one:  meta -> @
+  ::
+  ::  The raw bits of the kind's one: 1.0 for %i754, posit one for %unum,
+  ::  1+0i for %cplx, 2^b for %fixp (b the fractional bits in meta.tail), and
+  ::  1 for %uint/%int2.  The multiplicative identity that +ones fills with,
+  ::  +eye puts on the diagonal, and +prod seeds its fold from.
+  ::  Source
+  ++  one
+    |=  =meta
     ^-  @
     ?-    kind.meta
         %uint  `@`1
@@ -622,16 +651,6 @@
       ::  fixed-point 1.0 = 2^b, with b the fractional bits from meta.tail.
         %fixp  (bex +:;;([a=@ b=@] tail.meta))
     ==
-  ::    +zeros:  meta -> ray
-  ::
-  ::  A ray of shape/kind .meta with every scalar 0 (the kind's zero, which is
-  ::  the 0x0 bit pattern for every supported kind).
-  ::  Source
-  ++  zeros
-    |=  =meta  ^-  ray
-    ~_  leaf+"lagoon-fail"
-    :-  meta
-    (lsh [bloq.meta (roll shape.meta ^mul)] 1)
   ::    +ones:  meta -> ray
   ::
   ::  A ray of shape/kind .meta with every scalar 1 (the kind's one: 1.0 for
@@ -640,39 +659,7 @@
   ++  ones
     |=  =meta  ^-  ray
     ~_  leaf+"lagoon-fail"
-    =/  one
-      ?-    kind.meta
-          %uint  `@`1
-        ::
-          %int2  `@`1
-        ::
-          %i754
-        ?+  bloq.meta  !!
-          %7  .~~~1
-          %6  .~1
-          %5  .1
-          %4  .~~1
-        ==
-        ::
-          %unum
-        ?+  bloq.meta  !!
-          %6  one:rpd:unum
-          %5  one:rps:unum
-          %4  one:rph:unum
-          %3  one:rpb:unum
-        ==
-        ::
-          %cplx
-        ?+  bloq.meta  !!
-          %8  ~(one cq:complex rnd)
-          %7  ~(one cd:complex rnd)
-          %6  ~(one cs:complex rnd)
-          %5  ~(one ch:complex rnd)
-        ==
-        ::  fixed-point 1.0 = 2^b (b = fractional bits from meta.tail).
-          %fixp  (bex +:;;([a=@ b=@] tail.meta))
-      ==
-    (fill meta one)
+    (fill meta (one meta))
   ::    +iota:  meta -> ray
   ::
   ::  A 1-D %uint index vector 0, 1, ..., n-1 for the length n in .meta (the
@@ -875,10 +862,11 @@
     ~/  %max
     |=  a=ray
     ?>  (check a)
+    =/  cmp  (fun-scalar meta.a %gth)
     =/  fun
-      |:  [b=1 c=-:(ravel a)] 
-      ?.  =(((fun-scalar meta.a %gth) b c) 0)
-        b  c 
+      |:  [b=1 c=-:(ravel a)]
+      ?.  =((cmp b c) 0)
+        b  c
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
   ::    +argmax:  ray -> @ud
@@ -901,10 +889,11 @@
     ~/  %min
     |=  a=ray
     ?>  (check a)
+    =/  cmp  (fun-scalar meta.a %lth)
     =/  fun
-      |:  [b=1 c=-:(ravel a)] 
-      ?.  =(((fun-scalar meta.a %lth) b c) 0)
-        b  c 
+      |:  [b=1 c=-:(ravel a)]
+      ?.  =((cmp b c) 0)
+        b  c
     (scalar-to-ray meta.a (reel (ravel a) fun))
   ::
   ::    +argmin:  ray -> @ud
@@ -932,19 +921,27 @@
     ::  %unum: exact quire sum (single rounding), see +unum-sum.
     ?:  ?=(%unum kind.meta.a)
       (scalar-to-ray meta.a (unum-sum bloq.meta.a (ravel a)))
+    =/  fun  (fun-scalar meta.a %add)
     %+  scalar-to-ray  meta.a
-    (reel (ravel a) |=([b=@ c=@] ((fun-scalar meta.a %add) b c)))
+    (reel (ravel a) |=([b=@ c=@] (fun b c)))
   ::
   ::    +prod:  ray -> ray
   ::
-  ::  The product of all elements of .a, boxed as an all-1s-shape ray.
+  ::  The product of all elements of .a, boxed as an all-1s-shape ray.  Folds
+  ::  left to right from the kind's one (+one): (((1 * x0) * x1) * x2) ...
+  ::  The seed must be the kind's own one, not the integer 1 -- as %i754 bits
+  ::  that is the smallest denormal, and the whole product collapses into the
+  ::  denormal range.
   ::  Source
   ++  prod
     |=  a=ray
     ^-  ray
     ?>  (check a)
+    =/  fun  (fun-scalar meta.a %mul)
     %+  scalar-to-ray  meta.a
-    (reel (ravel a) |=([b=_1 c=_1] ((fun-scalar meta.a %mul) b c)))
+    %+  roll  (ravel a)
+    |:  [b=`@`0 acc=(one meta.a)]
+    (fun acc b)
   ::
   ::  Axis-wise reductions, norms, sorting, and distances
   ::
@@ -2650,13 +2647,14 @@
     ?>  (check b)
     %-  spac
     :-  meta.a
+    %+  rep  bloq.meta.a
     =/  ali  (ravel a)
     =/  bob  (ravel b)
-    %+  rep  bloq.meta.a
-    %+  turn
-      (gulf 0 (dec (lent ali)))
-    |=  i=@
-    (op (snag i ali) (snag i bob))
+    ::  walk both ravels together: +snag per index is quadratic in the length.
+    |-  ^-  (list @)
+    ?~  ali  ~
+    ?>  ?=(^ bob)
+    [(op i.ali i.bob) $(ali t.ali, bob t.bob)]
   ::
   ++  ter-op
     |=  [a=ray b=ray c=ray op=$-([@ @ @] @)]
@@ -2668,13 +2666,13 @@
     ?>  (check c)
     %-  spac:la
     :-  meta.a
+    %+  rep  bloq.meta.a
     =/  ali  (ravel:la a)
     =/  bob  (ravel:la b)
     =/  car  (ravel:la c)
-    %+  rep  bloq.meta.a
-    %+  turn
-      (gulf 0 (dec (lent ali)))
-    |=  i=@
-    (op (snag i ali) (snag i bob) (snag i car))
+    |-  ^-  (list @)
+    ?~  ali  ~
+    ?>  &(?=(^ bob) ?=(^ car))
+    [(op i.ali i.bob i.car) $(ali t.ali, bob t.bob, car t.car)]
   --
 --

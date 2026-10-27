@@ -54,4 +54,12 @@
   =.  r  (set-item:la r ~[0 2] 0x3)
   =.  r  (set-item:la r ~[0 3] 0xff)
   %+  expect-eq  !>(`@`0x5)  !>((get-item:la (cumsum:la r) ~[0 0]))
+::  prod over [1 2 3 -1] = -6 (0xfa)
+++  test-int2-prod  ^-  tang
+  =/  r=ray  (fill:la [~[1 4] 3 %int2 ~] 0x0)
+  =.  r  (set-item:la r ~[0 0] 0x1)
+  =.  r  (set-item:la r ~[0 1] 0x2)
+  =.  r  (set-item:la r ~[0 2] 0x3)
+  =.  r  (set-item:la r ~[0 3] 0xff)
+  %+  expect-eq  !>(`@`0xfa)  !>((get-item:la (prod:la r) ~[0 0]))
 --

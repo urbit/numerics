@@ -1,0 +1,21 @@
+[package]
+name = "lagoon-jets"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "NockVM jets for /lib/lagoon (%i754 arrays) over sdfloat/sdblas."
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "lagoon-kick"
+path = "src/bin/lagoon-kick.rs"
+
+[dependencies]
+nockvm.workspace = true
+nockapp.workspace = true
+sdfloat.workspace = true
+sdblas.workspace = true
+either = "1"

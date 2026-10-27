@@ -1,0 +1,237 @@
+/-  *lagoon
+/+  *test
+/+  *lagoon
+::::  /tests/lib/lagoon-indexing -- indexing and structural ops
+::
+::  Named ++test-<op>-<shape>-<kind>.  A `canon` is the reference result,
+::  an `assay` is the result of the operation under test.
+::
+^|
+|_  $:  atol=_.1e-3          :: absolute tolerance for precision of operations
+        rtol=_.1e-5          :: relative tolerance for precision of operations
+    ==
+::  Auxiliary tools
+++  is-equal
+  |=  [a=ray b=ray]  ^-  tang
+  ?:  =(a b)  ~
+  :~  [%palm [": " ~ ~ ~] [leaf+"expected" "{<`ray`a>}"]]
+      [%palm [": " ~ ~ ~] [leaf+"actual  " "{<`ray`b>}"]]
+  ==
+::
+++  is-close
+  |=  [a=ray b=ray]  ^-  tang
+  ?:  (all:la (is-close:la a b [atol rtol]))  ~
+  :~  [%palm [": " ~ ~ ~] [leaf+"expected" "{<a>}"]]
+      [%palm [": " ~ ~ ~] [leaf+"actual  " "{<b>}"]]
+  ==
+::
+++  test-get-item-1d  ^-  tang
+  =/  input-iota-1x8-3u  (iota:la [shape=~[8] bloq=3 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>(0x0)
+      !>((get-item:la input-iota-1x8-3u ~[0]))
+    %+  expect-eq
+      !>(0x1)
+      !>((get-item:la input-iota-1x8-3u ~[1]))
+    %+  expect-eq
+      !>(0x7)
+      !>((get-item:la input-iota-1x8-3u ~[7]))
+    %-  expect-fail
+      |.((get-item:la input-iota-1x8-3u ~[8]))
+  ==
+::
+
+++  test-get-item-2d  ^-  tang
+  =/  input-magic-4x4-4u  (magic:la [shape=~[4 4] bloq=4 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>(0x0)
+      !>((get-item:la input-magic-4x4-4u ~[0 0]))
+    %+  expect-eq
+      !>(0x4)
+      !>((get-item:la input-magic-4x4-4u ~[1 0]))
+    %+  expect-eq
+      !>(0xa)
+      !>((get-item:la input-magic-4x4-4u ~[2 2]))
+    %-  expect-fail
+      |.((get-item:la input-magic-4x4-4u ~[4 4]))
+  ==
+::
+
+++  test-get-item-3d  ^-  tang
+  =/  input-magic-4x4x4-5u  (magic:la [shape=~[4 4 4] bloq=5 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>(0x0)
+      !>((get-item:la input-magic-4x4x4-5u ~[0 0 0]))
+    %+  expect-eq
+      !>(0x10)
+      !>((get-item:la input-magic-4x4x4-5u ~[1 0 0]))
+    %+  expect-eq
+      !>(0x2a)
+      !>((get-item:la input-magic-4x4x4-5u ~[2 2 2]))
+    %-  expect-fail
+      |.((get-item:la input-magic-4x4x4-5u ~[4 4 4]))
+  ==
+::
+
+++  test-set-item-1d  ^-  tang
+  =/  input-meta  [shape=~[8] bloq=3 kind=%uint prec=~]
+  =/  input-iota-1x8-3u  (iota:la input-meta)
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[0xf 0x1 0x2 0x3 0x4 0x5 0x6 0x7]))
+      !>((set-item:la input-iota-1x8-3u ~[0] 0xf))
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[0x0 0x1 0x2 0x3 0x4 0x5 0x6 0xf]))
+      !>((set-item:la input-iota-1x8-3u ~[7] 0xf))
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[0x0 0x1 0x2 0xf 0x4 0x5 0x6 0x7]))
+      !>((set-item:la input-iota-1x8-3u ~[3] 0xf))
+    %-  expect-fail
+      |.((set-item:la input-iota-1x8-3u ~[8] 0xf))
+  ==
+::
+
+++  test-set-item-2d  ^-  tang
+  =/  input-meta  [shape=~[3 3] bloq=4 kind=%uint prec=~]
+  =/  input-magic-3x3-4u  (magic:la input-meta)
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[~[0xf 0x1 0x2] ~[0x3 0x4 0x5] ~[0x6 0x7 0x8]]))
+      !>((set-item:la input-magic-3x3-4u ~[0 0] 0xf))
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[~[0x0 0x1 0x2] ~[0x3 0xf 0x5] ~[0x6 0x7 0x8]]))
+      !>((set-item:la input-magic-3x3-4u ~[1 1] 0xf))
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[~[0x0 0x1 0x2] ~[0x3 0x4 0x5] ~[0x6 0xf 0x8]]))
+      !>((set-item:la input-magic-3x3-4u ~[2 1] 0xf))
+    %-  expect-fail
+      |.((set-item:la input-magic-3x3-4u ~[3 3] 0xf))
+  ==
+::
+
+++  test-set-item-3d  ^-  tang
+  =/  input-meta  [shape=~[2 2 2] bloq=4 kind=%uint prec=~]
+  =/  input-magic-2x2x2-5u  (magic:la input-meta)
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[~[~[0xf 0x1] ~[0x2 0x3]] ~[~[0x4 0x5] ~[0x6 0x7]]]))
+      !>((set-item:la input-magic-2x2x2-5u ~[0 0 0] 0xf))
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[~[~[0x0 0x1] ~[0x2 0x3]] ~[~[0x4 0x5] ~[0x6 0xf]]]))
+      !>((set-item:la input-magic-2x2x2-5u ~[1 1 1] 0xf))
+    %+  expect-eq
+      !>((en-ray:la input-meta ~[~[~[0x0 0x1] ~[0xf 0x3]] ~[~[0x4 0x5] ~[0x6 0x7]]]))
+      !>((set-item:la input-magic-2x2x2-5u ~[0 1 0] 0xf))
+    %-  expect-fail
+      |.((set-item:la input-magic-2x2x2-5u ~[3 2 1] 0xf))
+  ==
+::
+
+++  test-get-row-1d  ^-  tang
+  =/  input-iota-1x8-3u  (iota:la [shape=~[8] bloq=3 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la [shape=~[1] bloq=3 kind=%uint prec=~] ~[0x0]))
+      !>((get-row:la input-iota-1x8-3u ~[0]))
+    %+  expect-eq
+      !>((en-ray:la [shape=~[1] bloq=3 kind=%uint prec=~] ~[0x7]))
+      !>((get-row:la input-iota-1x8-3u ~[7]))
+    %-  expect-fail
+      |.((get-row:la input-iota-1x8-3u ~[8]))
+  ==
+::
+
+++  test-get-row-2d  ^-  tang
+  =/  input-magic-3x3-4u  (magic:la [shape=~[3 3] bloq=4 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la [shape=~[1 3] bloq=4 kind=%uint prec=~] ~[~[0x0 0x1 0x2]]))
+      !>((get-row:la input-magic-3x3-4u ~[0]))
+    %+  expect-eq
+      !>((en-ray:la [shape=~[1 3] bloq=4 kind=%uint prec=~] ~[~[0x6 0x7 0x8]]))
+      !>((get-row:la input-magic-3x3-4u ~[2]))
+    %-  expect-fail
+      |.((get-row:la input-magic-3x3-4u ~[3]))
+  ==
+::
+
+++  test-get-row-3d  ^-  tang
+  =/  input-magic-3x3-4u  (magic:la [shape=~[3 3 3] bloq=4 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la [shape=~[1 3] bloq=4 kind=%uint prec=~] ~[~[0x0 0x1 0x2]]))
+      !>((get-row:la input-magic-3x3-4u ~[0 0]))
+    %-  expect-fail
+      |.((get-row:la input-magic-3x3-4u ~[3 3]))
+  ==
+::
+
+++  test-set-row-1d  ^-  tang
+  =/  input-iota-1x8-3u  (iota:la [shape=~[8] bloq=3 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la [shape=~[8] bloq=3 kind=%uint prec=~] ~[0xf 0x1 0x2 0x3 0x4 0x5 0x6 0x7]))
+      !>((set-row:la input-iota-1x8-3u ~[0] (en-ray:la [~[1] 3 %uint ~] ~[0xf])))
+    %+  expect-eq
+      !>((en-ray:la [shape=~[8] bloq=3 kind=%uint prec=~] ~[0x0 0x1 0x2 0x3 0x4 0x5 0x6 0xf]))
+      !>((set-row:la input-iota-1x8-3u ~[7] (en-ray:la [~[1] 3 %uint ~] ~[0xf])))
+    %-  expect-fail
+      |.((set-row:la input-iota-1x8-3u ~[8] (en-ray:la [~[1] 3 %uint ~] ~[0xf])))
+  ==
+::
+
+++  test-set-row-2d  ^-  tang
+  =/  input-magic-3x3-4u  (magic:la [shape=~[3 3] bloq=4 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la [shape=~[3 3] bloq=4 kind=%uint prec=~] ~[~[0x0 0x1 0x2] ~[0x0 0x1 0x2] ~[0x6 0x7 0x8]]))
+      !>((set-row:la input-magic-3x3-4u ~[1] (en-ray:la [~[1 3] 4 %uint ~] ~[~[0x0 0x1 0x2]])))
+    %-  expect-fail
+      |.((set-row:la input-magic-3x3-4u ~[3] (en-ray:la [~[1 3] 4 %uint ~] ~[~[0x0 0x1 0x2]])))
+  ==
+::
+
+++  test-set-row-3d  ^-  tang
+  =/  input-magic-3x3x3-4u  (magic:la [shape=~[3 3 3] bloq=5 kind=%uint prec=~])
+  ;:  weld
+    %+  expect-eq
+      !>((en-ray:la [shape=~[3 3 3] bloq=5 kind=%uint prec=~] ~[~[~[0x0 0x1 0x2] ~[0x0 0x1 0x2] ~[0x6 0x7 0x8]] ~[~[0x9 0xa 0xb] ~[0xc 0xd 0xe] ~[0xf 0x10 0x11]] ~[~[0x12 0x13 0x14] ~[0x15 0x16 0x17] ~[0x18 0x19 0x1a]]]))
+      !>((set-row:la input-magic-3x3x3-4u ~[0 1] (en-ray:la [~[1 3] 4 %uint ~] ~[~[0x0 0x1 0x2]])))
+    %-  expect-fail
+      |.((set-row:la input-magic-3x3x3-4u ~[3 3] (en-ray:la [~[1 3] 4 %uint ~] ~[~[0x0 0x1 0x2]])))
+  ==
+::
+::  a 4x4 magic array is row-major 0..15, so entry [i j] = (4i + j); distinct
+::  values catch a transpose or an off-by-one that a symmetric input would hide.
+::  Slices are INCLUSIVE on both ends; an absent bound `~` means "to the end".
+++  test-submatrix-2d  ^-  tang
+  =/  input-magic-4x4-4u  (magic:la [shape=~[4 4] bloq=4 kind=%uint prec=~])
+  ;:  weld
+    ::  issue #8: a present upper bound of `0` must not read as "to the end".
+    ::  a[0:0, 2:2] is the single element [0 2] = 2, shape ~[1 1].
+    %+  expect-eq
+      !>((en-ray:la [~[1 1] 4 %uint ~] ~[~[0x2]]))
+      !>((submatrix:la ~[`[`0 `0] `[`2 `2]] input-magic-4x4-4u))
+    ::  a[1:2, 2:3] is rows 1-2, cols 2-3 = [[6 7] [10 11]], shape ~[2 2].
+    %+  expect-eq
+      !>((en-ray:la [~[2 2] 4 %uint ~] ~[~[0x6 0x7] ~[0xa 0xb]]))
+      !>((submatrix:la ~[`[`1 `2] `[`2 `3]] input-magic-4x4-4u))
+    ::  a[0:2, 3:3] is a non-square 3x1 column = [[3] [7] [11]]; a transpose
+    ::  would give shape ~[1 3] or the wrong entries.
+    %+  expect-eq
+      !>((en-ray:la [~[3 1] 4 %uint ~] ~[~[0x3] ~[0x7] ~[0xb]]))
+      !>((submatrix:la ~[`[`0 `2] `[`3 `3]] input-magic-4x4-4u))
+    ::  a[2:, :] slices rows 2-3 to the end and pads the omitted column dim,
+    ::  = [[8 9 10 11] [12 13 14 15]], shape ~[2 4] (absent upper bound).
+    %+  expect-eq
+      !>((en-ray:la [~[2 4] 4 %uint ~] ~[~[0x8 0x9 0xa 0xb] ~[0xc 0xd 0xe 0xf]]))
+      !>((submatrix:la ~[`[`2 ~]] input-magic-4x4-4u))
+    ::  a[:1, :] uses an absent lower bound = rows 0-1 = [[0..3] [4..7]].
+    %+  expect-eq
+      !>((en-ray:la [~[2 4] 4 %uint ~] ~[~[0x0 0x1 0x2 0x3] ~[0x4 0x5 0x6 0x7]]))
+      !>((submatrix:la ~[`[~ `1]] input-magic-4x4-4u))
+  ==
+--

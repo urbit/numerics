@@ -878,7 +878,7 @@
     |=  a=ray
     ^-  @ud
     ?>  (check a)
-    +:(find ~[(get-item (max a) ~[0 0])] (ravel a))
+    +:(find ~[(get-item (max a) (reap (lent shape.meta.a) 0))] (ravel a))
   ::
   ::    +min:  ray -> ray
   ::
@@ -905,7 +905,7 @@
     |=  a=ray
     ^-  @ud
     ?>  (check a)
-    +:(find ~[(get-item (min a) ~[0 0])] (ravel a))
+    +:(find ~[(get-item (min a) (reap (lent shape.meta.a) 0))] (ravel a))
   ::
   ::    +cumsum:  ray -> ray
   ::

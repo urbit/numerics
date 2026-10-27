@@ -87,6 +87,7 @@ The following arms are provided:
 - `++scalar-to-ray`
 - `++eye`
 - `++zeros`
+- `++one` — the kind's scalar one (seed for `++ones`, `++eye`, `++prod`)
 - `++ones`
 - `++iota`
 - `++magic`

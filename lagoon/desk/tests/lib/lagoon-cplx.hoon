@@ -53,6 +53,13 @@
   =.  r  (set-item:la r ~[0 1] 0x4080.0000.4040.0000)   ::  3+4i
   =.  r  (set-item:la r ~[0 2] 0xc000.0000.c000.0000)   ::  -2-2i
   %+  expect-eq  !>(`@`0x4080.0000.4000.0000)  !>((get-item:la (cumsum:la r) ~[0 0]))   ::  2+4i
+::  prod over [1+2i 3+4i] = -5+10i: seeded from complex one (1+0i), not the
+::  integer 1 (a denormal real part and zero imaginary part)
+++  test-cplx-prod  ^-  tang
+  =/  r=ray  (fill:la [~[1 2] 6 %cplx ~] 0x0)
+  =.  r  (set-item:la r ~[0 0] 0x4000.0000.3f80.0000)   ::  1+2i
+  =.  r  (set-item:la r ~[0 1] 0x4080.0000.4040.0000)   ::  3+4i
+  %+  expect-eq  !>(`@`0x4120.0000.c0a0.0000)  !>((get-item:la (prod:la r) ~[0 0]))   ::  -5+10i
 ::  bilinear dot vs Hermitian dotc over [1+2i 3+4i].[5+6i 7+8i]
 ::  dot  = sum x*y       = -18+68i (0x4288.0000.c190.0000)
 ::  dotc = sum conj(x)*y =  70-8i  (0xc100.0000.428c.0000)

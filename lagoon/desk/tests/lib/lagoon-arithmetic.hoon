@@ -61,6 +61,19 @@
   %-  each-real
   |=  [r=rrow m=meta]
   (is-equal (fill:la m two.r) (add:la (fill:la m one.r) (fill:la m one.r)))
+::  +bin-op walks both ravels in one pass (it used to +snag each index, which
+::  is quadratic); a long, distinct-valued operand catches any misalignment
+::  that the same-valued fills above would hide.
+++  test-add-long-uint  ^-  tang
+  =/  a  (iota:la [~[300] 5 %uint ~])
+  %+  expect-eq
+    !>((turn (gulf 0 299) |=(i=@ (lsh 0 i))))
+  !>((ravel:la (add:la a a)))
+++  test-mul-long-uint  ^-  tang
+  =/  a  (iota:la [~[300] 5 %uint ~])
+  %+  expect-eq
+    !>((turn (gulf 0 299) |=(i=@ (pow i 2))))
+  !>((ravel:la (mul:la a a)))
 ++  test-add-uint  ^-  tang
   %-  each-uint
   |=  m=meta

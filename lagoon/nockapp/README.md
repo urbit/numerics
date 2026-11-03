@@ -33,7 +33,7 @@ Toolchain: the pinned nightly in `rust-toolchain.toml` (nockvm needs it);
 scripts/sync-hoon.sh                                   # after any desk change
 (cd hoon && hoonc --arbitrary --output run-tests.jam run-tests.hoon .)   # ~1-7 min
 cargo build --release
-./target/release/lagoon-kick hoon/run-tests.jam        # 153 tests, ~1.5 s
+./target/release/lagoon-kick hoon/run-tests.jam        # 266 tests, ~1.5 s
 ```
 
 Differential check, the way the jets are verified: NockVM runs both the jet
@@ -44,6 +44,8 @@ and the raw Nock for every jet named in `NOCK_TEST_JETS` and bails with
 NOCK_TEST_JETS=k.138/one/two/tri/qua/pen/non/lagoon/add-rays,k.138/one/two/tri/qua/pen/non/lagoon/mmul \
   ./target/release/lagoon-kick hoon/run-tests.jam
 LAGOON_TESTS=arithmetic/,linalg/ ...                   # filter rows by substring
+LAGOON_JET_DISABLE=1 ...                               # no lagoon jets: the pure Hoon
+LAGOON_JET_DISABLE=max,argmax ...                      # punt the named reduction jets only
 LAGOON_JET_TRACE=1 ...                                 # one stderr line per jet call
 LAGOON_JET_SABOTAGE=1 ...                              # harness self-check: add-rays is made wrong
 ```
@@ -72,6 +74,9 @@ Hoon is fixed those rows pass unchanged. `HOON_FLOAT_JET_DISABLE=1` leaves
 the doors to the Nock; `HOON_FLOAT_JET_TRACE=1` prints each call.
 
 ## Using the jets in a NockApp
+
+[jojo](https://github.com/sigilante/jojo) vendors these two crates and boots every
+kernel with `hot_state()`; Atalante's REPL is the first consumer.
 
 ```rust
 let hot = lagoon_jets::hot_state();          // URBIT_HOT_STATE ++ HOON_FLOAT_HOT ++ LAGOON_HOT

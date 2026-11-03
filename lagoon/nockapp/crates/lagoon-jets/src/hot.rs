@@ -76,6 +76,11 @@ pub fn hot_state() -> Vec<HotEntry> {
     if std::env::var_os("HOON_FLOAT_JET_DISABLE").is_none() {
         v.extend_from_slice(hoon_float_jets::HOON_FLOAT_HOT);
     }
-    v.extend_from_slice(LAGOON_HOT);
+    // LAGOON_JET_DISABLE=1 leaves every lagoon arm to the Nock, so the suite
+    // can run the pure Hoon (a list of arm names punts only those arms, and
+    // only the reduction jets read that list).
+    if std::env::var("LAGOON_JET_DISABLE").map(|v| v != "1").unwrap_or(true) {
+        v.extend_from_slice(LAGOON_HOT);
+    }
     v
 }

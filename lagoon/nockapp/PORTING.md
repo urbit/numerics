@@ -48,7 +48,7 @@ NOCK_TEST_JETS=k.138/one/two/tri/qua/pen/non/lagoon/<hint> LAGOON_TESTS=<substr>
 `<hint>` is the `~/  %name` in the Hoon (e.g. `add-rays`, `mod-scal`, `argmax`),
 comma-separate several. `LAGOON_TESTS` filters rows by substring of
 `<file>/<arm>` (e.g. `arithmetic/test-mul`, `compare-reduce/`, `jet-parity/`).
-With no filter the whole suite (153 tests) runs in ~1.5 s. Finish with the
+With no filter the whole suite (266 tests) runs in ~1.5 s. Finish with the
 whole suite in test mode for your arms.
 
 Do not run `hoonc` or edit anything under `hoon/`; the Hoon is frozen for
@@ -96,7 +96,7 @@ Hoon-vs-vere-C divergences the port surfaced (the Rust follows the Hoon):
 
 Debug switches (all read from the environment; never set in production):
 `LAGOON_JET_TRACE`, `LAGOON_JET_SABOTAGE` (add-rays wrong on purpose),
-`LAGOON_JET_DISABLE=max,argmax,...` (named reduction jets punt).
+`LAGOON_JET_DISABLE=max,argmax,...` (named reduction jets punt; `LAGOON_JET_DISABLE=1` leaves every lagoon arm to the Nock).
 
 ## The float doors (phase 6)
 

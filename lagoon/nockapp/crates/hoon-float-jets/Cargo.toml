@@ -1,0 +1,12 @@
+[package]
+name = "hoon-float-jets"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "NockVM jets for hoon-138's rh/rs/rd/rq floating-point doors, over sdfloat."
+
+[dependencies]
+nockvm.workspace = true
+sdfloat.workspace = true
+either = "1"
